@@ -1,0 +1,42 @@
+[
+  {
+    "staffId": 1,
+    "nameRu": "Лана Вачовски",
+    "nameEn": "Lana Wachowski",
+    "posterUrl": "https://kinopoiskapiunofficial.tech/images/actor_posters/kp/1.jpg",
+    "professionKey": "DIRECTOR",
+    "description": ""
+  },
+  {
+    "staffId": 2,
+    "nameRu": "Лилли Вачовски",
+    "nameEn": "Lilly Wachowski",
+    "posterUrl": "",
+    "professionKey": "WRITER",
+    "description": ""
+  },
+  {
+    "staffId": 3,
+    "nameRu": "Киану Ривз",
+    "nameEn": "Keanu Reeves",
+    "posterUrl": "https://kinopoiskapiunofficial.tech/images/actor_posters/kp/3.jpg",
+    "professionKey": "ACTOR",
+    "description": "Neo"
+  },
+  {
+    "staffId": 4,
+    "nameRu": "Лоренс Фишбёрн",
+    "nameEn": "Laurence Fishburne",
+    "posterUrl": "https://kinopoiskapiunofficial.tech/images/actor_posters/kp/4.jpg",
+    "professionKey": "ACTOR",
+    "description": "Morpheus"
+  },
+  {
+    "staffId": 5,
+    "nameRu": "Кэрри-Энн Мосс",
+    "nameEn": "Carrie-Anne Moss",
+    "posterUrl": "https://kinopoiskapiunofficial.tech/images/actor_posters/kp/5.jpg",
+    "professionKey": "ACTOR",
+    "description": "Trinity"
+  }
+]

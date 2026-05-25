@@ -1,0 +1,27 @@
+{
+  "keyword": "Matrix",
+  "pagesCount": 1,
+  "searchFilmsCountResult": 2,
+  "films": [
+    {
+      "filmId": 301,
+      "nameRu": "Матрица",
+      "nameEn": "The Matrix",
+      "nameOriginal": "The Matrix",
+      "year": "1999",
+      "rating": "8.5",
+      "posterUrl": "https://kinopoiskapiunofficial.tech/images/posters/kp/301.jpg",
+      "posterUrlPreview": "https://kinopoiskapiunofficial.tech/images/posters/kp_small/301.jpg"
+    },
+    {
+      "filmId": 625,
+      "nameRu": "Матрица: Перезагрузка",
+      "nameEn": "The Matrix Reloaded",
+      "nameOriginal": "The Matrix Reloaded",
+      "year": "2003",
+      "rating": "7.3",
+      "posterUrl": "https://kinopoiskapiunofficial.tech/images/posters/kp/625.jpg",
+      "posterUrlPreview": "https://kinopoiskapiunofficial.tech/images/posters/kp_small/625.jpg"
+    }
+  ]
+}

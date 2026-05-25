@@ -1,0 +1,26 @@
+{
+  "kinopoiskId": 301,
+  "imdbId": "tt0133093",
+  "nameRu": "Матрица",
+  "nameOriginal": "The Matrix",
+  "nameEn": "The Matrix",
+  "year": 1999,
+  "description": "Жизнь Томаса Андерсона разделена на две части...",
+  "slogan": "\"Добро пожаловать в реальный мир\"",
+  "filmLength": 136,
+  "ratingMpaa": "r",
+  "ratingKinopoisk": 8.5,
+  "ratingKinopoiskVoteCount": 665000,
+  "ratingImdb": 8.7,
+  "ratingImdbVoteCount": 1900000,
+  "posterUrl": "https://kinopoiskapiunofficial.tech/images/posters/kp/301.jpg",
+  "posterUrlPreview": "https://kinopoiskapiunofficial.tech/images/posters/kp_small/301.jpg",
+  "genres": [
+    {"genre": "фантастика"},
+    {"genre": "боевик"}
+  ],
+  "countries": [
+    {"country": "США"},
+    {"country": "Австралия"}
+  ]
+}

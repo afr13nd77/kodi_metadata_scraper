@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Testing
+.pytest_cache/
+
+# Build artifacts (distributed via GitHub Releases)
+*.zip
+
+# Internal docs (contains specs + API keys)
+docs/
+
+# Claude Code config
+.claude/
+
+# Kodi logs / debug dumps
+err.txt
+*.log
+
+# OS files
+Thumbs.db
+.DS_Store
