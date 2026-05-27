@@ -96,6 +96,23 @@
           <control type="spinner" format="string"/>
         </setting>
       </group>
+      <group id="3h">
+        <setting id="enable_nfo_export" type="boolean" label="32230" help="32231">
+          <level>0</level>
+          <default>false</default>
+          <control type="toggle"/>
+        </setting>
+      </group>
+      <group id="3i">
+        <setting id="nfo_overwrite" type="boolean" label="32232" help="32233">
+          <level>0</level>
+          <default>false</default>
+          <dependencies>
+            <dependency type="visible" setting="enable_nfo_export">true</dependency>
+          </dependencies>
+          <control type="toggle"/>
+        </setting>
+      </group>
     </category>
     <category id="advanced" label="32200" help="">
       <group id="4">

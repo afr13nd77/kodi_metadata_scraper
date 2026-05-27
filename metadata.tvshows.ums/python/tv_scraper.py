@@ -27,6 +27,7 @@ from utils import (
     extract_imdb_id, search_kp_by_imdb, transliterate_to_cyrillic,
     extract_alt_title, deduplicate_results, _has_cyrillic,
 )
+from nfo_writer import write_tvshow_nfo
 
 
 def _perform_dual_search(
@@ -364,6 +365,8 @@ def _handle_getdetails(
 
     infotag = listitem.getVideoInfoTag()
     infotag.setEpisodeGuide(episodeguide)
+
+    write_tvshow_nfo(tvshow, params.get("pathSettings", ""), settings, logger)
 
     xbmcplugin.setResolvedUrl(handle, True, listitem)
 

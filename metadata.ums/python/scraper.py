@@ -19,6 +19,7 @@ from utils import (
     extract_franchise_name, extract_alt_title, deduplicate_results,
     _has_cyrillic,
 )
+from nfo_writer import write_movie_nfo
 
 
 def _perform_dual_search(
@@ -325,6 +326,9 @@ def _handle_getdetails(
 
     listitem = xbmcgui.ListItem(offscreen=True)
     _apply_movie_details_to_listitem(details, listitem, settings, logger)
+
+    write_movie_nfo(details, params.get("pathSettings", ""), settings, logger)
+
     xbmcplugin.setResolvedUrl(handle, True, listitem)
 
     logger.info(f"_handle_getdetails: success for kp_id={kp_id}, title='{details.title_ru}'")

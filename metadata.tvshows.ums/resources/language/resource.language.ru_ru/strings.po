@@ -144,3 +144,19 @@ msgstr "Очистить кэш"
 msgctxt "#32221"
 msgid "Clear all cached API responses on the next library scan"
 msgstr "Очистить все закэшированные ответы API при следующем сканировании библиотеки"
+
+msgctxt "#32230"
+msgid "Export NFO files"
+msgstr "Экспорт NFO-файлов"
+
+msgctxt "#32231"
+msgid "Automatically save .nfo files with metadata next to video files after scraping"
+msgstr "Автоматически сохранять .nfo-файлы с метаданными рядом с видеофайлами после скрапинга"
+
+msgctxt "#32232"
+msgid "Overwrite existing NFO"
+msgstr "Перезаписывать существующие NFO"
+
+msgctxt "#32233"
+msgid "Replace existing .nfo files with fresh data on each scrape"
+msgstr "Заменять существующие .nfo-файлы свежими данными при каждом скрапинге"

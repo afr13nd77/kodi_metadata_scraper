@@ -21,7 +21,7 @@ class NfoParser:
         (
             "kinopoisk_uniqueid",
             re.compile(
-                r'<uniqueid\s+type=["\']kinopoisk["\']>(\d+)</uniqueid>',
+                r'<uniqueid\b[^>]*type=["\']kinopoisk["\'][^>]*>(\d+)</uniqueid>',
                 re.IGNORECASE,
             ),
             "kinopoisk_id",
@@ -34,7 +34,7 @@ class NfoParser:
         (
             "imdb_uniqueid",
             re.compile(
-                r'<uniqueid\s+type=["\']imdb["\']>(tt\d{7,8})</uniqueid>',
+                r'<uniqueid\b[^>]*type=["\']imdb["\'][^>]*>(tt\d{7,8})</uniqueid>',
                 re.IGNORECASE,
             ),
             "imdb_id",

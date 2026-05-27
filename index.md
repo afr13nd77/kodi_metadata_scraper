@@ -1,8 +1,8 @@
 # Kodi Metadata Scraper — Индекс проекта
 
-**Версия**: 3.12.0 / 3.12.0 (movie / TV)
+**Версия**: 3.13.0 / 3.13.0 (movie / TV)
 **Статус**: Полностью реализован — Movies + TV Shows (независимые аддоны)
-**Обновлён**: 2026-05-24
+**Обновлён**: 2026-05-27
 
 ---
 
@@ -52,7 +52,8 @@ kodi_metadata_scraper/
 │   ├── settings_manager.py
 │   ├── kinopoisk_api.py
 │   ├── omdb_client.py
-│   └── utils.py
+│   ├── utils.py
+│   └── nfo_writer.py                       # NFO-экспорт (XML-генерация, запись через xbmcvfs)
 ├── metadata.ums/                       # Movie scraper addon
 │   ├── addon.xml
 │   ├── python/
@@ -68,8 +69,8 @@ kodi_metadata_scraper/
 │   │   └── settings.xml
 │   └── tests/
 ├── build_zip.py                        # Сборка двух ZIP-пакетов
-├── metadata.ums-3.12.0.zip             # ZIP для movie scraper
-├── metadata.tvshows.ums-3.12.0.zip     # ZIP для TV shows scraper
+├── metadata.ums-3.13.0.zip             # ZIP для movie scraper
+├── metadata.tvshows.ums-3.13.0.zip     # ZIP для TV shows scraper
 └── index.md                            # Этот файл — индекс проекта
 ```
 
@@ -102,7 +103,8 @@ metadata.ums/
     ├── test_nfo_parser.py
     ├── test_cache.py
     ├── test_collections.py
-    └── test_fuzzy.py
+    ├── test_fuzzy.py
+    └── test_nfo_writer.py
 ```
 
 ### TV Scraper (metadata.tvshows.ums)
@@ -135,7 +137,8 @@ shared/
 ├── kinopoisk_api.py                    # Клиент Kinopoisk API (search, get_details, get_staff, get_seasons, get_images, get_sequels)
 ├── omdb_client.py                      # Клиент OMDb API (get_ratings, get_episode_rating)
 ├── tvmaze_client.py                    # Клиент TVMaze API (описания эпизодов)
-└── utils.py                            # Общие утилиты (get_params, clean_title, extract_ids, fuzzy_score, extract_franchise_name)
+├── utils.py                            # Общие утилиты (get_params, clean_title, extract_ids, fuzzy_score, extract_franchise_name)
+└── nfo_writer.py                       # NFO-экспорт (write_movie_nfo, write_tvshow_nfo, XML-генерация)
 ```
 
 Каждый ZIP-архив содержит полный набор shared-модулей, делая оба аддона полностью самостоятельными.
@@ -205,8 +208,8 @@ Kodi требует **отдельные addon ID** для movie и TV scrapers:
 
 | Команда | Описание |
 |---|---|
-| `cd metadata.ums && python -m pytest tests/ -v` | Запуск юнит-тестов (431 тест) |
-| `cd metadata.tvshows.ums && python -m pytest tests/ -v` | Запуск юнит-тестов TV (103 теста) |
+| `cd metadata.ums && python -m pytest tests/ -v` | Запуск юнит-тестов (454 теста) |
+| `cd metadata.tvshows.ums && python -m pytest tests/ -v` | Запуск юнит-тестов TV (116 тестов) |
 | `python build_zip.py` | Сборка обоих ZIP-пакетов (metadata.ums и metadata.tvshows.ums) |
 
 ---
@@ -334,11 +337,19 @@ Kodi требует **отдельные addon ID** для movie и TV scrapers:
 | 2. Технический дизайн | `docs/smart-parsing/design.md` | ✅ approved |
 | 3. Разбивка на задачи | `docs/smart-parsing/tasks.md` | ✅ done (12/12) |
 
+### NFO-экспорт (nfo-export) — v3.13.0
+
+| Фаза | Документ | Статус |
+|---|---|---|
+| 1. Требования | `docs/nfo-export/requirements.md` | ✅ approved |
+| 2. Технический дизайн | `docs/nfo-export/design.md` | ✅ approved |
+| 3. Разбивка на задачи | `docs/nfo-export/tasks.md` | ✅ done (8/8) |
+
 ---
 
 ## Текущая версия
 
-**Movie 3.12.0 / TV 3.12.0** — Умный парсинг имён файлов (BL-15), детекция аниме (BL-16), multi-part фильмы (BL-17), мини-сериалы (BL-18), теги наград (BL-10), нормализация жанров (BL-11), персистентный кэш (BL-20). 534 тестов (431 movie + 103 TV).
+**Movie 3.13.0 / TV 3.13.0** — NFO-экспорт (BL-25): автоматическая запись .nfo рядом с видео, настройки enable/overwrite. + Умный парсинг имён файлов (BL-15), детекция аниме (BL-16), multi-part фильмы (BL-17), мини-сериалы (BL-18), теги наград (BL-10), нормализация жанров (BL-11), персистентный кэш (BL-20). 570 тестов (454 movie + 116 TV).
 
 ---
 
@@ -363,7 +374,8 @@ API keys санитизируются перед логированием чер
 - персистентный файловый кэш с TTL и настройкой очистки
 - теги наград (Оскар, Эмми, BAFTA, Канны, Золотой глобус)
 - нормализация жанров (рус→англ)
-- 431 юнит-тест
+- NFO-экспорт (автоматическая запись .nfo рядом с видео)
+- 454 юнит-теста
 
 ✅ **TV Scraper (metadata.tvshows.ums)**
 - поиск сериалов по названию
@@ -376,7 +388,8 @@ API keys санитизируются перед логированием чер
 - теги наград, нормализация жанров
 - персистентный кэш (3-уровневый для сезонов)
 - fallback при legacy episodeguide
-- 103 юнит-теста (всего 534)
+- NFO-экспорт (автоматическая запись tvshow.nfo)
+- 116 юнит-тестов (всего 570)
 
 ✅ **OMDb интеграция**
 - получение рейтингов фильмов (IMDB Rating)
@@ -389,6 +402,7 @@ API keys санитизируются перед логированием чер
 - менеджер настроек с типизацией
 - логирование с санитизацией ключей API
 - модели данных (dataclasses)
+- NFO-экспорт (`nfo_writer.py`, XML-генерация через ElementTree)
 
 ---
 
@@ -397,8 +411,8 @@ API keys санитизируются перед логированием чер
 **С версии 3.7.0 аддоны полностью независимы — порядок установки не важен.**
 
 1. Kodi → Settings → Add-ons → Install from zip file
-2. Установить `metadata.ums-3.12.0.zip` (movie scraper) — ОПЦИОНАЛЬНО
-   или `metadata.tvshows.ums-3.12.0.zip` (TV scraper) — ОПЦИОНАЛЬНО
+2. Установить `metadata.ums-3.13.0.zip` (movie scraper) — ОПЦИОНАЛЬНО
+   или `metadata.tvshows.ums-3.13.0.zip` (TV scraper) — ОПЦИОНАЛЬНО
    или оба архива
 3. Выбрать scraper в Settings → Media → Movies / TV Shows → Metadata providers
 

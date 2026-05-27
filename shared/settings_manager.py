@@ -76,6 +76,14 @@ class SettingsManager:
     def set_clear_cache(self, value: bool) -> None:
         self._addon.setSettingBool("clear_cache", value)
 
+    @property
+    def enable_nfo_export(self) -> bool:
+        return self._addon.getSettingBool("enable_nfo_export")
+
+    @property
+    def nfo_overwrite(self) -> bool:
+        return self._addon.getSettingBool("nfo_overwrite")
+
     def validate(self) -> list[str]:
         errors = []
         if not self.kinopoisk_api_key:
