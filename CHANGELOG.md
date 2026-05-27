@@ -1,5 +1,23 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
+## v3.14.0 (2026-05-27) — metadata.ums + metadata.tvshows.ums
+- CI/CD pipeline (BL-35): GitHub Actions для автоматической проверки кода
+  - Workflow: ruff lint → pytest (movie + TV параллельно) → build ZIP
+  - Авто-релиз: push тега `v*` создаёт GitHub Release с ZIP-архивами
+  - Конфигурация ruff: target Python 3.8, line-length 120, правила E/F/W
+  - Runner: ubuntu-22.04 (Python 3.8 pre-built)
+  - CI badge в README.md
+  - Исправлена 21 ошибка линтера в существующем коде
+- Детекция дублей Kinopoisk ID (BL-26): предупреждение при назначении одного kp_id разным файлам
+  - Новый модуль `shared/duplicate_tracker.py`: персистентный трекинг kp_id → file_path (JSON)
+  - Toast notification (xbmcgui, WARNING, 7 сек) при обнаружении дубля
+  - Повторный скрапинг того же файла не считается дублем
+  - Graceful degradation: ошибки трекинга не блокируют скрапинг
+  - Настройка «Обнаружение дубликатов» (по умолчанию вкл.)
+  - «Очистить кэш» также очищает трекинг дубликатов
+  - Аддоны ведут независимые карты (movie и TV не пересекаются)
+- 12 новых тестов (DuplicateTracker), всего 582 теста (466 movie + 116 TV)
+
 ## v3.13.0 (2026-05-27) — metadata.ums + metadata.tvshows.ums
 - NFO-экспорт (BL-25): автоматическая запись .nfo-файлов рядом с видеофайлами после скрапинга
   - Movie: создаёт `<имя_файла>.nfo` рядом с видео (XML Kodi-формат)
