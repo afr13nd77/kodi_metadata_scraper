@@ -5,7 +5,7 @@ import os
 import tempfile
 import shutil
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 
 import sys
@@ -134,10 +134,8 @@ class TestFileCache:
         assert result is None
 
     def test_put_error_graceful(self):
-        # Point to an impossible path to trigger write error
-        self.cache._cache_dir = "Z:\\nonexistent\\path\\that\\cannot\\exist"
-        # Should not raise, just log warning
-        self.cache.put("fail_key", {"data": 1})
+        with patch.object(self.cache, '_ensure_dir', side_effect=OSError("mocked")):
+            self.cache.put("fail_key", {"data": 1})
         self.logger.warning.assert_called()
 
     def test_envelope_format(self):
