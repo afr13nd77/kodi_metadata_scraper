@@ -180,7 +180,9 @@ def _handle_find(
                     results = kp_client.search(trans, None, type_filter=["FILM"])
                     if results:
                         successful_candidate = trans
-                        logger.info(f"_handle_find: found {len(results)} results after transliteration (no year): '{trans}'")
+                        logger.info(
+                            f"_handle_find: found {len(results)} results after transliteration (no year): '{trans}'"
+                        )
                         break
 
     if (

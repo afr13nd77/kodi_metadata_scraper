@@ -1,3 +1,5 @@
+[![CI](https://github.com/afedchin77/kodi_metadata_scraper/actions/workflows/ci.yml/badge.svg)](https://github.com/afedchin77/kodi_metadata_scraper/actions/workflows/ci.yml)
+
 # Ultimate Movie Scraper (UMS) для Kodi
 
 **Версия:** 3.12.0  

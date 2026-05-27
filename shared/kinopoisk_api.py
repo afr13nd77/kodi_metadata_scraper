@@ -127,7 +127,9 @@ class KinopoiskClient:
             logger=logger,
         )
 
-    def search(self, title: str, year: Optional[str] = None, type_filter: Optional[list[str]] = None) -> list[MovieSearchResult]:
+    def search(
+        self, title: str, year: Optional[str] = None, type_filter: Optional[list[str]] = None,
+    ) -> list[MovieSearchResult]:
         from utils import best_fuzzy_score, SIMILARITY_THRESHOLD
 
         self._logger.info(f"KinopoiskClient.search: title='{title}', year={year}, type_filter={type_filter}")

@@ -1,5 +1,5 @@
 from unittest.mock import MagicMock
-from nfo_parser import NfoParser, NfoParseResult
+from nfo_parser import NfoParser
 from logger import Logger
 
 

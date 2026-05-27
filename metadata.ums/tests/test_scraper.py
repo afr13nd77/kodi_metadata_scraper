@@ -2,14 +2,13 @@ import sys
 import json
 import urllib.parse
 import pytest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 import xbmc
 import xbmcgui
 import xbmcplugin
 from scraper import (
     run, _handle_find, _handle_getdetails,
-    _handle_nfo, _handle_getartwork, _apply_movie_details_to_listitem,
-    _enrich_with_omdb,
+    _handle_nfo, _handle_getartwork, _enrich_with_omdb,
 )
 from utils import (
     get_params, extract_kinopoisk_id, extract_imdb_id,

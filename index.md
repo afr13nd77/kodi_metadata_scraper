@@ -17,6 +17,8 @@
 | API дополнительный | TVMaze | api.tvmaze.com |
 | Тип дополнения (фильмы) | xbmc.metadata.scraper.movies | metadata.ums |
 | Тип дополнения (ТВ) | xbmc.metadata.scraper.tvshows | metadata.tvshows.ums |
+| CI/CD | GitHub Actions | ubuntu-22.04, Python 3.8 |
+| Линтер | ruff | target py38, rules E/F/W |
 
 ---
 
@@ -24,6 +26,9 @@
 
 ```
 kodi_metadata_scraper/
+├── .github/
+│   └── workflows/
+│       └── ci.yml                      # CI/CD pipeline (GitHub Actions)
 ├── .venv/                              # Python virtual environment (разработка/тесты)
 ├── docs/
 │   ├── kodi-kinopoisk-scraper/         # Спецификация movie scraper
@@ -68,6 +73,7 @@ kodi_metadata_scraper/
 │   ├── resources/
 │   │   └── settings.xml
 │   └── tests/
+├── ruff.toml                           # Конфигурация линтера ruff
 ├── build_zip.py                        # Сборка двух ZIP-пакетов
 ├── metadata.ums-3.13.0.zip             # ZIP для movie scraper
 ├── metadata.tvshows.ums-3.13.0.zip     # ZIP для TV shows scraper
@@ -211,6 +217,7 @@ Kodi требует **отдельные addon ID** для movie и TV scrapers:
 | `cd metadata.ums && python -m pytest tests/ -v` | Запуск юнит-тестов (454 теста) |
 | `cd metadata.tvshows.ums && python -m pytest tests/ -v` | Запуск юнит-тестов TV (116 тестов) |
 | `python build_zip.py` | Сборка обоих ZIP-пакетов (metadata.ums и metadata.tvshows.ums) |
+| `ruff check .` | Проверка стиля кода (ruff, target: Python 3.8) |
 
 ---
 
@@ -344,6 +351,14 @@ Kodi требует **отдельные addon ID** для movie и TV scrapers:
 | 1. Требования | `docs/nfo-export/requirements.md` | ✅ approved |
 | 2. Технический дизайн | `docs/nfo-export/design.md` | ✅ approved |
 | 3. Разбивка на задачи | `docs/nfo-export/tasks.md` | ✅ done (8/8) |
+
+### CI/CD Pipeline (ci-cd) — BL-35
+
+| Фаза | Документ | Статус |
+|---|---|---|
+| 1. Требования | `docs/ci-cd/requirements.md` | ✅ done |
+| 2. Технический дизайн | `docs/ci-cd/design.md` | ✅ done |
+| 3. Разбивка на задачи | `docs/ci-cd/tasks.md` | ✅ done |
 
 ---
 

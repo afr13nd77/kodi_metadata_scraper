@@ -1,0 +1,16 @@
+target-version = "py38"
+line-length = 120
+
+exclude = [
+    ".venv",
+    "__pycache__",
+    ".pytest_cache",
+    "*.pyc",
+]
+
+[lint]
+select = ["E", "F", "W"]
+
+[lint.per-file-ignores]
+"metadata.ums/tests/*" = ["E501"]
+"metadata.tvshows.ums/tests/*" = ["E501"]

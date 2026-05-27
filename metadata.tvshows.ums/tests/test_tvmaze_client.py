@@ -3,8 +3,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import patch, MagicMock
 from tvmaze_client import (
-    TvmazeClient, _show_cache, _episodes_cache, _tvmaze_cache_lock,
-    _TVMAZE_CACHE_MAX_SHOWS, _TVMAZE_CACHE_MAX_EPISODES,
+    TvmazeClient, _show_cache, _episodes_cache, _TVMAZE_CACHE_MAX_SHOWS,
 )
 from http_client import HttpError
 

@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+      - run: pip install ruff
+      - run: ruff check .
+
+  test-movie:
+    name: Test Movie Scraper
+    runs-on: ubuntu-22.04
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+      - run: pip install pytest
+      - run: python -m pytest metadata.ums/tests/ -v
+
+  test-tv:
+    name: Test TV Scraper
+    runs-on: ubuntu-22.04
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+      - run: pip install pytest
+      - run: python -m pytest metadata.tvshows.ums/tests/ -v
+
+  build:
+    name: Build ZIP
+    runs-on: ubuntu-22.04
+    needs: [test-movie, test-tv]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+      - run: python build_zip.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: addon-zips
+          path: |
+            metadata.ums-*.zip
+            metadata.tvshows.ums-*.zip
+          retention-days: 90
+
+  release:
+    name: Release
+    runs-on: ubuntu-22.04
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+      - run: python build_zip.py
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            metadata.ums-*.zip
+            metadata.tvshows.ums-*.zip
+          generate_release_notes: true

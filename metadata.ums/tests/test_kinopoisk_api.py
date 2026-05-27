@@ -2,7 +2,7 @@ import json
 import os
 from unittest.mock import patch, MagicMock
 from kinopoisk_api import KinopoiskClient
-from models import DataSource, ArtworkType, ProfessionType
+from models import DataSource, ArtworkType
 from logger import Logger
 
 

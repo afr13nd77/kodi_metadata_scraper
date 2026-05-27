@@ -1,7 +1,7 @@
 import sys
 import json
 import pytest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 import xbmc
 import xbmcgui
 import xbmcplugin
@@ -14,7 +14,7 @@ from tv_scraper import (
 )
 from models import (
     MovieSearchResult, MovieDetails, TVShowDetails, Season, Episode,
-    Rating, Person, Artwork, DataSource, ArtworkType, ProfessionType, ContentType
+    Rating, Person, Artwork, DataSource, ArtworkType, ProfessionType
 )
 from omdb_client import OmdbRatings
 from logger import Logger
@@ -1137,7 +1137,6 @@ class TestEnrichTvshowWithOmdbRatings:
         """omdb_api_key='' -> details.ratings unchanged (no RT/MC added)."""
         details = self._make_details()
         original_ratings_count = len(details.ratings)
-        original_sources = {r.source for r in details.ratings}
         settings = _mock_settings(omdb_key="", show_ratings_in_plot=True)
         logger = _mock_logger()
 

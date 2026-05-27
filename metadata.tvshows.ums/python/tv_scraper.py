@@ -19,8 +19,8 @@ from omdb_client import OmdbClient, parse_rt_rating, parse_mc_rating, parse_awar
 from tvmaze_client import TvmazeClient
 from nfo_parser import NfoParser
 from models import (
-    TVShowDetails, TVShowSearchResult, MovieSearchResult, Season, Episode,
-    ArtworkType, DataSource, Rating, ContentType
+    TVShowDetails, Season, Episode,
+    ArtworkType, DataSource, Rating
 )
 from utils import (
     get_params, clean_title, extract_kinopoisk_id,
@@ -211,7 +211,9 @@ def _handle_find(
                     results = kp_client.search(trans, None, type_filter=tv_type_filter)
                     if results:
                         successful_candidate = trans
-                        logger.info(f"_handle_find: found {len(results)} results after transliteration (no year): '{trans}'")
+                        logger.info(
+                            f"_handle_find: found {len(results)} results after transliteration (no year): '{trans}'"
+                        )
                         break
 
     if (
@@ -358,7 +360,11 @@ def _handle_getdetails(
         logger.debug(f"_handle_getdetails: content_type='{content_type}', not mini-series")
 
     # Build episodeguide JSON
-    episodeguide = json.dumps({"kinopoisk_id": tvshow.kinopoisk_id, "imdb_id": tvshow.imdb_id, "title_original": tvshow.title_original})
+    episodeguide = json.dumps({
+        "kinopoisk_id": tvshow.kinopoisk_id,
+        "imdb_id": tvshow.imdb_id,
+        "title_original": tvshow.title_original,
+    })
 
     listitem = xbmcgui.ListItem(offscreen=True)
     _apply_tvshow_details_to_listitem(tvshow, listitem, settings, logger)
@@ -614,7 +620,9 @@ def _handle_getepisodedetails(
             logger.warning(f"_handle_getepisodedetails: TVMaze error: {exc}")
 
     listitem = xbmcgui.ListItem(offscreen=True)
-    _apply_episode_to_listitem(episode, season_num, episode_num, imdb_rating, listitem, settings, logger, tvmaze_plot=tvmaze_plot)
+    _apply_episode_to_listitem(
+        episode, season_num, episode_num, imdb_rating, listitem, settings, logger, tvmaze_plot=tvmaze_plot
+    )
     xbmcplugin.setResolvedUrl(handle, True, listitem)
 
     logger.info(f"_handle_getepisodedetails: success S{season_num:02d}E{episode_num:02d} title='{episode.title_ru}'")

@@ -17,7 +17,6 @@ from models import (
 )
 from nfo_writer import (
     write_movie_nfo,
-    write_tvshow_nfo,
     _build_movie_xml,
     _build_tvshow_xml,
     _get_movie_nfo_path,

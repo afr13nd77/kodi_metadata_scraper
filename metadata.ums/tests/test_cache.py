@@ -5,9 +5,8 @@ import os
 import tempfile
 import shutil
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
@@ -16,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'shared')
 # the class uses stdlib open()/os instead of xbmcvfs mocks.
 import cache as cache_module
 cache_module._HAS_XBMCVFS = False
-from cache import FileCache
+from cache import FileCache  # noqa: E402 -- must patch _HAS_XBMCVFS before import
 
 
 class TestFileCache:
