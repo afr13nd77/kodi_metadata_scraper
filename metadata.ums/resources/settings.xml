@@ -113,6 +113,13 @@
           <control type="toggle"/>
         </setting>
       </group>
+      <group id="3j">
+        <setting id="enable_duplicate_detection" type="boolean" label="32240" help="32241">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle"/>
+        </setting>
+      </group>
     </category>
     <category id="advanced" label="32200" help="">
       <group id="4">

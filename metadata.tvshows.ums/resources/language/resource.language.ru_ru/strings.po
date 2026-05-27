@@ -160,3 +160,11 @@ msgstr "Перезаписывать существующие NFO"
 msgctxt "#32233"
 msgid "Replace existing .nfo files with fresh data on each scrape"
 msgstr "Заменять существующие .nfo-файлы свежими данными при каждом скрапинге"
+
+msgctxt "#32240"
+msgid "Duplicate detection"
+msgstr "Обнаружение дубликатов"
+
+msgctxt "#32241"
+msgid "Warn when the same Kinopoisk ID is assigned to multiple files"
+msgstr "Предупреждать, когда один и тот же Kinopoisk ID привязан к нескольким файлам"

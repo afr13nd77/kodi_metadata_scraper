@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import os
 import xbmc
 import xbmcgui
 import xbmcplugin
 import xbmcaddon
 
 from cache import FileCache
+from duplicate_tracker import DuplicateTracker
 from logger import Logger
 from settings_manager import SettingsManager
 from kinopoisk_api import KinopoiskClient
@@ -74,6 +76,8 @@ def run() -> None:
             addon_id = xbmcaddon.Addon().getAddonInfo('id')
             cache = FileCache(addon_id, logger)
             cache.clear()
+            tracker = DuplicateTracker(addon_id, logger)
+            tracker.clear()
             settings.set_clear_cache(False)
             logger.info("scraper.run: cache cleared by user request")
             xbmc.executebuiltin(
@@ -249,6 +253,23 @@ def _handle_getdetails(
         logger.error("_handle_getdetails: Kinopoisk API key not configured")
         xbmcplugin.setResolvedUrl(handle, False, xbmcgui.ListItem(offscreen=True))
         return False
+
+    if settings.enable_duplicate_detection:
+        path_settings = params.get("pathSettings", "")
+        if path_settings:
+            dup_addon_id = xbmcaddon.Addon().getAddonInfo('id')
+            tracker = DuplicateTracker(dup_addon_id, logger)
+            existing_path = tracker.check_and_update(kp_id, path_settings)
+            if existing_path:
+                basename = os.path.basename(existing_path.rstrip("/\\")) or existing_path
+                xbmcgui.Dialog().notification(
+                    "Ultimate Movie Scraper",
+                    f"Дубль KP {kp_id}: уже у {basename}",
+                    xbmcgui.NOTIFICATION_WARNING,
+                    7000,
+                )
+        else:
+            logger.info("_handle_getdetails: duplicate tracking skipped: empty path")
 
     kp_client = KinopoiskClient(settings.kinopoisk_api_key, logger)
     addon_id = xbmcaddon.Addon().getAddonInfo('id')

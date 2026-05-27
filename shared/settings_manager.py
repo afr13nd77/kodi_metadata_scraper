@@ -84,6 +84,10 @@ class SettingsManager:
     def nfo_overwrite(self) -> bool:
         return self._addon.getSettingBool("nfo_overwrite")
 
+    @property
+    def enable_duplicate_detection(self) -> bool:
+        return self._addon.getSettingBool("enable_duplicate_detection")
+
     def validate(self) -> list[str]:
         errors = []
         if not self.kinopoisk_api_key:

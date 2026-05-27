@@ -144,7 +144,8 @@ shared/
 ├── omdb_client.py                      # Клиент OMDb API (get_ratings, get_episode_rating)
 ├── tvmaze_client.py                    # Клиент TVMaze API (описания эпизодов)
 ├── utils.py                            # Общие утилиты (get_params, clean_title, extract_ids, fuzzy_score, extract_franchise_name)
-└── nfo_writer.py                       # NFO-экспорт (write_movie_nfo, write_tvshow_nfo, XML-генерация)
+├── nfo_writer.py                       # NFO-экспорт (write_movie_nfo, write_tvshow_nfo, XML-генерация)
+└── duplicate_tracker.py                # DuplicateTracker: персистентное отслеживание привязок kp_id к файлам, детекция дублей (BL-26)
 ```
 
 Каждый ZIP-архив содержит полный набор shared-модулей, делая оба аддона полностью самостоятельными.
@@ -216,6 +217,7 @@ Kodi требует **отдельные addon ID** для movie и TV scrapers:
 |---|---|
 | `cd metadata.ums && python -m pytest tests/ -v` | Запуск юнит-тестов (454 теста) |
 | `cd metadata.tvshows.ums && python -m pytest tests/ -v` | Запуск юнит-тестов TV (116 тестов) |
+| `cd shared && python -m pytest tests/ -v` | Запуск юнит-тестов DuplicateTracker (12 тестов) |
 | `python build_zip.py` | Сборка обоих ZIP-пакетов (metadata.ums и metadata.tvshows.ums) |
 | `ruff check .` | Проверка стиля кода (ruff, target: Python 3.8) |
 
@@ -360,11 +362,19 @@ Kodi требует **отдельные addon ID** для movie и TV scrapers:
 | 2. Технический дизайн | `docs/ci-cd/design.md` | ✅ done |
 | 3. Разбивка на задачи | `docs/ci-cd/tasks.md` | ✅ done |
 
+### Duplicate Detection (duplicate-detection) — BL-26
+
+| Фаза | Документ | Статус |
+|---|---|---|
+| 1. Требования | `docs/duplicate-detection/requirements.md` | ✅ done |
+| 2. Технический дизайн | `docs/duplicate-detection/design.md` | ✅ done |
+| 3. Разбивка на задачи | `docs/duplicate-detection/tasks.md` | ✅ done |
+
 ---
 
 ## Текущая версия
 
-**Movie 3.13.0 / TV 3.13.0** — NFO-экспорт (BL-25): автоматическая запись .nfo рядом с видео, настройки enable/overwrite. + Умный парсинг имён файлов (BL-15), детекция аниме (BL-16), multi-part фильмы (BL-17), мини-сериалы (BL-18), теги наград (BL-10), нормализация жанров (BL-11), персистентный кэш (BL-20). 570 тестов (454 movie + 116 TV).
+**Movie 3.13.0 / TV 3.13.0** — NFO-экспорт (BL-25): автоматическая запись .nfo рядом с видео, настройки enable/overwrite. + Умный парсинг имён файлов (BL-15), детекция аниме (BL-16), multi-part фильмы (BL-17), мини-сериалы (BL-18), теги наград (BL-10), нормализация жанров (BL-11), персистентный кэш (BL-20). 582 теста (454 movie + 116 TV + 12 DuplicateTracker).
 
 ---
 
@@ -404,7 +414,7 @@ API keys санитизируются перед логированием чер
 - персистентный кэш (3-уровневый для сезонов)
 - fallback при legacy episodeguide
 - NFO-экспорт (автоматическая запись tvshow.nfo)
-- 116 юнит-тестов (всего 570)
+- 116 юнит-тестов (всего 582)
 
 ✅ **OMDb интеграция**
 - получение рейтингов фильмов (IMDB Rating)
