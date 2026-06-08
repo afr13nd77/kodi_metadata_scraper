@@ -4,7 +4,7 @@
 
 # Ultimate Movie Scraper (UMS) for Kodi
 
-**Version:** 3.14.2 | **Platform:** Kodi v20 Nexus / v21 Omega | **Language:** Python 3.8 | **License:** MIT
+**Version:** 3.15.3 | **Platform:** Kodi v20 Nexus / v21 Omega | **Language:** Python 3.8 | **License:** MIT
 
 UMS is a metadata scraper for Kodi that fetches rich movie and TV show information from Kinopoisk, OMDb, and TVMaze. It is designed for users who prefer Russian-language metadata while also supporting English titles, international ratings, and full cast and crew data. The project ships as two fully independent addons — install either or both with no cross-dependencies.
 
@@ -30,6 +30,7 @@ UMS is a metadata scraper for Kodi that fetches rich movie and TV show informati
 - Latin to Cyrillic transliteration fallback
 - Duplicate Kinopoisk ID detection with toast notification
 - Graceful degradation: offline operation via stale cache and NFO file fallback
+- YouTube trailers from Kinopoisk API with caching and graceful degradation
 
 ### TV Show Scraper (`metadata.tvshows.ums`)
 
@@ -50,6 +51,7 @@ UMS is a metadata scraper for Kodi that fetches rich movie and TV show informati
 - Legacy episodeguide fallback
 - Duplicate Kinopoisk ID detection
 - Graceful degradation: offline operation via stale cache and NFO file fallback
+- YouTube trailers from Kinopoisk API
 
 ### Shared
 
@@ -85,8 +87,8 @@ TMDb is **not** used.
 1. Download the ZIP archives from the [Releases](https://github.com/afr13nd77/kodi_metadata_scraper/releases) section.
 2. In Kodi, go to **Settings > Add-ons > Install from zip file**.
 3. Install the desired addon(s):
-   - `metadata.ums-3.14.2.zip` — movie scraper
-   - `metadata.tvshows.ums-3.14.2.zip` — TV show scraper
+   - `metadata.ums-3.15.3.zip` — movie scraper
+   - `metadata.tvshows.ums-3.15.3.zip` — TV show scraper
 4. Open addon settings and enter your Kinopoisk API key.
 
 ### API Keys
@@ -113,6 +115,7 @@ Each addon (movie and TV) has its own independent settings panel.
 | `enable_nfo_export` | Write .nfo files next to video files after scraping (off by default) |
 | `overwrite_nfo` | Overwrite existing .nfo files (visible only when export is enabled) |
 | `enable_duplicate_detection` | Warn when the same Kinopoisk ID is assigned to different files (on by default) |
+| `enable_trailers` | Fetch YouTube trailers from Kinopoisk (on by default) |
 | `debug_logging` | Enable verbose logging |
 
 ---
@@ -143,7 +146,7 @@ pip install -r requirements.txt
 
 ### Running Tests
 
-613 tests total (491 movie + 122 TV).
+641 tests total (515 movie + 126 TV).
 
 ```bash
 # Movie scraper tests (491 tests)
@@ -165,7 +168,7 @@ ruff check .
 python build_zip.py
 ```
 
-Output: `metadata.ums-3.14.2.zip` and `metadata.tvshows.ums-3.14.2.zip` in the project root.
+Output: `metadata.ums-3.15.3.zip` and `metadata.tvshows.ums-3.15.3.zip` in the project root.
 
 ---
 

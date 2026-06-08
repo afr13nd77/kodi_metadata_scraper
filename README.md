@@ -4,7 +4,7 @@
 
 # Ultimate Movie Scraper (UMS) для Kodi
 
-**Версия:** 3.14.2  
+**Версия:** 3.15.3  
 **Платформа:** Kodi v20 Nexus / v21 Omega  
 **Язык:** Python 3.8  
 
@@ -37,6 +37,7 @@
 - NFO-экспорт: автоматическая запись .nfo-файлов рядом с видео
 - Детекция дублей Kinopoisk ID с уведомлением в Kodi
 - Graceful degradation: работа при недоступном API через stale-кэш и NFO-файлы
+- YouTube-трейлеры из Kinopoisk API с кэшированием и graceful degradation
 
 ### metadata.tvshows.ums -- TV Show Scraper
 
@@ -58,6 +59,7 @@
 - NFO-экспорт: автоматическая запись tvshow.nfo в директорию сериала
 - Детекция дублей Kinopoisk ID
 - Graceful degradation: работа при недоступном API через stale-кэш и NFO-файлы
+- YouTube-трейлеры из Kinopoisk API
 
 ### Общее
 
@@ -81,8 +83,8 @@
 1. Скачайте ZIP-архивы из раздела релизов
 2. В Kodi: **Settings** -> **Add-ons** -> **Install from zip file**
 3. Установите нужные аддоны:
-   - `metadata.ums-3.14.2.zip` -- scraper фильмов
-   - `metadata.tvshows.ums-3.14.2.zip` -- scraper сериалов
+   - `metadata.ums-3.15.3.zip` -- scraper фильмов
+   - `metadata.tvshows.ums-3.15.3.zip` -- scraper сериалов
    - Можно установить оба или только один
 4. Откройте настройки установленного аддона и укажите API-ключ Кинопоиска
 
@@ -108,6 +110,7 @@
 | `enable_nfo_export` | Экспорт .nfo-файлов рядом с видео после скрапинга (по умолчанию выкл) |
 | `overwrite_nfo` | Перезаписывать существующие .nfo-файлы (видно только при включённом экспорте) |
 | `enable_duplicate_detection` | Предупреждать при назначении одного Kinopoisk ID разным файлам (по умолчанию вкл) |
+| `enable_trailers` | Загружать YouTube-трейлеры из Кинопоиска (по умолчанию вкл) |
 | `debug_logging` | Включить подробное логирование |
 
 Каждый аддон (movie и TV) имеет свой независимый набор настроек.
@@ -147,7 +150,7 @@ cd metadata.ums && python -m pytest tests/ -v
 cd metadata.tvshows.ums && python -m pytest tests/ -v
 ```
 
-Всего: **613 тестов** (491 movie + 122 TV).
+Всего: **641 тестов** (515 movie + 126 TV).
 
 ### Сборка ZIP-пакетов
 
@@ -155,7 +158,7 @@ cd metadata.tvshows.ums && python -m pytest tests/ -v
 python build_zip.py
 ```
 
-Результат: `metadata.ums-3.14.2.zip` и `metadata.tvshows.ums-3.14.2.zip` в корне проекта.
+Результат: `metadata.ums-3.15.3.zip` и `metadata.tvshows.ums-3.15.3.zip` в корне проекта.
 
 ---
 
