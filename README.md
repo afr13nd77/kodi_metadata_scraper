@@ -4,7 +4,7 @@
 
 # Ultimate Movie Scraper (UMS) для Kodi
 
-**Версия:** 3.13.0  
+**Версия:** 3.14.0  
 **Платформа:** Kodi v20 Nexus / v21 Omega  
 **Язык:** Python 3.8  
 
@@ -36,6 +36,7 @@
 - Транслитерация латиница→кириллица (fallback)
 - NFO-экспорт: автоматическая запись .nfo-файлов рядом с видео
 - Детекция дублей Kinopoisk ID с уведомлением в Kodi
+- Graceful degradation: работа при недоступном API через stale-кэш и NFO-файлы
 
 ### metadata.tvshows.ums -- TV Show Scraper
 
@@ -56,6 +57,7 @@
 - Fallback при legacy episodeguide
 - NFO-экспорт: автоматическая запись tvshow.nfo в директорию сериала
 - Детекция дублей Kinopoisk ID
+- Graceful degradation: работа при недоступном API через stale-кэш и NFO-файлы
 
 ### Общее
 
@@ -79,8 +81,8 @@
 1. Скачайте ZIP-архивы из раздела релизов
 2. В Kodi: **Settings** -> **Add-ons** -> **Install from zip file**
 3. Установите нужные аддоны:
-   - `metadata.ums-3.13.0.zip` -- scraper фильмов
-   - `metadata.tvshows.ums-3.13.0.zip` -- scraper сериалов
+   - `metadata.ums-3.14.0.zip` -- scraper фильмов
+   - `metadata.tvshows.ums-3.14.0.zip` -- scraper сериалов
    - Можно установить оба или только один
 4. Откройте настройки установленного аддона и укажите API-ключ Кинопоиска
 
@@ -143,12 +145,9 @@ cd metadata.ums && python -m pytest tests/ -v
 
 # Тесты TV scraper
 cd metadata.tvshows.ums && python -m pytest tests/ -v
-
-# Тесты DuplicateTracker
-cd shared && python -m pytest tests/ -v
 ```
 
-Всего: **582 теста** (454 movie + 116 TV + 12 DuplicateTracker).
+Всего: **613 тестов** (491 movie + 122 TV).
 
 ### Сборка ZIP-пакетов
 
@@ -156,7 +155,7 @@ cd shared && python -m pytest tests/ -v
 python build_zip.py
 ```
 
-Результат: `metadata.ums-3.13.0.zip` и `metadata.tvshows.ums-3.13.0.zip` в корне проекта.
+Результат: `metadata.ums-3.14.0.zip` и `metadata.tvshows.ums-3.14.0.zip` в корне проекта.
 
 ---
 

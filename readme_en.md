@@ -4,7 +4,7 @@
 
 # Ultimate Movie Scraper (UMS) for Kodi
 
-**Version:** 3.13.0 | **Platform:** Kodi v20 Nexus / v21 Omega | **Language:** Python 3.8 | **License:** MIT
+**Version:** 3.14.0 | **Platform:** Kodi v20 Nexus / v21 Omega | **Language:** Python 3.8 | **License:** MIT
 
 UMS is a metadata scraper for Kodi that fetches rich movie and TV show information from Kinopoisk, OMDb, and TVMaze. It is designed for users who prefer Russian-language metadata while also supporting English titles, international ratings, and full cast and crew data. The project ships as two fully independent addons — install either or both with no cross-dependencies.
 
@@ -29,6 +29,7 @@ UMS is a metadata scraper for Kodi that fetches rich movie and TV show informati
 - Auto-select on exact title + year match
 - Latin to Cyrillic transliteration fallback
 - Duplicate Kinopoisk ID detection with toast notification
+- Graceful degradation: offline operation via stale cache and NFO file fallback
 
 ### TV Show Scraper (`metadata.tvshows.ums`)
 
@@ -48,6 +49,7 @@ UMS is a metadata scraper for Kodi that fetches rich movie and TV show informati
 - Award tags, genre normalization, persistent cache
 - Legacy episodeguide fallback
 - Duplicate Kinopoisk ID detection
+- Graceful degradation: offline operation via stale cache and NFO file fallback
 
 ### Shared
 
@@ -83,8 +85,8 @@ TMDb is **not** used.
 1. Download the ZIP archives from the [Releases](https://github.com/afr13nd77/kodi_metadata_scraper/releases) section.
 2. In Kodi, go to **Settings > Add-ons > Install from zip file**.
 3. Install the desired addon(s):
-   - `metadata.ums-3.13.0.zip` — movie scraper
-   - `metadata.tvshows.ums-3.13.0.zip` — TV show scraper
+   - `metadata.ums-3.14.0.zip` — movie scraper
+   - `metadata.tvshows.ums-3.14.0.zip` — TV show scraper
 4. Open addon settings and enter your Kinopoisk API key.
 
 ### API Keys
@@ -141,17 +143,14 @@ pip install -r requirements.txt
 
 ### Running Tests
 
-582 tests total (454 movie + 116 TV + 12 DuplicateTracker).
+613 tests total (491 movie + 122 TV).
 
 ```bash
-# Movie scraper tests (454 tests)
+# Movie scraper tests (491 tests)
 cd metadata.ums && python -m pytest tests/ -v
 
-# TV scraper tests (116 tests)
+# TV scraper tests (122 tests)
 cd metadata.tvshows.ums && python -m pytest tests/ -v
-
-# DuplicateTracker tests (12 tests)
-cd shared && python -m pytest tests/ -v
 ```
 
 ### Linting
@@ -166,7 +165,7 @@ ruff check .
 python build_zip.py
 ```
 
-Output: `metadata.ums-3.13.0.zip` and `metadata.tvshows.ums-3.13.0.zip` in the project root.
+Output: `metadata.ums-3.14.0.zip` and `metadata.tvshows.ums-3.14.0.zip` in the project root.
 
 ---
 
