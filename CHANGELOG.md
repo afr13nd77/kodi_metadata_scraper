@@ -1,6 +1,6 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
-## v3.15.0 (08.06.2026) — metadata.ums + metadata.tvshows.ums
+## v3.15.3 (09.06.2026) — metadata.ums + metadata.tvshows.ums
 
 ### YouTube-трейлеры (BL-09)
 
@@ -12,6 +12,13 @@
 - Graceful degradation: stale cache fallback при ошибке API, degraded mode (5с, 0 retries)
 - NFO roundtrip: `<trailer>` пишется в nfo_writer, читается в nfo_parser
 - Настройка "Загружать трейлеры" (по умолчанию вкл., 1 доп. API-запрос на фильм/сериал)
+
+### Исправления (BUG-005)
+
+- Исправлена детекция дублей: `pathSettings` содержит JSON настроек аддона, а не путь к файлу
+- Путь к видеофайлу теперь берётся из `xbmc.getInfoLabel("ListItem.FileNameAndPath")` (movie) / `xbmc.getInfoLabel("ListItem.Path")` (TV)
+- Автоматическая миграция: очистка повреждённых записей в `duplicate_tracker.json`
+- Исправлен NFO export и NFO fallback: использовали тот же некорректный `pathSettings`
 
 ### Тесты
 
