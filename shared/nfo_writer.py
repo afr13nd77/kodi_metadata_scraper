@@ -202,6 +202,9 @@ def _build_common_elements(
             thumb.set("aspect", "fanart")
             thumb.text = artwork.url
 
+    if details.trailer_url:
+        ET.SubElement(parent, "trailer").text = details.trailer_url
+
 
 def _prettify_xml(element: ET.Element) -> str:
     """Return indented XML string with custom declaration."""

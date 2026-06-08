@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from models import (
     MovieSearchResult, MovieDetails, Person, Artwork, Rating,
     ProfessionType, ArtworkType, DataSource, Season, Episode
@@ -34,6 +36,11 @@ _AGE_LIMIT_TO_MPAA: dict[str, str] = {
     "age16": "R",
     "age18": "NC-17",
 }
+
+_YOUTUBE_VIDEO_ID_RE = re.compile(
+    r'(?:youtube\.com/watch\?.*?v=|youtu\.be/|youtube\.com/embed/)'
+    r'([a-zA-Z0-9_-]{11})'
+)
 
 _GENRE_RU_TO_EN: dict[str, str] = {
     "боевик": "Action",
@@ -330,6 +337,76 @@ class KinopoiskClient:
                 f"KinopoiskClient.fetch_staff_raw_degraded: failed kp_id={kinopoisk_id}: {e}"
             )
             return None
+
+    # ------------------------------------------------------------------
+    # videos / trailers: fetch_raw + parse
+    # ------------------------------------------------------------------
+
+    def fetch_videos_raw(self, kinopoisk_id):
+        self._logger.info(f"KinopoiskClient.fetch_videos_raw: kp_id={kinopoisk_id}")
+        try:
+            data = self._http.get_json(f"v2.2/films/{kinopoisk_id}/videos")
+        except Exception as e:
+            self._logger.error(f"KinopoiskClient.fetch_videos_raw failed: {e}")
+            return None
+        self._logger.info(f"KinopoiskClient.fetch_videos_raw: success for kp_id={kinopoisk_id}")
+        return data
+
+    def fetch_videos_raw_degraded(self, kinopoisk_id):
+        self._logger.info(f"KinopoiskClient.fetch_videos_raw_degraded: kp_id={kinopoisk_id}")
+        try:
+            result = self._http.get_json_degraded(f"v2.2/films/{kinopoisk_id}/videos")
+            self._logger.info(
+                f"KinopoiskClient.fetch_videos_raw_degraded: success for kp_id={kinopoisk_id}"
+            )
+            return result
+        except Exception as e:
+            self._logger.warning(
+                f"KinopoiskClient.fetch_videos_raw_degraded: failed kp_id={kinopoisk_id}: {e}"
+            )
+            return None
+
+    def parse_trailer_url(self, data):
+        items = data.get("items") or []
+
+        youtube_items = [
+            item for item in items
+            if (item.get("site") or "").upper() == "YOUTUBE"
+            and (item.get("url") or "").strip()
+        ]
+
+        if not youtube_items:
+            self._logger.info(
+                f"KinopoiskClient.parse_trailer_url: no YouTube items in {len(items)} total items"
+            )
+            return ""
+
+        preferred = None
+        for item in youtube_items:
+            name_lower = (item.get("name") or "").lower()
+            if "трейлер" in name_lower or "trailer" in name_lower:
+                preferred = item
+                break
+
+        chosen = preferred or youtube_items[0]
+        chosen_url = (chosen.get("url") or "").strip()
+        chosen_name = chosen.get("name") or ""
+
+        match = _YOUTUBE_VIDEO_ID_RE.search(chosen_url)
+        if not match:
+            self._logger.warning(
+                f"KinopoiskClient.parse_trailer_url: failed to extract video_id from URL '{chosen_url}'"
+            )
+            return ""
+
+        video_id = match.group(1)
+        kodi_url = f"plugin://plugin.video.youtube/?action=play_video&videoid={video_id}"
+
+        self._logger.info(
+            f"KinopoiskClient.parse_trailer_url: selected '{chosen_name}' -> video_id={video_id}, "
+            f"preferred={'yes' if preferred else 'no (first YouTube)'}"
+        )
+        return kodi_url
 
     def parse_staff(self, data: list) -> tuple[list[Person], list[Person], list[Person]]:
         """Parse raw list into (directors, writers, cast)."""

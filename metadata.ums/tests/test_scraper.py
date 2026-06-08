@@ -42,7 +42,8 @@ def _mock_settings(api_key="test-key", preferred_rating=DataSource.KINOPOISK,
                    fetch_photos=True, debug=False, auto_select_exact_match=True,
                    enable_dual_search=True, omdb_api_key="",
                    show_ratings_in_plot=False, enable_collections=False,
-                   enable_award_tags=True, genre_language="ru"):
+                   enable_award_tags=True, genre_language="ru",
+                   enable_trailers=True):
     settings = MagicMock(spec=SettingsManager)
     settings.kinopoisk_api_key = api_key
     settings.preferred_rating_source = preferred_rating
@@ -55,6 +56,7 @@ def _mock_settings(api_key="test-key", preferred_rating=DataSource.KINOPOISK,
     settings.enable_collections = enable_collections
     settings.enable_award_tags = enable_award_tags
     settings.genre_language = genre_language
+    settings.enable_trailers = enable_trailers
     return settings
 
 
@@ -1541,3 +1543,200 @@ class TestFallbackChain:
             if "кэша" in str(c)
         )
         assert stale_notifications_2 == 0
+
+
+class TestTrailerIntegration:
+    """BL-09: Tests for YouTube trailer integration in _handle_getdetails."""
+
+    KODI_TRAILER_URL = (
+        "plugin://plugin.video.youtube/?action=play_video&videoid=dQw4w9WgXcQ"
+    )
+    VIDEO_RAW = {
+        "total": 1,
+        "items": [
+            {
+                "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                "name": "Официальный трейлер",
+                "site": "YOUTUBE",
+            }
+        ],
+    }
+    VIDEO_RAW_NO_YT = {
+        "total": 1,
+        "items": [
+            {
+                "url": "https://vimeo.com/12345",
+                "name": "Behind the scenes",
+                "site": "VIMEO",
+            }
+        ],
+    }
+
+    def _make_details(self, kp_id=301, trailer_url=""):
+        return MovieDetails(
+            kinopoisk_id=kp_id,
+            title_ru="Матрица",
+            title_original="The Matrix",
+            year=1999,
+            plot="Описание фильма",
+            ratings=[Rating(DataSource.KINOPOISK, 8.5, 10000)],
+            trailer_url=trailer_url,
+        )
+
+    def _setup_success_path(self, mock_client, mock_cache, kp_id=301):
+        """Configure mocks so _handle_getdetails reaches the trailer block."""
+        cache = mock_cache.return_value
+        # details cache miss -> API fetch
+        cache.get.return_value = None
+
+        client = mock_client.return_value
+        client.fetch_details_raw.return_value = {"kinopoiskId": kp_id}
+        client.parse_details.return_value = self._make_details(kp_id)
+        client.fetch_staff_raw.return_value = []
+        client.parse_staff.return_value = ([], [], [])
+        return client, cache
+
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_trailer_from_api(self, MockClient, MockCache):
+        """AC-01: API returns YouTube trailer -> trailer_url is set."""
+        client, cache = self._setup_success_path(MockClient, MockCache)
+
+        # cache.get returns None for all keys including kp_videos_301
+        # (already set to None by _setup_success_path)
+        client.fetch_videos_raw.return_value = self.VIDEO_RAW
+        client.parse_trailer_url.return_value = self.KODI_TRAILER_URL
+
+        settings = _mock_settings(enable_trailers=True)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        client.fetch_videos_raw.assert_called_once_with(301)
+        client.parse_trailer_url.assert_called_once_with(self.VIDEO_RAW)
+
+        # Verify trailer was set on the ListItem via infotag.setTrailer
+        resolved_call = xbmcplugin.setResolvedUrl.call_args
+        assert resolved_call[0][1] is True
+
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_trailer_disabled(self, MockClient, MockCache):
+        """AC-05: enable_trailers=False -> no API call for videos."""
+        client, cache = self._setup_success_path(MockClient, MockCache)
+
+        settings = _mock_settings(enable_trailers=False)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        client.fetch_videos_raw.assert_not_called()
+        client.parse_trailer_url.assert_not_called()
+
+        # Verify log indicates trailers disabled
+        log_calls = [str(c) for c in logger.info.call_args_list]
+        assert any("Trailers disabled" in c for c in log_calls)
+
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_trailer_from_cache(self, MockClient, MockCache):
+        """AC-09: cache has videos -> no API call, trailer set from cache."""
+        client, cache = self._setup_success_path(MockClient, MockCache)
+
+        # Override cache.get to return cached videos for the video key
+        def cache_get_side_effect(key):
+            if key == "kp_videos_301":
+                return self.VIDEO_RAW
+            return None
+
+        cache.get.side_effect = cache_get_side_effect
+        # Re-setup details fetch since cache.get now returns None for details key
+        client.fetch_details_raw.return_value = {"kinopoiskId": 301}
+        client.parse_details.return_value = self._make_details()
+        client.parse_trailer_url.return_value = self.KODI_TRAILER_URL
+
+        settings = _mock_settings(enable_trailers=True)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        # Videos fetched from cache -> no API call
+        client.fetch_videos_raw.assert_not_called()
+        # parse_trailer_url called with cached data
+        client.parse_trailer_url.assert_called_once_with(self.VIDEO_RAW)
+
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_trailer_no_youtube(self, MockClient, MockCache):
+        """AC-02: API returns no YouTube items -> parse_trailer_url returns empty."""
+        client, cache = self._setup_success_path(MockClient, MockCache)
+
+        client.fetch_videos_raw.return_value = self.VIDEO_RAW_NO_YT
+        client.parse_trailer_url.return_value = ""
+
+        settings = _mock_settings(enable_trailers=True)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        client.fetch_videos_raw.assert_called_once_with(301)
+        client.parse_trailer_url.assert_called_once_with(self.VIDEO_RAW_NO_YT)
+
+        # Verify warning logged about no trailer
+        log_calls = [str(c) for c in logger.warning.call_args_list]
+        assert any("No YouTube trailer" in c for c in log_calls)
+
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_trailer_api_error_stale(self, MockClient, MockCache):
+        """AC-10: API error -> stale cache used for videos."""
+        client, cache = self._setup_success_path(MockClient, MockCache)
+
+        # Videos: API returns None (error), stale cache has data
+        client.fetch_videos_raw.return_value = None
+        cache.get_stale.return_value = self.VIDEO_RAW
+        client.parse_trailer_url.return_value = self.KODI_TRAILER_URL
+
+        settings = _mock_settings(enable_trailers=True)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        client.fetch_videos_raw.assert_called_once_with(301)
+        # parse_trailer_url called with stale data
+        client.parse_trailer_url.assert_called_once_with(self.VIDEO_RAW)
+
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_trailer_hard_fail(self, MockClient, MockCache):
+        """AC-10: API error + no stale -> no trailer, scraping continues."""
+        client, cache = self._setup_success_path(MockClient, MockCache)
+
+        # Videos: API returns None, no stale cache
+        client.fetch_videos_raw.return_value = None
+        cache.get_stale.return_value = None
+
+        settings = _mock_settings(enable_trailers=True)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        # Scraping should complete successfully despite no trailer
+        assert result is True
+        xbmcplugin.setResolvedUrl.assert_called_once()
+        args = xbmcplugin.setResolvedUrl.call_args
+        assert args[0][1] is True
+
+        # parse_trailer_url should NOT be called (no data to parse)
+        client.parse_trailer_url.assert_not_called()

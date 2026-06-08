@@ -120,6 +120,13 @@
           <control type="toggle"/>
         </setting>
       </group>
+      <group id="3k">
+        <setting id="enable_trailers" type="boolean" label="32250" help="32251">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle"/>
+        </setting>
+      </group>
     </category>
     <category id="advanced" label="32200" help="">
       <group id="4">

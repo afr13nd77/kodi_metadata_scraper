@@ -96,6 +96,7 @@ class MovieDetails:
     artwork: list[Artwork] = field(default_factory=list)
     set_name: str = ""
     tags: list[str] = field(default_factory=list)
+    trailer_url: str = ""
 
 
 class ContentType(Enum):
@@ -157,3 +158,4 @@ class TVShowDetails:
     artwork: list[Artwork] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
     is_miniseries: bool = False
+    trailer_url: str = ""

@@ -168,3 +168,11 @@ msgstr ""
 msgctxt "#32241"
 msgid "Warn when the same Kinopoisk ID is assigned to multiple files"
 msgstr ""
+
+msgctxt "#32250"
+msgid "Download trailers"
+msgstr ""
+
+msgctxt "#32251"
+msgid "Fetch YouTube trailer links from Kinopoisk (uses 1 extra API request per TV show)"
+msgstr ""

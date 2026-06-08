@@ -92,6 +92,15 @@ class DuplicateTracker:
             data = json.loads(content)
             if not isinstance(data, dict):
                 raise ValueError(f"expected dict, got {type(data).__name__}")
+            # Migration: remove entries corrupted by pathSettings bug (BUG-005)
+            bad_keys = [k for k, v in data.items() if isinstance(v, str) and v.startswith("{")]
+            if bad_keys:
+                for k in bad_keys:
+                    del data[k]
+                self._save(data)
+                self._logger.info(
+                    f"DuplicateTracker._load: cleaned {len(bad_keys)} corrupted entries"
+                )
             self._logger.debug(
                 f"DuplicateTracker._load: loaded {len(data)} entries"
             )

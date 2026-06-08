@@ -168,3 +168,11 @@ msgstr "Обнаружение дубликатов"
 msgctxt "#32241"
 msgid "Warn when the same Kinopoisk ID is assigned to multiple files"
 msgstr "Предупреждать, когда один и тот же Kinopoisk ID привязан к нескольким файлам"
+
+msgctxt "#32250"
+msgid "Загружать трейлеры"
+msgstr ""
+
+msgctxt "#32251"
+msgid "Загружать ссылки на YouTube-трейлеры с Кинопоиска (1 дополнительный API-запрос на фильм)"
+msgstr ""

@@ -1,5 +1,23 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
+## v3.15.0 (08.06.2026) — metadata.ums + metadata.tvshows.ums
+
+### YouTube-трейлеры (BL-09)
+
+- Получение YouTube-трейлеров из Kinopoisk API (`/v2.2/films/{id}/videos`)
+- Приоритетный выбор: видео с "трейлер"/"trailer" в названии, fallback на первое YouTube-видео
+- Конвертация в Kodi URL: `plugin://plugin.video.youtube/?action=play_video&videoid={ID}`
+- `infotag.setTrailer()` в обоих скраперах (movie + TV)
+- Кэширование сырого ответа API (`kp_videos_{kp_id}`, TTL 7 дней)
+- Graceful degradation: stale cache fallback при ошибке API, degraded mode (5с, 0 retries)
+- NFO roundtrip: `<trailer>` пишется в nfo_writer, читается в nfo_parser
+- Настройка "Загружать трейлеры" (по умолчанию вкл., 1 доп. API-запрос на фильм/сериал)
+
+### Тесты
+
+- 28 новых тестов: trailer parsing (12), NFO trailer (6), scraper trailer (6), TV scraper trailer (4)
+- Всего 641 тестов (515 movie + 126 TV)
+
 ## v3.14.2 (08.06.2026) — metadata.ums + metadata.tvshows.ums
 
 - Новые контрастные fanart 1920x1080 для обоих аддонов (тёмно-синий movie, индиго TV)

@@ -49,7 +49,8 @@ def _mock_settings(api_key="test-key", omdb_key="omdb-key",
                    enable_dual_search=False,
                    enable_award_tags=False,
                    genre_language="ru",
-                   clear_cache=False):
+                   clear_cache=False,
+                   enable_trailers=True):
     settings = MagicMock(spec=SettingsManager)
     settings.kinopoisk_api_key = api_key
     settings.omdb_api_key = omdb_key
@@ -63,6 +64,7 @@ def _mock_settings(api_key="test-key", omdb_key="omdb-key",
     settings.enable_award_tags = enable_award_tags
     settings.genre_language = genre_language
     settings.clear_cache = clear_cache
+    settings.enable_trailers = enable_trailers
     return settings
 
 
@@ -2347,3 +2349,155 @@ class TestMiniSeriesDetection:
         assert "Мини-сериал" in tags_arg
         # Award tags must also be present (extend, not overwrite)
         assert len(tags_arg) >= 2
+
+
+# ---------------------------------------------------------------------------
+# BL-09: YouTube trailer integration in _handle_getdetails
+# ---------------------------------------------------------------------------
+
+class TestTrailerIntegration:
+    """BL-09: Tests for YouTube trailer integration in TV scraper."""
+
+    TRAILER_URL = "plugin://plugin.video.youtube/?action=play_video&videoid=dQw4w9WgXcQ"
+
+    def _setup_mocks(self, MockClient, MockCache, videos_raw=None, trailer_url=""):
+        """Set up standard KP client and cache mocks for getdetails with trailer support."""
+        mock_cache = MockCache.return_value
+        mock_cache.get.side_effect = lambda key: (
+            None  # cache miss for details, staff, videos
+        )
+        mock_cache.get_stale.return_value = None
+
+        mock_client = MockClient.return_value
+        mock_client.fetch_details_raw.return_value = {
+            "id": 462682,
+            "type": "TV_SERIES",
+        }
+        mock_client.parse_details.return_value = MovieDetails(
+            kinopoisk_id=462682,
+            imdb_id="tt0903747",
+            title_ru="Во все тяжкие",
+            title_original="Breaking Bad",
+            year=2008,
+            plot="Школьный учитель химии",
+            ratings=[Rating(DataSource.KINOPOISK, 9.1, 500000)],
+        )
+        mock_client.fetch_staff_raw.return_value = None
+        mock_client.parse_staff.return_value = ([], [], [])
+
+        mock_client.fetch_videos_raw.return_value = videos_raw
+        mock_client.parse_trailer_url.return_value = trailer_url
+
+        return mock_client, mock_cache
+
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_trailer_from_api(self, MockClient, MockCache):
+        """AC-04: API returns YouTube trailer -> setTrailer called."""
+        videos_raw = {"total": 1, "items": [{"url": "https://youtube.com/xxx", "site": "YOUTUBE"}]}
+        mock_client, mock_cache = self._setup_mocks(
+            MockClient, MockCache,
+            videos_raw=videos_raw,
+            trailer_url=self.TRAILER_URL,
+        )
+
+        settings = _mock_settings(show_ratings_in_plot=False, enable_trailers=True)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        # fetch_videos_raw should have been called
+        mock_client.fetch_videos_raw.assert_called_once_with(462682)
+        # parse_trailer_url should have been called with the raw data
+        mock_client.parse_trailer_url.assert_called_once_with(videos_raw)
+        # setTrailer should have been called on the infotag
+        listitem_instance = xbmcgui.ListItem.return_value
+        infotag_instance = listitem_instance.getVideoInfoTag.return_value
+        infotag_instance.setTrailer.assert_called_once_with(self.TRAILER_URL)
+
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_trailer_disabled(self, MockClient, MockCache):
+        """AC-05: enable_trailers=False -> no API call for videos."""
+        mock_client, mock_cache = self._setup_mocks(MockClient, MockCache)
+
+        settings = _mock_settings(show_ratings_in_plot=False, enable_trailers=False)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        # fetch_videos_raw should NOT have been called
+        mock_client.fetch_videos_raw.assert_not_called()
+        # setTrailer should NOT have been called (no trailer_url set)
+        listitem_instance = xbmcgui.ListItem.return_value
+        infotag_instance = listitem_instance.getVideoInfoTag.return_value
+        infotag_instance.setTrailer.assert_not_called()
+
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_trailer_from_cache(self, MockClient, MockCache):
+        """AC-09: cache hit for videos -> no API call, trailer set."""
+        cached_videos = {"total": 1, "items": [{"url": "https://youtube.com/xxx", "site": "YOUTUBE"}]}
+        mock_client, mock_cache = self._setup_mocks(
+            MockClient, MockCache,
+            trailer_url=self.TRAILER_URL,
+        )
+        # Override cache.get to return cached videos for the videos key
+        def cache_get_side_effect(key):
+            if key == "kp_videos_462682":
+                return cached_videos
+            return None
+        mock_cache.get.side_effect = cache_get_side_effect
+
+        settings = _mock_settings(show_ratings_in_plot=False, enable_trailers=True)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        # fetch_videos_raw should NOT have been called (cache hit)
+        mock_client.fetch_videos_raw.assert_not_called()
+        # parse_trailer_url should have been called with cached data
+        mock_client.parse_trailer_url.assert_called_once_with(cached_videos)
+        # setTrailer should have been called
+        listitem_instance = xbmcgui.ListItem.return_value
+        infotag_instance = listitem_instance.getVideoInfoTag.return_value
+        infotag_instance.setTrailer.assert_called_once_with(self.TRAILER_URL)
+
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_trailer_api_error_stale(self, MockClient, MockCache):
+        """AC-10: API error for videos -> stale cache fallback used."""
+        stale_videos = {"total": 1, "items": [{"url": "https://youtube.com/old", "site": "YOUTUBE"}]}
+        mock_client, mock_cache = self._setup_mocks(
+            MockClient, MockCache,
+            videos_raw=None,  # API returns None (error)
+            trailer_url=self.TRAILER_URL,
+        )
+        # Override cache.get_stale to return stale videos for the videos key
+        def cache_get_stale_side_effect(key):
+            if key == "kp_videos_462682":
+                return stale_videos
+            return None
+        mock_cache.get_stale.side_effect = cache_get_stale_side_effect
+
+        settings = _mock_settings(show_ratings_in_plot=False, enable_trailers=True)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        # fetch_videos_raw returned None, so stale cache should be consulted
+        mock_client.fetch_videos_raw.assert_called_once_with(462682)
+        # parse_trailer_url should have been called with stale data
+        mock_client.parse_trailer_url.assert_called_once_with(stale_videos)
+        # setTrailer should have been called
+        listitem_instance = xbmcgui.ListItem.return_value
+        infotag_instance = listitem_instance.getVideoInfoTag.return_value
+        infotag_instance.setTrailer.assert_called_once_with(self.TRAILER_URL)

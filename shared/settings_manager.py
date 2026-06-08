@@ -88,6 +88,10 @@ class SettingsManager:
     def enable_duplicate_detection(self) -> bool:
         return self._addon.getSettingBool("enable_duplicate_detection")
 
+    @property
+    def enable_trailers(self) -> bool:
+        return self._addon.getSettingBool("enable_trailers")
+
     def validate(self) -> list[str]:
         errors = []
         if not self.kinopoisk_api_key:

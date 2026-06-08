@@ -359,8 +359,14 @@ def _handle_getdetails(
         xbmcplugin.setResolvedUrl(handle, False, xbmcgui.ListItem(offscreen=True))
         return False
 
+    video_file_path = xbmc.getInfoLabel("ListItem.Path") or ""
+    if video_file_path:
+        logger.info(f"_handle_getdetails: video_file_path='{video_file_path}'")
+    else:
+        logger.info("_handle_getdetails: video_file_path is empty")
+
     if settings.enable_duplicate_detection:
-        path_settings = params.get("pathSettings", "")
+        path_settings = video_file_path
         if path_settings:
             dup_addon_id = xbmcaddon.Addon().getAddonInfo('id')
             tracker = DuplicateTracker(dup_addon_id, logger)
@@ -423,7 +429,7 @@ def _handle_getdetails(
                     _stale_cache_notified = True
             else:
                 nfo_tvshow = _try_nfo_fallback_tvshow(
-                    kp_id, params.get("pathSettings", ""), logger
+                    kp_id, video_file_path, logger
                 )
                 if nfo_tvshow is not None:
                     details = None
@@ -523,6 +529,48 @@ def _handle_getdetails(
     else:
         logger.debug(f"_handle_getdetails: content_type='{content_type}', not mini-series")
 
+    # --- BL-09: YouTube trailer ---
+    if settings.enable_trailers and not tvshow.trailer_url:
+        cache_key_videos = f"kp_videos_{kp_id}"
+        cached_videos = cache.get(cache_key_videos)
+
+        if cached_videos is not None:
+            trailer_url = kp_client.parse_trailer_url(cached_videos)
+            logger.info(f"_handle_getdetails: loaded videos from cache for kp_id={kp_id}")
+        elif from_fallback and _kp_unavailable:
+            stale_videos = cache.get_stale(cache_key_videos)
+            if stale_videos is not None:
+                trailer_url = kp_client.parse_trailer_url(stale_videos)
+                logger.info(f"_handle_getdetails: loaded videos from stale cache for kp_id={kp_id}")
+            else:
+                trailer_url = ""
+                logger.info(f"_handle_getdetails: no cached videos for kp_id={kp_id}")
+        else:
+            if _kp_unavailable:
+                raw_videos = kp_client.fetch_videos_raw_degraded(kp_id)
+            else:
+                raw_videos = kp_client.fetch_videos_raw(kp_id)
+
+            if raw_videos is not None:
+                cache.put(cache_key_videos, raw_videos)
+                trailer_url = kp_client.parse_trailer_url(raw_videos)
+            else:
+                stale_videos = cache.get_stale(cache_key_videos)
+                if stale_videos is not None:
+                    trailer_url = kp_client.parse_trailer_url(stale_videos)
+                    logger.info(f"_handle_getdetails: videos from stale cache for kp_id={kp_id}")
+                else:
+                    trailer_url = ""
+
+        if trailer_url:
+            tvshow.trailer_url = trailer_url
+            logger.info(f"_handle_getdetails: Trailer set: {trailer_url.split('videoid=')[-1]}")
+        else:
+            logger.warning(f"_handle_getdetails: No YouTube trailer found for kp_id={kp_id}")
+    elif not settings.enable_trailers:
+        logger.info("_handle_getdetails: Trailers disabled, skipping")
+    # --- end BL-09 ---
+
     # Build episodeguide JSON
     episodeguide = json.dumps({
         "kinopoisk_id": tvshow.kinopoisk_id,
@@ -536,7 +584,7 @@ def _handle_getdetails(
     infotag = listitem.getVideoInfoTag()
     infotag.setEpisodeGuide(episodeguide)
 
-    write_tvshow_nfo(tvshow, params.get("pathSettings", ""), settings, logger)
+    write_tvshow_nfo(tvshow, video_file_path, settings, logger)
 
     xbmcplugin.setResolvedUrl(handle, True, listitem)
 
@@ -1042,6 +1090,10 @@ def _apply_tvshow_details_to_listitem(
             })
     if fanart_list:
         listitem.setAvailableFanart(fanart_list)
+
+    if details.trailer_url:
+        infotag.setTrailer(details.trailer_url)
+        logger.debug(f"_apply_tvshow_details_to_listitem: setTrailer('{details.trailer_url}')")
 
     logger.debug(
         f"_apply_tvshow_details_to_listitem: mapped '{details.title_ru}' "

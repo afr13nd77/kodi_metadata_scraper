@@ -255,6 +255,11 @@ class NfoParser:
             if set_name_elem is not None and set_name_elem.text:
                 details.set_name = set_name_elem.text.strip()
 
+        trailer_text = self._text(root, "trailer")
+        if trailer_text:
+            details.trailer_url = trailer_text
+            self._logger.debug("NfoParser.parse_full_movie: trailer_url='%s'", trailer_text)
+
         self._logger.info(
             f"NfoParser.parse_full_movie: success title='{details.title_ru}', "
             f"kp_id={details.kinopoisk_id}, year={details.year}, "
@@ -295,6 +300,11 @@ class NfoParser:
         details.writers = self._parse_writers(root)
         details.cast = self._parse_actors(root)
         details.artwork = self._parse_artwork(root)
+
+        trailer_text = self._text(root, "trailer")
+        if trailer_text:
+            details.trailer_url = trailer_text
+            self._logger.debug("NfoParser.parse_full_tvshow: trailer_url='%s'", trailer_text)
 
         self._logger.info(
             f"NfoParser.parse_full_tvshow: success title='{details.title_ru}', "

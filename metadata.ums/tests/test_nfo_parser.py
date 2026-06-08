@@ -586,3 +586,103 @@ class TestRoundtripMovie:
         assert len(parsed.artwork) == len(original.artwork)
         assert parsed.artwork[0].artwork_type == ArtworkType.POSTER
         assert parsed.artwork[1].artwork_type == ArtworkType.FANART
+
+
+class TestTrailerNfo:
+    """Tests for trailer roundtrip in NFO export/import."""
+
+    KODI_TRAILER_URL = (
+        "plugin://plugin.video.youtube/?action=play_video&videoid=dQw4w9WgXcQ"
+    )
+
+    def test_nfo_writer_includes_trailer(self):
+        """AC-07: MovieDetails with trailer_url -> XML contains <trailer>."""
+        from nfo_writer import _build_movie_xml
+        import xml.etree.ElementTree as ET
+
+        details = MovieDetails(
+            title_ru="Трейлер Тест",
+            trailer_url=self.KODI_TRAILER_URL,
+        )
+        xml_string = _build_movie_xml(details)
+
+        root = ET.fromstring(xml_string)
+        trailer_elem = root.find("trailer")
+        assert trailer_elem is not None, "<trailer> element must be present in XML"
+        assert trailer_elem.text == self.KODI_TRAILER_URL
+
+    def test_nfo_writer_no_trailer(self):
+        """MovieDetails without trailer_url -> XML has no <trailer>."""
+        from nfo_writer import _build_movie_xml
+        import xml.etree.ElementTree as ET
+
+        details = MovieDetails(
+            title_ru="Без Трейлера",
+            trailer_url="",
+        )
+        xml_string = _build_movie_xml(details)
+
+        root = ET.fromstring(xml_string)
+        trailer_elem = root.find("trailer")
+        assert trailer_elem is None, "<trailer> element must NOT be present when trailer_url is empty"
+
+    def test_nfo_parser_reads_trailer(self):
+        """AC-08: NFO XML with <trailer> -> parse_full_movie returns trailer_url."""
+        nfo = """<movie>
+            <title>Парсинг Трейлера</title>
+            <year>2024</year>
+            <trailer>plugin://plugin.video.youtube/?action=play_video&amp;videoid=dQw4w9WgXcQ</trailer>
+        </movie>"""
+
+        parser = _make_parser()
+        details = parser.parse_full_movie(nfo)
+
+        assert details is not None
+        assert details.trailer_url == self.KODI_TRAILER_URL
+
+    def test_nfo_parser_no_trailer(self):
+        """NFO XML without <trailer> -> trailer_url is empty."""
+        nfo = """<movie>
+            <title>Без Трейлера</title>
+            <year>2024</year>
+        </movie>"""
+
+        parser = _make_parser()
+        details = parser.parse_full_movie(nfo)
+
+        assert details is not None
+        assert details.trailer_url == ""
+
+    def test_nfo_roundtrip_trailer(self):
+        """Write NFO with trailer -> parse it back -> trailer_url matches."""
+        from nfo_writer import _build_movie_xml
+
+        original = MovieDetails(
+            title_ru="Roundtrip Трейлер",
+            year=2024,
+            trailer_url=self.KODI_TRAILER_URL,
+        )
+
+        xml_string = _build_movie_xml(original)
+        parser = _make_parser()
+        parsed = parser.parse_full_movie(xml_string)
+
+        assert parsed is not None
+        assert parsed.trailer_url == original.trailer_url
+
+    def test_nfo_tvshow_trailer(self):
+        """AC-08: TVShowDetails with trailer -> write and parse back."""
+        from nfo_writer import _build_tvshow_xml
+
+        original = TVShowDetails(
+            title_ru="Сериал с Трейлером",
+            year=2024,
+            trailer_url=self.KODI_TRAILER_URL,
+        )
+
+        xml_string = _build_tvshow_xml(original)
+        parser = _make_parser()
+        parsed = parser.parse_full_tvshow(xml_string)
+
+        assert parsed is not None
+        assert parsed.trailer_url == original.trailer_url
