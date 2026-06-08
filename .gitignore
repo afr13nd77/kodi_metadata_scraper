@@ -13,6 +13,7 @@ __pycache__/
 # Internal docs (contains specs + API keys)
 docs/
 BACKLOG.md
+index.md
 
 # Claude Code config
 .claude/
