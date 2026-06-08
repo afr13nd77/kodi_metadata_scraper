@@ -8,6 +8,7 @@ import xbmc
 import xbmcaddon
 import xbmcgui
 import xbmcplugin
+import xbmcvfs
 
 from dataclasses import dataclass
 from typing import Optional
@@ -68,6 +69,8 @@ def _perform_dual_search(
 
 _kp_unavailable = False
 _kp_unavailable_notified = False
+_stale_cache_notified = False
+_nfo_fallback_notified = False
 
 # In-memory season cache (thread-safe)
 @dataclass
@@ -81,6 +84,66 @@ _season_cache: dict[int, _CacheEntry] = {}
 _season_cache_lock = threading.Lock()
 _CACHE_MAX_SIZE = 10
 _cache_access_counter = 0
+
+
+def _try_nfo_fallback_tvshow(
+    kp_id: int, dir_path: str, logger: Logger
+) -> TVShowDetails | None:
+    logger.info(
+        f"_try_nfo_fallback_tvshow: attempting NFO fallback for kp_id={kp_id}, "
+        f"dir_path='{dir_path}'"
+    )
+
+    if not dir_path:
+        logger.info("_try_nfo_fallback_tvshow: empty dir_path, cannot locate NFO")
+        return None
+
+    if dir_path.endswith("/") or dir_path.endswith("\\"):
+        nfo_path = dir_path + "tvshow.nfo"
+    else:
+        _, ext = os.path.splitext(dir_path)
+        if ext:
+            nfo_path = os.path.dirname(dir_path) + "/tvshow.nfo"
+        else:
+            nfo_path = dir_path + "/tvshow.nfo"
+
+    try:
+        if not xbmcvfs.exists(nfo_path):
+            logger.info(f"_try_nfo_fallback_tvshow: NFO not found at {nfo_path}")
+            return None
+
+        f = xbmcvfs.File(nfo_path)
+        try:
+            nfo_content = f.read()
+        finally:
+            f.close()
+
+        if not nfo_content:
+            logger.warning(f"_try_nfo_fallback_tvshow: empty NFO at {nfo_path}")
+            return None
+
+        parser = NfoParser(logger)
+        details = parser.parse_full_tvshow(nfo_content)
+
+        if details is None:
+            logger.warning(
+                f"_try_nfo_fallback_tvshow: failed to parse NFO at {nfo_path}"
+            )
+            return None
+
+        if details.kinopoisk_id == 0:
+            details.kinopoisk_id = kp_id
+
+        logger.info(
+            f"_try_nfo_fallback_tvshow: success title='{details.title_ru}' from {nfo_path}"
+        )
+        return details
+
+    except Exception as e:
+        logger.warning(
+            f"_try_nfo_fallback_tvshow: unexpected error for {nfo_path}: {e}"
+        )
+        return None
 
 
 def run() -> None:
@@ -136,6 +199,7 @@ def _handle_find(
     params: dict, handle: int, settings: SettingsManager, logger: Logger
 ) -> None:
     """Search for TV shows on Kinopoisk with TV type filter."""
+    global _kp_unavailable
     title = params.get("title", "")
     year = params.get("year")
 
@@ -232,6 +296,15 @@ def _handle_find(
     ):
         logger.info(f"_handle_find: auto-selected exact match: kp_id={results[0].kinopoisk_id}")
 
+    if not results and _kp_unavailable:
+        logger.error(
+            f"_handle_find: API unavailable during find for title='{title}'"
+        )
+        xbmc.executebuiltin(
+            'Notification("TV Scraper", '
+            '"Кинопоиск недоступен, поиск невозможен", 5000)'
+        )
+
     for result in results:
         label = f"{result.title_ru} ({result.year})" if result.year else result.title_ru
         listitem = xbmcgui.ListItem(label, offscreen=True)
@@ -264,7 +337,7 @@ def _handle_getdetails(
     params: dict, handle: int, settings: SettingsManager, logger: Logger
 ) -> bool:
     """Fetch TV show details from Kinopoisk and enrich with OMDb ratings."""
-    global _kp_unavailable, _kp_unavailable_notified
+    global _kp_unavailable, _kp_unavailable_notified, _stale_cache_notified, _nfo_fallback_notified
 
     logger.info(f"_handle_getdetails: params keys={list(params.keys())}")
 
@@ -310,62 +383,132 @@ def _handle_getdetails(
     cache_key_details = f"kp_details_{kp_id}"
     cached_raw = cache.get(cache_key_details)
     details_raw = None  # type: Optional[dict]
+    from_fallback = False
+    nfo_tvshow = None  # type: Optional[TVShowDetails]
+
     if cached_raw is not None:
         details_raw = cached_raw
         details = kp_client.parse_details(cached_raw, genre_language=settings.genre_language)
         logger.info(f"_handle_getdetails: loaded details from cache for kp_id={kp_id}")
     else:
-        raw = kp_client.fetch_details_raw(kp_id)
-        if not raw:
-            logger.error(f"_handle_getdetails: failed to get details for kp_id={kp_id}")
-            _kp_unavailable = True
-            if not _kp_unavailable_notified:
-                xbmc.executebuiltin(
-                    'Notification("Ultimate Movie Scraper", '
-                    '"Кинопоиск недоступен", 5000)'
-                )
-                _kp_unavailable_notified = True
-            xbmcplugin.setResolvedUrl(handle, False, xbmcgui.ListItem(offscreen=True))
-            return False
-        details_raw = raw
-        cache.put(cache_key_details, raw)
-        details = kp_client.parse_details(raw, genre_language=settings.genre_language)
-
-    _kp_unavailable = False
-
-    # Map MovieDetails -> TVShowDetails
-    tvshow = TVShowDetails(
-        kinopoisk_id=details.kinopoisk_id,
-        imdb_id=details.imdb_id,
-        title_ru=details.title_ru,
-        title_original=details.title_original,
-        tagline=details.tagline,
-        year=details.year,
-        plot=details.plot,
-        runtime=details.runtime,
-        mpaa=details.mpaa,
-        genres=details.genres,
-        countries=details.countries,
-        studios=details.studios,
-        ratings=details.ratings,
-        artwork=details.artwork,
-    )
-
-    cache_key_staff = f"kp_staff_{kp_id}"
-    cached_staff = cache.get(cache_key_staff)
-    if cached_staff is not None:
-        directors, writers, cast = kp_client.parse_staff(cached_staff)
-        logger.info(f"_handle_getdetails: loaded staff from cache for kp_id={kp_id}")
-    else:
-        raw_staff = kp_client.fetch_staff_raw(kp_id)
-        if raw_staff is not None:
-            cache.put(cache_key_staff, raw_staff)
-            directors, writers, cast = kp_client.parse_staff(raw_staff)
+        if _kp_unavailable:
+            raw = kp_client.fetch_details_raw_degraded(kp_id)
         else:
-            directors, writers, cast = [], [], []
-    tvshow.directors = directors
-    tvshow.writers = writers
-    tvshow.cast = cast
+            raw = kp_client.fetch_details_raw(kp_id)
+
+        if raw:
+            details_raw = raw
+            cache.put(cache_key_details, raw)
+            details = kp_client.parse_details(raw, genre_language=settings.genre_language)
+            _kp_unavailable = False
+        else:
+            _kp_unavailable = True
+            logger.warning(
+                f"_handle_getdetails: API unavailable for kp_id={kp_id}, trying fallbacks"
+            )
+
+            stale_raw = cache.get_stale(cache_key_details)
+            if stale_raw is not None:
+                details_raw = stale_raw
+                details = kp_client.parse_details(stale_raw, genre_language=settings.genre_language)
+                from_fallback = True
+                logger.warning(
+                    f"_handle_getdetails: serving stale cache for kp_id={kp_id}"
+                )
+                if not _stale_cache_notified:
+                    xbmc.executebuiltin(
+                        'Notification("TV Scraper", '
+                        '"Данные из кэша (устаревшие)", 5000)'
+                    )
+                    _stale_cache_notified = True
+            else:
+                nfo_tvshow = _try_nfo_fallback_tvshow(
+                    kp_id, params.get("pathSettings", ""), logger
+                )
+                if nfo_tvshow is not None:
+                    details = None
+                    from_fallback = True
+                    logger.warning(
+                        f"_handle_getdetails: serving NFO data for kp_id={kp_id}"
+                    )
+                    if not _nfo_fallback_notified:
+                        xbmc.executebuiltin(
+                            'Notification("TV Scraper", '
+                            '"Данные из NFO-файла", 5000)'
+                        )
+                        _nfo_fallback_notified = True
+                else:
+                    logger.error(
+                        f"_handle_getdetails: all fallbacks failed for kp_id={kp_id}"
+                    )
+                    if not _kp_unavailable_notified:
+                        xbmc.executebuiltin(
+                            'Notification("TV Scraper", '
+                            '"Кинопоиск недоступен", 5000)'
+                        )
+                        _kp_unavailable_notified = True
+                    xbmcplugin.setResolvedUrl(
+                        handle, False, xbmcgui.ListItem(offscreen=True)
+                    )
+                    return False
+
+    # Map MovieDetails -> TVShowDetails (or use NFO fallback directly)
+    if nfo_tvshow is not None:
+        tvshow = nfo_tvshow
+    else:
+        tvshow = TVShowDetails(
+            kinopoisk_id=details.kinopoisk_id,
+            imdb_id=details.imdb_id,
+            title_ru=details.title_ru,
+            title_original=details.title_original,
+            tagline=details.tagline,
+            year=details.year,
+            plot=details.plot,
+            runtime=details.runtime,
+            mpaa=details.mpaa,
+            genres=details.genres,
+            countries=details.countries,
+            studios=details.studios,
+            ratings=details.ratings,
+            artwork=details.artwork,
+        )
+
+    if not from_fallback or not tvshow.directors:
+        cache_key_staff = f"kp_staff_{kp_id}"
+        cached_staff = cache.get(cache_key_staff)
+        if cached_staff is not None:
+            directors, writers, cast = kp_client.parse_staff(cached_staff)
+            logger.info(f"_handle_getdetails: loaded staff from cache for kp_id={kp_id}")
+        elif not from_fallback:
+            raw_staff = kp_client.fetch_staff_raw(kp_id)
+            if raw_staff is not None:
+                cache.put(cache_key_staff, raw_staff)
+                directors, writers, cast = kp_client.parse_staff(raw_staff)
+            else:
+                directors, writers, cast = [], [], []
+        elif _kp_unavailable:
+            stale_staff = cache.get_stale(cache_key_staff)
+            if stale_staff is not None:
+                directors, writers, cast = kp_client.parse_staff(stale_staff)
+                logger.info(f"_handle_getdetails: loaded staff from stale cache for kp_id={kp_id}")
+            else:
+                directors, writers, cast = [], [], []
+        else:
+            raw_staff = kp_client.fetch_staff_raw_degraded(kp_id)
+            if raw_staff is not None:
+                cache.put(cache_key_staff, raw_staff)
+                directors, writers, cast = kp_client.parse_staff(raw_staff)
+            else:
+                stale_staff = cache.get_stale(cache_key_staff)
+                if stale_staff is not None:
+                    directors, writers, cast = kp_client.parse_staff(stale_staff)
+                else:
+                    directors, writers, cast = [], [], []
+        tvshow.directors = directors
+        tvshow.writers = writers
+        tvshow.cast = cast
+    else:
+        logger.info(f"_handle_getdetails: staff from NFO fallback for kp_id={kp_id}")
 
     _enrich_tvshow_with_omdb(tvshow, settings, logger, cache)
 

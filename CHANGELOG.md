@@ -1,22 +1,44 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
-## v3.14.0 (27.05.2026) — metadata.ums + metadata.tvshows.ums
-- CI/CD pipeline (BL-35): GitHub Actions для автоматической проверки кода
+## v3.14.0 (08.06.2026) — metadata.ums + metadata.tvshows.ums
+
+### Graceful Degradation (BL-24)
+
+- Fallback-цепочка при недоступности API Кинопоиска: свежий кэш → API → stale кэш → NFO → hard fail
+- Serve-stale-on-error: stale-данные из кэша отдаются при отказе API (cache.py: get_stale)
+- Полный парсинг NFO XML: parse_full_movie / parse_full_tvshow (nfo_parser.py)
+- Degraded mode: сокращённый таймаут 5с, 0 retries при повторных ошибках API (http_client.py: get_json_degraded)
+- Degraded-варианты API-запросов: fetch_details_raw_degraded, fetch_staff_raw_degraded (kinopoisk_api.py)
+- Уведомления пользователю при fallback: «Данные из кэша (устаревшие)», «Данные из NFO-файла», «Кинопоиск недоступен»
+- Уведомления показываются не более 1 раза за сессию скрейпера
+- Быстрый отказ: при первом API-fail последующие вызовы используют degraded mode
+- Обратная совместимость: при доступном API поведение идентично 3.13.0
+
+### CI/CD Pipeline (BL-35)
+
+- GitHub Actions для автоматической проверки кода
   - Workflow: ruff lint → pytest (movie + TV параллельно) → build ZIP
   - Авто-релиз: push тега `v*` создаёт GitHub Release с ZIP-архивами
   - Конфигурация ruff: target Python 3.8, line-length 120, правила E/F/W
   - Runner: ubuntu-22.04 (Python 3.8 pre-built)
   - CI badge в README.md
   - Исправлена 21 ошибка линтера в существующем коде
-- Детекция дублей Kinopoisk ID (BL-26): предупреждение при назначении одного kp_id разным файлам
-  - Новый модуль `shared/duplicate_tracker.py`: персистентный трекинг kp_id → file_path (JSON)
+
+### Детекция дублей Kinopoisk ID (BL-26)
+
+- Новый модуль `shared/duplicate_tracker.py`: персистентный трекинг kp_id → file_path (JSON)
   - Toast notification (xbmcgui, WARNING, 7 сек) при обнаружении дубля
   - Повторный скрапинг того же файла не считается дублем
   - Graceful degradation: ошибки трекинга не блокируют скрапинг
   - Настройка «Обнаружение дубликатов» (по умолчанию вкл.)
   - «Очистить кэш» также очищает трекинг дубликатов
   - Аддоны ведут независимые карты (movie и TV не пересекаются)
-- 12 новых тестов (DuplicateTracker), всего 582 теста (466 movie + 116 TV)
+
+### Тесты
+
+- 31 новый тест: cache get_stale (5), nfo_parser parse_full (12), scraper fallback (8), tv_scraper fallback (6)
+- 12 тестов DuplicateTracker
+- Всего 613 тестов (491 movie + 122 TV)
 
 ## v3.13.0 (27.05.2026) — metadata.ums + metadata.tvshows.ums
 - NFO-экспорт (BL-25): автоматическая запись .nfo-файлов рядом с видеофайлами после скрапинга

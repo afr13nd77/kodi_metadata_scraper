@@ -17,6 +17,7 @@ index.md
 
 # Claude Code config
 .claude/
+CLAUDE.md
 
 # Kodi logs / debug dumps
 err.txt

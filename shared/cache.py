@@ -65,7 +65,6 @@ class FileCache:
                     f"FileCache.get: MISS key='{key}' "
                     f"(TTL expired, cached_at='{cached_at_str}')"
                 )
-                self._delete_file(file_path)
                 return None
 
             file_size = len(content.encode("utf-8"))
@@ -78,6 +77,49 @@ class FileCache:
         except Exception as e:
             self._logger.warning(
                 f"FileCache.get: unexpected error for key='{key}': {e}"
+            )
+            return None
+
+    def get_stale(self, key: str) -> Optional[dict]:
+        """Return cached data even if TTL expired. Returns None only on true miss."""
+        try:
+            safe_key = self._sanitize_key(key)
+            file_path = self._key_to_path(safe_key)
+
+            content = self._read_file(file_path)
+            if content is None:
+                self._logger.debug(
+                    f"FileCache.get_stale: MISS key='{key}' (file not found)"
+                )
+                return None
+
+            try:
+                envelope = json.loads(content)
+            except (json.JSONDecodeError, ValueError):
+                self._logger.warning(
+                    f"FileCache.get_stale: corrupted JSON for key='{key}', deleting"
+                )
+                self._delete_file(file_path)
+                return None
+
+            cached_at_str = envelope.get("cached_at", "")
+            data = envelope.get("data")
+
+            if data is None:
+                self._logger.debug(
+                    f"FileCache.get_stale: MISS key='{key}' (data is None)"
+                )
+                return None
+
+            self._logger.info(
+                f"FileCache.get_stale: HIT key='{key}', "
+                f"cached_at='{cached_at_str}', stale=True"
+            )
+            return data
+
+        except Exception as e:
+            self._logger.warning(
+                f"FileCache.get_stale: unexpected error for key='{key}': {e}"
             )
             return None
 

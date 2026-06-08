@@ -33,6 +33,8 @@ def reset_kodi_mocks():
     # Reset module-level globals in scraper
     scraper_module._kp_unavailable = False
     scraper_module._kp_unavailable_notified = False
+    scraper_module._stale_cache_notified = False
+    scraper_module._nfo_fallback_notified = False
     yield
 
 
@@ -483,10 +485,12 @@ class TestHandleGetdetails:
         args = xbmcplugin.setResolvedUrl.call_args
         assert args[0][1] is False
 
+    @patch("scraper._try_nfo_fallback_movie", return_value=None)
     @patch("scraper.FileCache")
     @patch("scraper.KinopoiskClient")
-    def test_getdetails_api_failure(self, MockClient, MockCache):
+    def test_getdetails_api_failure(self, MockClient, MockCache, mock_nfo):
         MockCache.return_value.get.return_value = None
+        MockCache.return_value.get_stale.return_value = None
         mock_client = MockClient.return_value
         mock_client.fetch_details_raw.return_value = None
 
@@ -582,10 +586,12 @@ class TestGetdetailsReturnValue:
         result = _handle_getdetails({}, 1, settings, logger)
         assert result is False
 
+    @patch("scraper._try_nfo_fallback_movie", return_value=None)
     @patch("scraper.FileCache")
     @patch("scraper.KinopoiskClient")
-    def test_returns_false_on_api_failure(self, MockClient, MockCache):
+    def test_returns_false_on_api_failure(self, MockClient, MockCache, mock_nfo):
         MockCache.return_value.get.return_value = None
+        MockCache.return_value.get_stale.return_value = None
         mock_client = MockClient.return_value
         mock_client.fetch_details_raw.return_value = None
 
@@ -626,12 +632,14 @@ class TestRunEndOfDirectory:
             # getdetails success -> enddir = not True = False -> endOfDirectory NOT called
             xbmcplugin.endOfDirectory.assert_not_called()
 
+    @patch("scraper._try_nfo_fallback_movie", return_value=None)
     @patch("scraper.FileCache")
     @patch("scraper.SettingsManager")
     @patch("scraper.Logger")
     @patch("scraper.KinopoiskClient")
-    def test_getdetails_failure_calls_endofdirectory(self, MockClient, MockLogger, MockSettings, MockCache):
+    def test_getdetails_failure_calls_endofdirectory(self, MockClient, MockLogger, MockSettings, MockCache, mock_nfo):
         MockCache.return_value.get.return_value = None
+        MockCache.return_value.get_stale.return_value = None
         MockSettings.return_value = _mock_settings()
         mock_client = MockClient.return_value
         mock_client.fetch_details_raw.return_value = None
@@ -1245,3 +1253,291 @@ class TestDualSearch:
         _handle_find(params, 1, settings, logger)
 
         assert mock_client.search.call_count >= 2
+
+
+class TestFallbackChain:
+    """Tests for the fallback chain in _handle_getdetails (T-09)."""
+
+    def _make_details(self, kp_id=301):
+        return MovieDetails(
+            kinopoisk_id=kp_id,
+            title_ru="Матрица",
+            title_original="The Matrix",
+            year=1999,
+            plot="Описание фильма",
+            ratings=[Rating(DataSource.KINOPOISK, 8.5, 10000)],
+        )
+
+    @patch("scraper._try_nfo_fallback_movie")
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_getdetails_stale_cache_fallback(self, MockClient, MockCache, mock_nfo):
+        """Stale cache fallback: cache miss, API fail, stale cache hit.
+
+        Assert: parse_details called with stale data, setResolvedUrl(handle, True, ...),
+        notification with 'кэша' shown.
+        """
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = None
+        stale_raw = {"kinopoiskId": 301, "nameRu": "Матрица"}
+        mock_cache.get_stale.return_value = stale_raw
+
+        mock_client = MockClient.return_value
+        mock_client.fetch_details_raw.return_value = None
+        mock_client.parse_details.return_value = self._make_details()
+        mock_client.fetch_staff_raw.return_value = []
+        mock_client.parse_staff.return_value = ([], [], [])
+
+        settings = _mock_settings()
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        _handle_getdetails(params, 1, settings, logger)
+
+        # parse_details called with stale data
+        mock_client.parse_details.assert_called_once()
+        call_args = mock_client.parse_details.call_args
+        assert call_args[0][0] == stale_raw
+
+        # setResolvedUrl(handle, True, ...)
+        xbmcplugin.setResolvedUrl.assert_called_once()
+        args = xbmcplugin.setResolvedUrl.call_args
+        assert args[0][0] == 1
+        assert args[0][1] is True
+
+        # Notification with 'кэша' shown
+        notification_calls = [str(c) for c in xbmc.executebuiltin.call_args_list]
+        assert any("кэша" in c for c in notification_calls)
+
+        # NFO fallback should NOT have been called
+        mock_nfo.assert_not_called()
+
+    @patch("scraper._try_nfo_fallback_movie")
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_getdetails_nfo_fallback(self, MockClient, MockCache, mock_nfo):
+        """NFO fallback: cache miss, API fail, stale miss, NFO returns MovieDetails.
+
+        Assert: setResolvedUrl(handle, True, ...), notification with 'NFO' shown.
+        """
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = None
+        mock_cache.get_stale.return_value = None
+
+        mock_client = MockClient.return_value
+        mock_client.fetch_details_raw.return_value = None
+
+        nfo_details = self._make_details()
+        mock_nfo.return_value = nfo_details
+
+        settings = _mock_settings()
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        _handle_getdetails(params, 1, settings, logger)
+
+        # setResolvedUrl(handle, True, ...)
+        xbmcplugin.setResolvedUrl.assert_called_once()
+        args = xbmcplugin.setResolvedUrl.call_args
+        assert args[0][0] == 1
+        assert args[0][1] is True
+
+        # Notification with 'NFO' shown
+        notification_calls = [str(c) for c in xbmc.executebuiltin.call_args_list]
+        assert any("NFO" in c for c in notification_calls)
+
+    @patch("scraper._try_nfo_fallback_movie", return_value=None)
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_getdetails_hard_fail(self, MockClient, MockCache, mock_nfo):
+        """Hard fail: cache miss, API fail, stale miss, NFO returns None.
+
+        Assert: setResolvedUrl(handle, False, ...), notification with 'недоступен' shown.
+        """
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = None
+        mock_cache.get_stale.return_value = None
+
+        mock_client = MockClient.return_value
+        mock_client.fetch_details_raw.return_value = None
+
+        settings = _mock_settings()
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        _handle_getdetails(params, 1, settings, logger)
+
+        # setResolvedUrl(handle, False, ...)
+        xbmcplugin.setResolvedUrl.assert_called_once()
+        args = xbmcplugin.setResolvedUrl.call_args
+        assert args[0][0] == 1
+        assert args[0][1] is False
+
+        # Notification with 'недоступен' shown
+        notification_calls = [str(c) for c in xbmc.executebuiltin.call_args_list]
+        assert any("недоступен" in c for c in notification_calls)
+
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_getdetails_api_ok_resets_unavailable(self, MockClient, MockCache):
+        """API success resets _kp_unavailable flag.
+
+        Setup: _kp_unavailable = True, cache miss, fetch_details_raw_degraded returns data.
+        Assert: _kp_unavailable is reset to False.
+        """
+        scraper_module._kp_unavailable = True
+
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = None
+
+        mock_client = MockClient.return_value
+        raw = {"kinopoiskId": 301}
+        mock_client.fetch_details_raw_degraded.return_value = raw
+        mock_client.parse_details.return_value = self._make_details()
+        mock_client.fetch_staff_raw.return_value = []
+        mock_client.parse_staff.return_value = ([], [], [])
+
+        settings = _mock_settings()
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        _handle_getdetails(params, 1, settings, logger)
+
+        assert scraper_module._kp_unavailable is False
+
+        # Also verify success
+        xbmcplugin.setResolvedUrl.assert_called_once()
+        args = xbmcplugin.setResolvedUrl.call_args
+        assert args[0][1] is True
+
+    @patch("scraper._try_nfo_fallback_movie", return_value=None)
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_getdetails_degraded_mode_after_first_fail(self, MockClient, MockCache, mock_nfo):
+        """Degraded mode: _kp_unavailable=True -> fetch_details_raw_degraded is called.
+
+        Assert: fetch_details_raw_degraded called (not fetch_details_raw).
+        """
+        scraper_module._kp_unavailable = True
+
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = None
+        mock_cache.get_stale.return_value = None
+
+        mock_client = MockClient.return_value
+        mock_client.fetch_details_raw_degraded.return_value = None
+
+        settings = _mock_settings()
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        _handle_getdetails(params, 1, settings, logger)
+
+        # fetch_details_raw_degraded called, not fetch_details_raw
+        mock_client.fetch_details_raw_degraded.assert_called_once_with(301)
+        mock_client.fetch_details_raw.assert_not_called()
+
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_getdetails_fresh_cache_no_changes(self, MockClient, MockCache):
+        """Fresh cache hit: no API call, no notifications (AC-10 backward compat).
+
+        Setup: cache.get() returns valid data.
+        Assert: no API call, setResolvedUrl(handle, True, ...), no notifications.
+        """
+        cached_raw = {"kinopoiskId": 301, "nameRu": "Матрица"}
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = cached_raw
+
+        mock_client = MockClient.return_value
+        mock_client.parse_details.return_value = self._make_details()
+        mock_client.fetch_staff_raw.return_value = []
+        mock_client.parse_staff.return_value = ([], [], [])
+
+        settings = _mock_settings()
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        _handle_getdetails(params, 1, settings, logger)
+
+        # No API call for details
+        mock_client.fetch_details_raw.assert_not_called()
+        mock_client.fetch_details_raw_degraded.assert_not_called()
+
+        # setResolvedUrl(handle, True, ...)
+        xbmcplugin.setResolvedUrl.assert_called_once()
+        args = xbmcplugin.setResolvedUrl.call_args
+        assert args[0][0] == 1
+        assert args[0][1] is True
+
+        # No notifications at all
+        xbmc.executebuiltin.assert_not_called()
+
+    @patch("scraper.KinopoiskClient")
+    def test_find_notification_on_api_fail(self, MockClient):
+        """Find with _kp_unavailable=True and no results shows notification.
+
+        Assert: xbmc.executebuiltin called with notification containing 'поиск невозможен'.
+        """
+        scraper_module._kp_unavailable = True
+
+        mock_client = MockClient.return_value
+        mock_client.search.return_value = []
+
+        settings = _mock_settings()
+        logger = _mock_logger()
+        params = {"title": "Матрица", "year": "1999"}
+
+        _handle_find(params, 1, settings, logger)
+
+        notification_calls = [str(c) for c in xbmc.executebuiltin.call_args_list]
+        assert any("поиск невозможен" in c for c in notification_calls)
+
+    @patch("scraper._try_nfo_fallback_movie")
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_stale_notification_once(self, MockClient, MockCache, mock_nfo):
+        """Stale cache notification shown only once across multiple calls.
+
+        Setup: two sequential calls where cache miss, API fail, stale hit.
+        Assert: notification shown only once (second call does NOT trigger notification).
+        """
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = None
+        stale_raw = {"kinopoiskId": 301, "nameRu": "Матрица"}
+        mock_cache.get_stale.return_value = stale_raw
+
+        mock_client = MockClient.return_value
+        mock_client.fetch_details_raw.return_value = None
+        mock_client.parse_details.return_value = self._make_details()
+        mock_client.fetch_staff_raw.return_value = []
+        mock_client.parse_staff.return_value = ([], [], [])
+
+        settings = _mock_settings()
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        # First call
+        _handle_getdetails(params, 1, settings, logger)
+
+        # Count stale notifications after first call
+        stale_notifications_1 = sum(
+            1 for c in xbmc.executebuiltin.call_args_list
+            if "кэша" in str(c)
+        )
+        assert stale_notifications_1 == 1
+
+        # Reset mocks except global flags (flags persist between calls)
+        xbmc.executebuiltin.reset_mock()
+        xbmcplugin.reset_mock()
+
+        # Second call - _stale_cache_notified should be True now
+        assert scraper_module._stale_cache_notified is True
+        _handle_getdetails(params, 1, settings, logger)
+
+        # No new stale notification on second call
+        stale_notifications_2 = sum(
+            1 for c in xbmc.executebuiltin.call_args_list
+            if "кэша" in str(c)
+        )
+        assert stale_notifications_2 == 0

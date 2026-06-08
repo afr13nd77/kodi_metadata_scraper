@@ -33,6 +33,8 @@ def reset_kodi_mocks():
     # Reset module-level globals in tv_scraper
     tv_scraper_module._kp_unavailable = False
     tv_scraper_module._kp_unavailable_notified = False
+    tv_scraper_module._stale_cache_notified = False
+    tv_scraper_module._nfo_fallback_notified = False
     # Clear season cache between tests
     tv_scraper_module._season_cache.clear()
     tv_scraper_module._cache_access_counter = 0
@@ -455,11 +457,13 @@ class TestHandleGetdetails:
         args = xbmcplugin.setResolvedUrl.call_args
         assert args[0][1] is False
 
+    @patch("tv_scraper._try_nfo_fallback_tvshow", return_value=None)
     @patch("tv_scraper.FileCache")
     @patch("tv_scraper.KinopoiskClient")
-    def test_getdetails_api_failure(self, MockClient, MockCache):
+    def test_getdetails_api_failure(self, MockClient, MockCache, mock_nfo):
         mock_cache = MockCache.return_value
         mock_cache.get.return_value = None
+        mock_cache.get_stale.return_value = None
         mock_client = MockClient.return_value
         mock_client.fetch_details_raw.return_value = None
 
@@ -484,13 +488,16 @@ class TestHandleGetdetails:
 
         assert result is False
 
+    @patch("tv_scraper._try_nfo_fallback_tvshow", return_value=None)
     @patch("tv_scraper.FileCache")
     @patch("tv_scraper.KinopoiskClient")
-    def test_getdetails_kp_unavailable_notified_once(self, MockClient, MockCache):
+    def test_getdetails_kp_unavailable_notified_once(self, MockClient, MockCache, mock_nfo):
         mock_cache = MockCache.return_value
         mock_cache.get.return_value = None
+        mock_cache.get_stale.return_value = None
         mock_client = MockClient.return_value
         mock_client.fetch_details_raw.return_value = None
+        mock_client.fetch_details_raw_degraded.return_value = None
 
         settings = _mock_settings()
         logger = _mock_logger()
@@ -1679,6 +1686,247 @@ class TestAwardTags:
         infotag.setTags.assert_called_once_with(["Оскар"])
 
     def test_setTags_not_called_when_empty(self):
+        """_apply_tvshow_details_to_listitem does NOT call setTags when details.tags is empty."""
+        details = _make_tvshow_details()
+        details.tags = []
+
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+
+        settings = _mock_settings(show_ratings_in_plot=False)
+        logger = _mock_logger()
+
+        _apply_tvshow_details_to_listitem(details, listitem, settings, logger)
+
+        infotag.setTags.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Tests for fallback chain in _handle_getdetails and _handle_find
+# ---------------------------------------------------------------------------
+
+class TestFallbackChain:
+    """Tests for the fallback chain: fresh cache -> API -> stale cache -> NFO -> hard fail."""
+
+    @patch("tv_scraper._try_nfo_fallback_tvshow", return_value=None)
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_getdetails_stale_cache_fallback(self, MockClient, MockCache, mock_nfo):
+        """Stale cache fallback: cache miss, API fail, stale cache returns valid raw data.
+        Assert: parse_details called with stale data, setResolvedUrl(handle, True, ...),
+        notification about stale cache shown."""
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = None  # fresh cache miss
+        mock_cache.get_stale.return_value = {"id": 462682, "stale": True}  # stale hit
+        mock_client = MockClient.return_value
+        mock_client.fetch_details_raw.return_value = None  # API fail
+        mock_client.parse_details.return_value = MovieDetails(
+            kinopoisk_id=462682,
+            imdb_id="tt0903747",
+            title_ru="Во все тяжкие",
+            title_original="Breaking Bad",
+            year=2008,
+            plot="Школьный учитель химии",
+            ratings=[Rating(DataSource.KINOPOISK, 9.1, 500000)],
+        )
+        mock_client.fetch_staff_raw.return_value = None
+        mock_client.parse_staff.return_value = ([], [], [])
+
+        settings = _mock_settings(show_ratings_in_plot=False)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        # parse_details should have been called with stale data
+        mock_client.parse_details.assert_called_once_with(
+            {"id": 462682, "stale": True}, genre_language="ru"
+        )
+        xbmcplugin.setResolvedUrl.assert_called_once()
+        args = xbmcplugin.setResolvedUrl.call_args
+        assert args[0][0] == 1
+        assert args[0][1] is True
+        # Notification about stale cache
+        xbmc.executebuiltin.assert_called()
+        notification_call = xbmc.executebuiltin.call_args[0][0]
+        assert "кэша" in notification_call.lower() or "кэш" in notification_call.lower()
+        # NFO fallback should NOT have been attempted
+        mock_nfo.assert_not_called()
+
+    @patch("tv_scraper._try_nfo_fallback_tvshow")
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_getdetails_nfo_fallback(self, MockClient, MockCache, mock_nfo):
+        """NFO fallback: cache miss, API fail, stale cache miss, NFO returns TVShowDetails.
+        Assert: setResolvedUrl(handle, True, ...), notification about NFO shown.
+        Verify the TVShowDetails from NFO is used directly (no MovieDetails->TVShowDetails mapping)."""
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = None  # fresh cache miss
+        mock_cache.get_stale.return_value = None  # stale cache miss
+        mock_client = MockClient.return_value
+        mock_client.fetch_details_raw.return_value = None  # API fail
+
+        # NFO returns a TVShowDetails directly
+        nfo_details = TVShowDetails(
+            kinopoisk_id=462682,
+            imdb_id="tt0903747",
+            title_ru="Во все тяжкие (NFO)",
+            title_original="Breaking Bad",
+            year=2008,
+            plot="From NFO file",
+            ratings=[Rating(DataSource.KINOPOISK, 9.0, 400000)],
+            directors=[Person(name_ru="Винс Гиллиган", profession=ProfessionType.DIRECTOR)],
+        )
+        mock_nfo.return_value = nfo_details
+
+        # parse_staff should not be called for NFO path since directors come from NFO
+        mock_client.fetch_staff_raw.return_value = None
+        mock_client.parse_staff.return_value = ([], [], [])
+
+        settings = _mock_settings(show_ratings_in_plot=False)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        xbmcplugin.setResolvedUrl.assert_called_once()
+        args = xbmcplugin.setResolvedUrl.call_args
+        assert args[0][0] == 1
+        assert args[0][1] is True
+        # Notification about NFO
+        xbmc.executebuiltin.assert_called()
+        notification_call = xbmc.executebuiltin.call_args[0][0]
+        assert "NFO" in notification_call
+        # parse_details should NOT have been called (NFO returns TVShowDetails directly)
+        mock_client.parse_details.assert_not_called()
+
+    @patch("tv_scraper._try_nfo_fallback_tvshow", return_value=None)
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_getdetails_hard_fail(self, MockClient, MockCache, mock_nfo):
+        """Hard fail: all fallbacks return None.
+        Assert: setResolvedUrl(handle, False, ...), notification about unavailability shown."""
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = None  # fresh cache miss
+        mock_cache.get_stale.return_value = None  # stale cache miss
+        mock_client = MockClient.return_value
+        mock_client.fetch_details_raw.return_value = None  # API fail
+        mock_client.fetch_details_raw_degraded.return_value = None
+
+        settings = _mock_settings()
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is False
+        xbmcplugin.setResolvedUrl.assert_called_once()
+        args = xbmcplugin.setResolvedUrl.call_args
+        assert args[0][0] == 1
+        assert args[0][1] is False
+        # Notification about KP being unavailable
+        xbmc.executebuiltin.assert_called()
+        notification_call = xbmc.executebuiltin.call_args[0][0]
+        assert "недоступен" in notification_call
+
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_getdetails_api_recovery(self, MockClient, MockCache):
+        """API recovery: _kp_unavailable=True, cache miss, fetch_details_raw_degraded returns valid data.
+        Assert: _kp_unavailable reset to False."""
+        # Pre-set _kp_unavailable to True
+        tv_scraper_module._kp_unavailable = True
+
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = None  # cache miss
+        mock_client = MockClient.return_value
+        # fetch_details_raw_degraded is used when _kp_unavailable=True
+        mock_client.fetch_details_raw_degraded.return_value = {"id": 462682, "type": "TV_SERIES"}
+        mock_client.parse_details.return_value = MovieDetails(
+            kinopoisk_id=462682,
+            imdb_id="tt0903747",
+            title_ru="Во все тяжкие",
+            title_original="Breaking Bad",
+            year=2008,
+            plot="Школьный учитель химии",
+            ratings=[Rating(DataSource.KINOPOISK, 9.1, 500000)],
+        )
+        mock_client.fetch_staff_raw.return_value = None
+        mock_client.parse_staff.return_value = ([], [], [])
+
+        settings = _mock_settings(show_ratings_in_plot=False)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        # _kp_unavailable should be reset to False after successful degraded fetch
+        assert tv_scraper_module._kp_unavailable is False
+        # fetch_details_raw_degraded (not fetch_details_raw) should have been called
+        mock_client.fetch_details_raw_degraded.assert_called_once_with(462682)
+        mock_client.fetch_details_raw.assert_not_called()
+
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_getdetails_fresh_cache_unchanged(self, MockClient, MockCache):
+        """Fresh cache hit: cache returns valid data, no API call made.
+        AC-10 backward compatibility: setResolvedUrl(handle, True, ...), no notifications."""
+        cached_data = {"id": 462682, "type": "TV_SERIES"}
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = cached_data  # fresh cache HIT
+        mock_client = MockClient.return_value
+        mock_client.parse_details.return_value = MovieDetails(
+            kinopoisk_id=462682,
+            imdb_id="tt0903747",
+            title_ru="Во все тяжкие",
+            title_original="Breaking Bad",
+            year=2008,
+            plot="Школьный учитель химии",
+            ratings=[Rating(DataSource.KINOPOISK, 9.1, 500000)],
+        )
+        mock_client.fetch_staff_raw.return_value = None
+        mock_client.parse_staff.return_value = ([], [], [])
+
+        settings = _mock_settings(show_ratings_in_plot=False)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        xbmcplugin.setResolvedUrl.assert_called_once()
+        args = xbmcplugin.setResolvedUrl.call_args
+        assert args[0][0] == 1
+        assert args[0][1] is True
+        # No API call should have been made
+        mock_client.fetch_details_raw.assert_not_called()
+        mock_client.fetch_details_raw_degraded.assert_not_called()
+        # No notifications should have been shown (no fallback)
+        xbmc.executebuiltin.assert_not_called()
+
+    @patch("tv_scraper.KinopoiskClient")
+    def test_find_notification_on_api_fail(self, MockClient):
+        """Find notification: _kp_unavailable=True, search returns [].
+        Assert: notification about search being impossible is shown."""
+        # Pre-set _kp_unavailable to True
+        tv_scraper_module._kp_unavailable = True
+
+        mock_client = MockClient.return_value
+        mock_client.search.return_value = []
+
+        settings = _mock_settings()
+        logger = _mock_logger()
+        params = {"title": "Во все тяжкие", "year": "2008"}
+
+        _handle_find(params, 1, settings, logger)
+
+        xbmc.executebuiltin.assert_called()
+        notification_call = xbmc.executebuiltin.call_args[0][0]
+        assert "поиск невозможен" in notification_call
         """_apply_tvshow_details_to_listitem does NOT call setTags when details.tags is empty."""
         details = _make_tvshow_details()
         details.tags = []

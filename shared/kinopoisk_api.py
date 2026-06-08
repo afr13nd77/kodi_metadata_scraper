@@ -220,6 +220,21 @@ class KinopoiskClient:
         self._logger.info(f"KinopoiskClient.fetch_details_raw: success for kp_id={kinopoisk_id}")
         return data
 
+    def fetch_details_raw_degraded(self, kinopoisk_id: int) -> Optional[dict]:
+        """HTTP request for film details in degraded mode (5s timeout, 0 retries)."""
+        self._logger.info(f"KinopoiskClient.fetch_details_raw_degraded: kp_id={kinopoisk_id}")
+        try:
+            result = self._http.get_json_degraded(f"v2.2/films/{kinopoisk_id}")
+            self._logger.info(
+                f"KinopoiskClient.fetch_details_raw_degraded: success for kp_id={kinopoisk_id}"
+            )
+            return result
+        except Exception as e:
+            self._logger.warning(
+                f"KinopoiskClient.fetch_details_raw_degraded: failed kp_id={kinopoisk_id}: {e}"
+            )
+            return None
+
     def parse_details(self, data: dict, genre_language: str = "ru") -> MovieDetails:
         """Parse raw dict into MovieDetails."""
         mpaa = (data.get("ratingMpaa", "") or "").upper()
@@ -298,6 +313,23 @@ class KinopoiskClient:
             return None
         self._logger.info(f"KinopoiskClient.fetch_staff_raw: success for kp_id={kinopoisk_id}")
         return data
+
+    def fetch_staff_raw_degraded(self, kinopoisk_id: int) -> Optional[list]:
+        """HTTP request for film staff in degraded mode (5s timeout, 0 retries)."""
+        self._logger.info(f"KinopoiskClient.fetch_staff_raw_degraded: kp_id={kinopoisk_id}")
+        try:
+            result = self._http_staff.get_json_degraded(
+                "v1/staff", {"filmId": str(kinopoisk_id)}
+            )
+            self._logger.info(
+                f"KinopoiskClient.fetch_staff_raw_degraded: success for kp_id={kinopoisk_id}"
+            )
+            return result
+        except Exception as e:
+            self._logger.warning(
+                f"KinopoiskClient.fetch_staff_raw_degraded: failed kp_id={kinopoisk_id}: {e}"
+            )
+            return None
 
     def parse_staff(self, data: list) -> tuple[list[Person], list[Person], list[Person]]:
         """Parse raw list into (directors, writers, cast)."""

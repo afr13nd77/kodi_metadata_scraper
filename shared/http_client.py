@@ -148,6 +148,58 @@ class HttpClient:
         )
         raise last_error  # type: ignore[misc]
 
+    def get_json_degraded(self, path: str, params: Optional[dict] = None) -> dict:
+        """GET request in degraded mode: 0 retries, 5s timeout.
+
+        Args:
+            path: URL path to append to the base URL.
+            params: Optional query parameters.
+
+        Returns:
+            Parsed JSON response as a dictionary.
+
+        Raises:
+            HttpError: On HTTP errors (no retry).
+        """
+        url = self._build_url(path, params)
+
+        if self._rate_limiter is not None:
+            self._rate_limiter.acquire()
+
+        self._log_debug(f"HTTP GET {url} (degraded mode, timeout=5s)")
+
+        try:
+            req = urllib.request.Request(url, headers=self._headers)
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                body = resp.read().decode("utf-8")
+                result = json.loads(body)
+
+            self._log_debug(f"HTTP GET {url} -> 200 OK (degraded mode)")
+            return result
+
+        except urllib.error.HTTPError as exc:
+            status = exc.code
+            reason = str(exc.reason) if exc.reason else "Unknown"
+            self._log_warning(
+                f"HTTP GET {url} -> {status} {reason} "
+                f"(degraded mode, no retry)"
+            )
+            raise HttpError(status, reason, url) from exc
+
+        except urllib.error.URLError as exc:
+            self._log_warning(
+                f"HTTP GET {url} -> URLError: {exc.reason} "
+                f"(degraded mode, no retry)"
+            )
+            raise
+
+        except Exception as exc:
+            self._log_error(
+                f"HTTP GET {url} -> unexpected error: {exc} "
+                f"(degraded mode, no retry)"
+            )
+            raise
+
     def _build_url(self, path: str, params: Optional[dict] = None) -> str:
         """Build full URL from base, path, and optional query parameters."""
         path = path.lstrip("/")

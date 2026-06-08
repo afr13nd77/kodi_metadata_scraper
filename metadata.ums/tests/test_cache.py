@@ -51,8 +51,8 @@ class TestFileCache:
 
         result = self.cache.get("expired_key")
         assert result is None
-        # File should be deleted
-        assert not os.path.exists(file_path)
+        # File should be preserved for serve-stale-on-error pattern
+        assert os.path.exists(file_path)
 
     def test_get_fresh_ttl(self):
         # Write a cache file with fresh timestamp
@@ -137,6 +137,66 @@ class TestFileCache:
         with patch.object(self.cache, '_ensure_dir', side_effect=OSError("mocked")):
             self.cache.put("fail_key", {"data": 1})
         self.logger.warning.assert_called()
+
+    # --- get_stale() tests ---
+
+    def test_get_stale_returns_data_when_ttl_expired(self):
+        """get_stale() returns data even when TTL is expired."""
+        file_path = os.path.join(self.tmpdir, "stale_key.json")
+        expired_time = (datetime.now() - timedelta(days=30)).isoformat(timespec="seconds")
+        data = {"title": "Old Movie", "year": 2020}
+        envelope = {"cached_at": expired_time, "ttl_days": 7, "data": data}
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(envelope, f)
+
+        result = self.cache.get_stale("stale_key")
+        assert result == data
+
+    def test_get_stale_returns_none_on_missing_file(self):
+        """get_stale() returns None for a key that was never cached."""
+        result = self.cache.get_stale("never_existed_key")
+        assert result is None
+
+    def test_get_stale_returns_none_on_corrupted_json(self):
+        """get_stale() returns None and deletes file on corrupted JSON."""
+        file_path = os.path.join(self.tmpdir, "corrupt_stale.json")
+        with open(file_path, "w") as f:
+            f.write("{broken json!!! not valid")
+
+        result = self.cache.get_stale("corrupt_stale")
+        assert result is None
+        assert not os.path.exists(file_path)
+        self.logger.warning.assert_called()
+
+    def test_get_stale_returns_none_when_data_is_none(self):
+        """get_stale() returns None when envelope data field is null."""
+        file_path = os.path.join(self.tmpdir, "null_data.json")
+        cached_time = datetime.now().isoformat(timespec="seconds")
+        envelope = {"cached_at": cached_time, "ttl_days": 7, "data": None}
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(envelope, f)
+
+        result = self.cache.get_stale("null_data")
+        assert result is None
+
+    def test_clear_removes_stale_files(self):
+        """clear() removes files even if their TTL is expired (stale)."""
+        file_path = os.path.join(self.tmpdir, "stale_clear.json")
+        expired_time = (datetime.now() - timedelta(days=30)).isoformat(timespec="seconds")
+        envelope = {"cached_at": expired_time, "ttl_days": 7, "data": {"test": True}}
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(envelope, f)
+
+        # Verify the stale file exists and get() returns None but file persists
+        assert os.path.exists(file_path)
+        assert self.cache.get("stale_clear") is None
+        assert os.path.exists(file_path)
+
+        # clear() should remove the stale file
+        self.cache.clear()
+        assert not os.path.exists(file_path)
+
+    # --- end of get_stale() tests ---
 
     def test_envelope_format(self):
         self.cache.put("format_key", {"test": 1})
