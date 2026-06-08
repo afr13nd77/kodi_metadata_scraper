@@ -1,5 +1,10 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
+## v3.14.2 (08.06.2026) — metadata.ums + metadata.tvshows.ums
+
+- Новые контрастные fanart 1920x1080 для обоих аддонов (тёмно-синий movie, индиго TV)
+- Исправлено отображение иконок и fanart в Kodi: добавлена секция `<assets>` в addon.xml
+
 ## v3.14.0 (08.06.2026) — metadata.ums + metadata.tvshows.ums
 
 ### Graceful Degradation (BL-24)
