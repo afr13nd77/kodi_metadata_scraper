@@ -1,8 +1,10 @@
 [![CI](https://github.com/afr13nd77/kodi_metadata_scraper/actions/workflows/ci.yml/badge.svg)](https://github.com/afr13nd77/kodi_metadata_scraper/actions/workflows/ci.yml)
 
+[English version](readme_en.md)
+
 # Ultimate Movie Scraper (UMS) для Kodi
 
-**Версия:** 3.12.0  
+**Версия:** 3.13.0  
 **Платформа:** Kodi v20 Nexus / v21 Omega  
 **Язык:** Python 3.8  
 
@@ -32,6 +34,8 @@
 - Персистентный файловый кэш с TTL 7 дней
 - Автовыбор при точном совпадении по названию + году
 - Транслитерация латиница→кириллица (fallback)
+- NFO-экспорт: автоматическая запись .nfo-файлов рядом с видео
+- Детекция дублей Kinopoisk ID с уведомлением в Kodi
 
 ### metadata.tvshows.ums -- TV Show Scraper
 
@@ -50,6 +54,8 @@
 - Обработка многосерийных фильмов (Часть/Part/Vol)
 - Теги наград, нормализация жанров, персистентный кэш
 - Fallback при legacy episodeguide
+- NFO-экспорт: автоматическая запись tvshow.nfo в директорию сериала
+- Детекция дублей Kinopoisk ID
 
 ### Общее
 
@@ -58,6 +64,7 @@
 - Поддержка кодировки cp1251 для кириллицы на Windows
 - Rate limiting и retry-логика для API-запросов
 - Санитизация API-ключей в логах
+- CI/CD: GitHub Actions (ruff lint + pytest + сборка ZIP + авто-релиз по тегу v*)
 
 ---
 
@@ -72,8 +79,8 @@
 1. Скачайте ZIP-архивы из раздела релизов
 2. В Kodi: **Settings** -> **Add-ons** -> **Install from zip file**
 3. Установите нужные аддоны:
-   - `metadata.ums-3.12.0.zip` -- scraper фильмов
-   - `metadata.tvshows.ums-3.12.0.zip` -- scraper сериалов
+   - `metadata.ums-3.13.0.zip` -- scraper фильмов
+   - `metadata.tvshows.ums-3.13.0.zip` -- scraper сериалов
    - Можно установить оба или только один
 4. Откройте настройки установленного аддона и укажите API-ключ Кинопоиска
 
@@ -94,6 +101,11 @@
 | `fetch_actor_photos` | Загружать фотографии актёров с Кинопоиска |
 | `show_ratings_in_plot` | Добавлять рейтинги в описание фильма/сериала |
 | `use_tvmaze` | Загружать описания серий из TVMaze (только TV scraper, по умолчанию выкл) |
+| `genre_language` | Язык жанров: русский или английский (по умолчанию: русский) |
+| `auto_select_exact_match` | Автовыбор при точном совпадении по названию и году |
+| `enable_nfo_export` | Экспорт .nfo-файлов рядом с видео после скрапинга (по умолчанию выкл) |
+| `overwrite_nfo` | Перезаписывать существующие .nfo-файлы (видно только при включённом экспорте) |
+| `enable_duplicate_detection` | Предупреждать при назначении одного Kinopoisk ID разным файлам (по умолчанию вкл) |
 | `debug_logging` | Включить подробное логирование |
 
 Каждый аддон (movie и TV) имеет свой независимый набор настроек.
@@ -109,7 +121,7 @@ metadata.tvshows.ums/    — TV show scraper addon
 build_zip.py             — сборка обоих ZIP-пакетов
 ```
 
-Общие модули (`shared/`) включают: HTTP-клиент с retry-логикой, клиент Kinopoisk API, клиент OMDb, клиент TVMaze, парсер NFO, менеджер настроек, систему логирования и модели данных.
+Общие модули (`shared/`) включают: HTTP-клиент с retry-логикой, клиент Kinopoisk API, клиент OMDb, клиент TVMaze, парсер NFO, NFO-экспорт (генерация XML), менеджер настроек, систему логирования, модели данных, персистентный файловый кэш и трекер дубликатов.
 
 ---
 
@@ -131,9 +143,12 @@ cd metadata.ums && python -m pytest tests/ -v
 
 # Тесты TV scraper
 cd metadata.tvshows.ums && python -m pytest tests/ -v
+
+# Тесты DuplicateTracker
+cd shared && python -m pytest tests/ -v
 ```
 
-Всего: **534 теста** (431 movie + 103 TV).
+Всего: **582 теста** (454 movie + 116 TV + 12 DuplicateTracker).
 
 ### Сборка ZIP-пакетов
 
@@ -141,7 +156,7 @@ cd metadata.tvshows.ums && python -m pytest tests/ -v
 python build_zip.py
 ```
 
-Результат: `metadata.ums-3.12.0.zip` и `metadata.tvshows.ums-3.12.0.zip` в корне проекта.
+Результат: `metadata.ums-3.13.0.zip` и `metadata.tvshows.ums-3.13.0.zip` в корне проекта.
 
 ---
 
