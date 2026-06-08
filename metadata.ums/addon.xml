@@ -15,5 +15,9 @@
     <summary lang="en">Ultimate movie and TV show metadata scraper</summary>
     <description lang="ru">Универсальный скрапер метаданных. Поддерживает фильмы и сериалы. Кинопоиск как источник русскоязычных данных, рейтинги Кинопоиска, IMDB, Rotten Tomatoes. Актёры с русскими именами, постеры и фанарт.</description>
     <description lang="en">Ultimate metadata scraper. Supports movies and TV shows. Kinopoisk as the source for Russian-language data, Kinopoisk, IMDB, Rotten Tomatoes ratings. Cast with Russian names, posters and fanart.</description>
+    <assets>
+      <icon>icon.png</icon>
+      <fanart>fanart.jpg</fanart>
+    </assets>
   </extension>
 </addon>

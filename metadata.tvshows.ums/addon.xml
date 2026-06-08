@@ -15,5 +15,9 @@
     <summary lang="en">Universal TV show metadata scraper (Kinopoisk)</summary>
     <description lang="ru">Скрапер метаданных сериалов. Кинопоиск как источник русскоязычных данных, рейтинги Кинопоиска, IMDB, Rotten Tomatoes. Информация по сезонам и эпизодам, описания серий из TVMaze (опционально), актёры с русскими именами, постеры и фанарт.</description>
     <description lang="en">TV show metadata scraper. Kinopoisk as the source for Russian-language data, Kinopoisk, IMDB, Rotten Tomatoes ratings. Season and episode information, episode descriptions from TVMaze (optional), cast with Russian names, posters and fanart.</description>
+    <assets>
+      <icon>icon.png</icon>
+      <fanart>fanart.jpg</fanart>
+    </assets>
   </extension>
 </addon>
