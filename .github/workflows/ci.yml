@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: '3.8'
       - run: pip install pytest
-      - run: python -m pytest metadata.ums/tests/ -v
+      - run: python -m pytest metadata.ums/tests/ -v -m "not live"
 
   test-tv:
     name: Test TV Scraper
