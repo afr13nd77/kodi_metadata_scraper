@@ -71,6 +71,9 @@ _kp_unavailable = False
 _kp_unavailable_notified = False
 _stale_cache_notified = False
 _nfo_fallback_notified = False
+_wikidata_errors = 0
+_WIKIDATA_MAX_ERRORS = 3
+_wikidata_degraded_notified = False
 
 # In-memory season cache (thread-safe)
 @dataclass
@@ -84,6 +87,67 @@ _season_cache: dict[int, _CacheEntry] = {}
 _season_cache_lock = threading.Lock()
 _CACHE_MAX_SIZE = 10
 _cache_access_counter = 0
+
+
+def _resolve_imdb_via_wikidata(details, kp_id, cache, settings, logger):
+    """Попытка получить IMDB ID из Wikidata если KP API не вернул его."""
+    global _wikidata_errors, _wikidata_degraded_notified
+
+    if details.imdb_id:
+        return
+
+    if not settings.use_wikidata_fallback:
+        return
+
+    if _wikidata_errors >= _WIKIDATA_MAX_ERRORS:
+        if not _wikidata_degraded_notified:
+            logger.warning("_resolve_imdb_via_wikidata: degraded mode, skipping Wikidata fallback")
+            _wikidata_degraded_notified = True
+        return
+
+    wikidata_cache_key = f"wikidata_imdb_{kp_id}"
+
+    # 1. Fresh cache
+    cached = cache.get(wikidata_cache_key)
+    if cached is not None:
+        imdb_id = cached.get("imdb_id", "")
+        if imdb_id:
+            details.imdb_id = imdb_id
+            logger.info(f"_resolve_imdb_via_wikidata: cache hit kp_id={kp_id} -> {imdb_id}")
+        else:
+            logger.debug(f"_resolve_imdb_via_wikidata: cache hit (empty) kp_id={kp_id}")
+        return
+
+    # 2. Stale cache
+    stale = cache.get_stale(wikidata_cache_key)
+    if stale is not None:
+        imdb_id = stale.get("imdb_id", "")
+        if imdb_id:
+            details.imdb_id = imdb_id
+            logger.info(f"_resolve_imdb_via_wikidata: stale cache hit kp_id={kp_id} -> {imdb_id}")
+        return
+
+    # 3. SPARQL request
+    from wikidata_client import WikidataClient
+    client = WikidataClient(logger)
+    imdb_id = client.get_imdb_id_by_kp_id(kp_id)
+
+    if imdb_id is None:
+        _wikidata_errors += 1
+        if _wikidata_errors >= _WIKIDATA_MAX_ERRORS:
+            logger.warning(
+                f"_resolve_imdb_via_wikidata: {_wikidata_errors} errors, entering degraded mode"
+            )
+        return
+
+    # 4. Cache result (including empty)
+    cache.put(wikidata_cache_key, {"imdb_id": imdb_id})
+
+    if imdb_id:
+        details.imdb_id = imdb_id
+        logger.info(f"_resolve_imdb_via_wikidata: resolved kp_id={kp_id} -> {imdb_id}")
+    else:
+        logger.info(f"_resolve_imdb_via_wikidata: no IMDB ID found for kp_id={kp_id}")
 
 
 def _try_nfo_fallback_tvshow(
@@ -515,6 +579,8 @@ def _handle_getdetails(
         tvshow.cast = cast
     else:
         logger.info(f"_handle_getdetails: staff from NFO fallback for kp_id={kp_id}")
+
+    _resolve_imdb_via_wikidata(tvshow, kp_id, cache, settings, logger)
 
     _enrich_tvshow_with_omdb(tvshow, settings, logger, cache)
 

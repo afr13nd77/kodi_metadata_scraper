@@ -1740,3 +1740,144 @@ class TestTrailerIntegration:
 
         # parse_trailer_url should NOT be called (no data to parse)
         client.parse_trailer_url.assert_not_called()
+
+
+class TestWikidataFallback:
+    """Tests for _resolve_imdb_via_wikidata (T-07)."""
+
+    def setup_method(self):
+        """Reset Wikidata globals before each test."""
+        scraper_module._wikidata_errors = 0
+        scraper_module._wikidata_degraded_notified = False
+
+    def _make_details(self, imdb_id=""):
+        from models import MovieDetails
+        return MovieDetails(kinopoisk_id=500, imdb_id=imdb_id)
+
+    def _make_settings(self, use_wikidata_fallback=True):
+        settings = MagicMock()
+        settings.use_wikidata_fallback = use_wikidata_fallback
+        return settings
+
+    @patch("wikidata_client.WikidataClient")
+    def test_wikidata_fallback_resolves_imdb(self, MockWikidata):
+        """Wikidata returns tt0073486 -> details.imdb_id set, cache.put called."""
+        mock_client = MagicMock()
+        mock_client.get_imdb_id_by_kp_id.return_value = "tt0073486"
+        MockWikidata.return_value = mock_client
+
+        details = self._make_details(imdb_id="")
+        cache = MagicMock()
+        cache.get.return_value = None
+        cache.get_stale.return_value = None
+        settings = self._make_settings()
+        logger = _mock_logger()
+
+        scraper_module._resolve_imdb_via_wikidata(details, 500, cache, settings, logger)
+
+        assert details.imdb_id == "tt0073486"
+        cache.put.assert_called_once_with("wikidata_imdb_500", {"imdb_id": "tt0073486"})
+
+    @patch("wikidata_client.WikidataClient")
+    def test_wikidata_fallback_skipped_when_imdb_present(self, MockWikidata):
+        """details.imdb_id already set -> function returns immediately, no cache/network call."""
+        details = self._make_details(imdb_id="tt1234567")
+        cache = MagicMock()
+        settings = self._make_settings()
+        logger = _mock_logger()
+
+        scraper_module._resolve_imdb_via_wikidata(details, 500, cache, settings, logger)
+
+        MockWikidata.assert_not_called()
+        cache.get.assert_not_called()
+
+    @patch("wikidata_client.WikidataClient")
+    def test_wikidata_fallback_disabled_by_setting(self, MockWikidata):
+        """use_wikidata_fallback=False -> function returns immediately, WikidataClient not used."""
+        details = self._make_details(imdb_id="")
+        cache = MagicMock()
+        settings = self._make_settings(use_wikidata_fallback=False)
+        logger = _mock_logger()
+
+        scraper_module._resolve_imdb_via_wikidata(details, 500, cache, settings, logger)
+
+        MockWikidata.assert_not_called()
+
+    @patch("wikidata_client.WikidataClient")
+    def test_wikidata_fallback_cache_hit(self, MockWikidata):
+        """Fresh cache returns {"imdb_id": "tt0073486"} -> details set, no network call."""
+        details = self._make_details(imdb_id="")
+        cache = MagicMock()
+        cache.get.return_value = {"imdb_id": "tt0073486"}
+        settings = self._make_settings()
+        logger = _mock_logger()
+
+        scraper_module._resolve_imdb_via_wikidata(details, 500, cache, settings, logger)
+
+        assert details.imdb_id == "tt0073486"
+        MockWikidata.assert_not_called()
+
+    @patch("wikidata_client.WikidataClient")
+    def test_wikidata_fallback_cache_empty_result(self, MockWikidata):
+        """Fresh cache returns {"imdb_id": ""} -> imdb_id stays empty, no network call."""
+        details = self._make_details(imdb_id="")
+        cache = MagicMock()
+        cache.get.return_value = {"imdb_id": ""}
+        settings = self._make_settings()
+        logger = _mock_logger()
+
+        scraper_module._resolve_imdb_via_wikidata(details, 500, cache, settings, logger)
+
+        assert details.imdb_id == ""
+        MockWikidata.assert_not_called()
+
+    @patch("wikidata_client.WikidataClient")
+    def test_wikidata_fallback_degraded_mode(self, MockWikidata):
+        """_wikidata_errors >= 3 -> degraded mode, no cache/network call."""
+        scraper_module._wikidata_errors = 3
+
+        details = self._make_details(imdb_id="")
+        cache = MagicMock()
+        settings = self._make_settings()
+        logger = _mock_logger()
+
+        scraper_module._resolve_imdb_via_wikidata(details, 500, cache, settings, logger)
+
+        MockWikidata.assert_not_called()
+        cache.get.assert_not_called()
+
+    @patch("wikidata_client.WikidataClient")
+    def test_wikidata_fallback_error_increments_counter(self, MockWikidata):
+        """WikidataClient.get_imdb_id_by_kp_id returns None -> _wikidata_errors incremented, no cache.put."""
+        mock_client = MagicMock()
+        mock_client.get_imdb_id_by_kp_id.return_value = None
+        MockWikidata.return_value = mock_client
+
+        scraper_module._wikidata_errors = 0
+
+        details = self._make_details(imdb_id="")
+        cache = MagicMock()
+        cache.get.return_value = None
+        cache.get_stale.return_value = None
+        settings = self._make_settings()
+        logger = _mock_logger()
+
+        scraper_module._resolve_imdb_via_wikidata(details, 500, cache, settings, logger)
+
+        assert scraper_module._wikidata_errors == 1
+        cache.put.assert_not_called()
+
+    @patch("wikidata_client.WikidataClient")
+    def test_wikidata_fallback_stale_cache(self, MockWikidata):
+        """Fresh cache miss, stale cache returns {"imdb_id": "tt9999999"} -> details set, no network call."""
+        details = self._make_details(imdb_id="")
+        cache = MagicMock()
+        cache.get.return_value = None
+        cache.get_stale.return_value = {"imdb_id": "tt9999999"}
+        settings = self._make_settings()
+        logger = _mock_logger()
+
+        scraper_module._resolve_imdb_via_wikidata(details, 500, cache, settings, logger)
+
+        assert details.imdb_id == "tt9999999"
+        MockWikidata.assert_not_called()

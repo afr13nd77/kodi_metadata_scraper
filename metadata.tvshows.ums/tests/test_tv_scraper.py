@@ -35,6 +35,8 @@ def reset_kodi_mocks():
     tv_scraper_module._kp_unavailable_notified = False
     tv_scraper_module._stale_cache_notified = False
     tv_scraper_module._nfo_fallback_notified = False
+    tv_scraper_module._wikidata_errors = 0
+    tv_scraper_module._wikidata_degraded_notified = False
     # Clear season cache between tests
     tv_scraper_module._season_cache.clear()
     tv_scraper_module._cache_access_counter = 0
@@ -50,7 +52,8 @@ def _mock_settings(api_key="test-key", omdb_key="omdb-key",
                    enable_award_tags=False,
                    genre_language="ru",
                    clear_cache=False,
-                   enable_trailers=True):
+                   enable_trailers=True,
+                   use_wikidata_fallback=False):
     settings = MagicMock(spec=SettingsManager)
     settings.kinopoisk_api_key = api_key
     settings.omdb_api_key = omdb_key
@@ -65,6 +68,7 @@ def _mock_settings(api_key="test-key", omdb_key="omdb-key",
     settings.genre_language = genre_language
     settings.clear_cache = clear_cache
     settings.enable_trailers = enable_trailers
+    settings.use_wikidata_fallback = use_wikidata_fallback
     return settings
 
 
@@ -2501,3 +2505,48 @@ class TestTrailerIntegration:
         listitem_instance = xbmcgui.ListItem.return_value
         infotag_instance = listitem_instance.getVideoInfoTag.return_value
         infotag_instance.setTrailer.assert_called_once_with(self.TRAILER_URL)
+
+
+# ---------------------------------------------------------------------------
+# Tests for _resolve_imdb_via_wikidata in TV scraper
+# ---------------------------------------------------------------------------
+
+class TestWikidataFallbackTv:
+    """Tests for _resolve_imdb_via_wikidata integration in TV scraper."""
+
+    @patch("wikidata_client.WikidataClient")
+    def test_wikidata_fallback_resolves_imdb_tv(self, MockWikidata):
+        """Wikidata fallback resolves IMDB ID when cache miss and API returns a value."""
+        mock_client = MagicMock()
+        mock_client.get_imdb_id_by_kp_id.return_value = "tt0944947"
+        MockWikidata.return_value = mock_client
+
+        tvshow = TVShowDetails(kinopoisk_id=77269, imdb_id="")
+        cache = MagicMock()
+        cache.get.return_value = None
+        cache.get_stale.return_value = None
+        settings = MagicMock()
+        settings.use_wikidata_fallback = True
+        logger = MagicMock()
+
+        tv_scraper_module._wikidata_errors = 0
+        tv_scraper_module._wikidata_degraded_notified = False
+        tv_scraper_module._resolve_imdb_via_wikidata(tvshow, 77269, cache, settings, logger)
+
+        assert tvshow.imdb_id == "tt0944947"
+
+    @patch("wikidata_client.WikidataClient")
+    def test_wikidata_fallback_disabled_tv(self, MockWikidata):
+        """Wikidata fallback skipped when use_wikidata_fallback=False."""
+        tvshow = TVShowDetails(kinopoisk_id=77269, imdb_id="")
+        cache = MagicMock()
+        settings = MagicMock()
+        settings.use_wikidata_fallback = False
+        logger = MagicMock()
+
+        tv_scraper_module._wikidata_errors = 0
+        tv_scraper_module._wikidata_degraded_notified = False
+        tv_scraper_module._resolve_imdb_via_wikidata(tvshow, 77269, cache, settings, logger)
+
+        MockWikidata.assert_not_called()
+        assert tvshow.imdb_id == ""

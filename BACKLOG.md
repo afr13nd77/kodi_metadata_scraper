@@ -1,13 +1,22 @@
 # Бэклог — Ultimate Movie Scraper
 
-**Версия проекта:** 3.15.3 / 3.15.3 (movie / TV)
+**Версия проекта:** 3.16.0 / 3.16.0 (movie / TV)
 **Обновлён:** 09.06.2026
 
 ---
 
 ## 1. Качество поиска
 
-### 1.1 Реализовано
+### 1.1 Идеи
+
+| # | Название | Файл / модуль | Описание |
+|---|:---|:---|:---|
+| BL-37 | Ручной ввод KP ID | `scraper.py`, `tv_scraper.py`, `nfo_parser.py` | Пользователь указывает KP ID вручную через NFO (`<uniqueid type="kinopoisk">`) или настройку. Критично для редкого контента, где fuzzy-matching ошибается. |
+| BL-44 | Поиск по году ± 1 | `kinopoisk_api.py` | Фестивальные фильмы выходят в одном году, в прокат — в следующем. Fallback с tolerance ±1 при 0 результатах с точным годом. |
+| BL-45 | Стоп-слова для очистки названия | `utils.py`, `settings_manager.py` | Пользователь задаёт список слов, которые `clean_title()` всегда вырезает (например, `REMUX`, `HDR`, `IMAX`). Особенно нужно для контента с техническими кодировками в именах. |
+| BL-46 | Поиск по IMDB ID из имени файла | `utils.py`, `kinopoisk_api.py`, `scraper.py`, `tv_scraper.py` | Если в имени файла есть паттерн `tt\d+`, сразу резолвить через KP API `/v2.2/films?imdbId=tt...`, минуя fuzzy-search полностью. |
+
+### 1.2 Реализовано
 
 | # | Название | Файл / модуль | Описание |
 |---|:---|:---|:---|
@@ -26,9 +35,19 @@
 
 | # | Название | Файл / модуль | Описание |
 |---|:---|:---|:---|
-| BL-12 | OpenSubtitles | — (новый модуль) | Интеграция OpenSubtitles API: языки субтитров, хеши файлов. |
+| BL-43 | Бюджет и сборы в описании | `kinopoisk_api.py`, `scraper.py`, `tv_scraper.py` | KP API отдаёт `budget`, `grossRussia`, `grossWorld` в деталях фильма. Добавить в `plot` опционально (по аналогии с `show_ratings_in_plot`). |
+| BL-42 | TMDB ID lookup | `kinopoisk_api.py`, `models.py`, `scraper.py` | Резолвинг TMDB ID через бесплатный TMDb API (find by IMDB ID). Нужен для совместимости со скинами Kodi, подтягивающими доп. контент по TMDB ID. |
+| BL-47 | Биографии актёров | `kinopoisk_api.py`, `models.py` | KP API `/v1/staff/{id}` отдаёт краткое `description`. Kodi показывает его в карточке актёра при клике. |
+| BL-48 | Язык оригинала | `kinopoisk_api.py`, `models.py`, `scraper.py`, `tv_scraper.py` | На основе `countries` / `productionCountries` из KP API проставлять тег языка оригинала. Полезно для фильтрации иностранного контента. |
+| BL-49 | Теги тематики (keywords) | `kinopoisk_api.py`, `scraper.py`, `tv_scraper.py` | KP возвращает `keywords` для части фильмов. Добавлять как дополнительные `setTags()` рядом с тегами наград. |
 
-### 2.2 Реализовано
+### 2.2 Закрыто
+
+| # | Название | Причина |
+|---|:---|:---|
+| BL-12 | ~~OpenSubtitles~~ | `won't do` — без скачивания субтитров ценности мало. Информация о наличии языков без возможности загрузки не оправдывает доп. API-ключ и запросы. Для скачивания есть `service.subtitles.opensubtitles-com`. |
+
+### 2.3 Реализовано
 
 | # | Название | Файл / модуль | Описание |
 |---|:---|:---|:---|
@@ -48,6 +67,11 @@
 
 | # | Название | Файл / модуль | Описание |
 |---|:---|:---|:---|
+| BL-38 | Статус сериала | `models.py`, `tv_scraper.py` | KP API отдаёт `productionStatus` (`ENDED`, `CANCELED`, `IN_PRODUCTION` и др.). Маппинг в Kodi `setTvShowInfo(status=...)`. Отображается в карточке сериала. |
+| BL-40 | Сезонные постеры | `kinopoisk_api.py`, `tv_scraper.py` | KP API и TVMaze отдают постеры на уровне сезона. Kodi поддерживает season artwork через `setSeason()`. |
+| BL-41 | Превью эпизодов из TVMaze | `tvmaze_client.py`, `tv_scraper.py` | TVMaze возвращает `image.medium` для каждого эпизода. Передавать в `setEpisode(thumb=...)`. Работает при включённом `use_tvmaze`. |
+| BL-52 | Сортировка по absolute order (аниме) | `tv_scraper.py`, `settings_manager.py` | Для аниме нумерация KP и TVMaze часто расходится. Настройка `episode_order: absolute / aired` по аналогии с TheTVDB. |
+| BL-53 | Специальные эпизоды (Season 0) | `tv_scraper.py`, `kinopoisk_api.py`, `tvmaze_client.py` | KP и TVMaze отдают specials отдельно. Сейчас они теряются. Kodi поддерживает Season 0 для спешлов. |
 
 ### 3.2 Реализовано
 
@@ -67,6 +91,10 @@
 
 | # | Название | Файл / модуль | Описание |
 |---|:---|:---|:---|
+| BL-39 | Ротация нескольких API-ключей KP | `http_client.py`, `settings_manager.py` | Поддержка до 3 KP API-ключей. Round-robin при 429 или исчерпании дневной квоты (500 req/day на бесплатном тарифе). Снимает ограничения для больших библиотек. |
+| BL-50 | Мониторинг здоровья API | `http_client.py`, `logger.py` | Периодическая проверка доступности `kinopoiskapiunofficial.tech`. Toast-уведомление при деградации: пользователь понимает, что проблема на стороне API, а не аддона. |
+| BL-51 | Настраиваемый TTL кэша | `cache.py`, `settings_manager.py` | Сейчас TTL = 7 дней hardcoded. Вынести в настройку: 1 / 7 / 14 / 30 дней. Пользователи с нестабильной библиотекой выбирают меньше, с большой — больше. |
+| BL-58 | NFO: поиск видеофайла в директории | `nfo_writer.py`, `scraper.py` | Когда `ListItem.FileNameAndPath` возвращает директорию (автосканирование), найти видеофайл внутри через `xbmcvfs.listdir()` и создать `<filename>.nfo`. Улучшение к BL-57 fix (guard). **Риск:** увеличение времени сканирования на больших библиотеках, особенно когда все файлы хранятся в 1 директории (listdir на сетевом хранилище может быть медленным). |
 
 ### 4.3 Закрыто
 
@@ -83,6 +111,8 @@
 | BL-23 | Rate limiting | `http_client.py:12-37` | Token bucket `RateLimiter`, thread-safe. KP: 18 req/s, staff: 9 req/s. |
 | BL-20 | ✅ Персистентный кэш | `shared/cache.py`, `scraper.py`, `tv_scraper.py` | `FileCache` с TTL 7 дней, кэш details/staff/images/sequels/seasons/OMDb. Пустые результаты не кэшируются. Настройка "Очистить кэш". Спецификация: `docs/persistent-cache/`. |
 | BL-24 | ✅ Graceful degradation | `scraper.py`, `tv_scraper.py`, `cache.py`, `nfo_parser.py`, `http_client.py`, `kinopoisk_api.py` | Fallback-цепочка: свежий кэш → API → stale кэш → NFO → hard fail. Degraded mode (5с, 0 retries). Уведомления. Спецификация: `docs/graceful-degradation/`. |
+| BL-56 | ✅ Wikidata fallback для IMDB ID | `shared/wikidata_client.py`, `scraper.py`, `tv_scraper.py`, `settings_manager.py` | При пустом `imdbId` от KP API → SPARQL-запрос к Wikidata (P2603→P345). Кэширование результатов (включая пустые), degraded mode после 3 ошибок, stale cache fallback. Настройка `use_wikidata_fallback` (по умолч. вкл.). Спецификация: `docs/wikidata-fallback/`. |
+| BL-57 | ✅ NFO guard для директорий | `shared/nfo_writer.py`, `scraper.py` | Guard в `_get_movie_nfo_path` — если путь без расширения (директория при автосканировании), NFO не создаётся. Предотвращает скрытые `.nfo` файлы. |
 
 ---
 
@@ -95,6 +125,8 @@
 | BL-27 | Режим только-обновление | `scraper.py`, `tv_scraper.py` | Скрейпить только файлы без постера или описания. Экономия API-квоты. |
 | BL-28 | Dry-run режим | `scraper.py`, `tv_scraper.py` | Показать результаты без записи в БД Kodi. Отладка и проверка. |
 | BL-29 | CLI-утилита | — (новый скрипт) | Скрейпинг одного файла → stdout (JSON). Тестирование вне Kodi. |
+| BL-54 | Версия API в логах | `logger.py`, `kinopoisk_api.py` | При запуске логировать версию KP API endpoint и дату последнего успешного запроса. Упрощает диагностику при смене контракта API. |
+| BL-55 | Экспорт статистики | `scraper.py`, `tv_scraper.py`, `cache.py` | Количество скрапированных файлов, cache hits, ошибок API — в виде toast или лог-файла. Полезно для диагностики на больших библиотеках. |
 
 ### 5.2 Реализовано
 
@@ -111,7 +143,7 @@
 
 | # | Название | Файл / модуль | Описание |
 |---|:---|:---|:---|
-| BL-30 | Letterboxd / TMDB ID | `models.py`, `scraper.py` | Дополнительные внешние ID для совместимости с другими Kodi-аддонами. |
+| BL-30 | Letterboxd / TMDB ID | `models.py`, `scraper.py` | Дополнительные внешние ID для совместимости с другими Kodi-аддонами. Перекрыто BL-42 (TMDB ID lookup). |
 | BL-31 | Кинопоиск watchlist | — (новый модуль) | Импорт «Буду смотреть» в Kodi-плейлист. Требует OAuth/cookies. |
 
 ---
@@ -138,7 +170,7 @@
 
 | Статус | Кол-во | Пункты |
 |:---|:---|:---|
-| ✅ Реализовано | 26 | BL-01, BL-02, BL-03, BL-04, BL-05, BL-06, BL-07, BL-08, BL-09, BL-10, BL-11, BL-13, BL-14, BL-15, BL-16, BL-17, BL-18, BL-19, BL-20, BL-22, BL-23, BL-24, BL-25, BL-26, BL-35, BL-36 |
-| 💡 Идея | 8 | BL-12, BL-27..BL-34 |
-| ❌ Закрыто | 1 | BL-21 |
-| **Итого** | **36** | |
+| ✅ Реализовано | 28 | BL-01..BL-11, BL-13..BL-20, BL-22..BL-26, BL-35, BL-36, BL-56, BL-57 |
+| 💡 Идея | 27 | BL-27..BL-34, BL-37..BL-55, BL-58 |
+| ❌ Закрыто | 2 | BL-12, BL-21 |
+| **Итого** | **57** | |

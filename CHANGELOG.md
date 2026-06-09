@@ -1,5 +1,31 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
+## v3.16.0 (09.06.2026) — metadata.ums + metadata.tvshows.ums
+
+### Wikidata fallback для IMDB ID (BL-56)
+
+- При пустом `imdbId` от Kinopoisk API — автоматический SPARQL-запрос к Wikidata (`P2603 → P345`)
+- Без API-ключа, без VPN, без новых зависимостей
+- Кэширование результатов (включая пустые) через FileCache (TTL 7 дней)
+- Stale cache fallback при недоступности Wikidata
+- Degraded mode: после 3 последовательных ошибок Wikidata пропускается до конца сессии
+- Настройка "Wikidata fallback для IMDB ID" (по умолчанию включён)
+- Валидация IMDB ID формата (`tt\d{7,8}`)
+- Новый модуль `shared/wikidata_client.py`
+
+### Исправления (BL-57)
+
+- Исправлен NFO-экспорт: guard в `_get_movie_nfo_path` — если путь без расширения (директория), NFO не создаётся
+- Предотвращено создание скрытых файлов `.nfo` при автосканировании библиотеки
+
+### Тесты
+
+- 18 новых тестов: WikidataClient (8), movie scraper Wikidata (8), TV scraper Wikidata (2)
+- 6 live-тестов: Wikidata SPARQL для реальных фильмов (Elevation, Limitless, Terminator, Matrix, Silent Zone)
+- 5 новых тестов: NFO directory guard (BL-57)
+- Исправлен критический баг: свойство Wikidata P7374 (educational stage) заменено на P2603 (Kinopoisk film ID)
+- Всего 542 теста в suite (536 + 6 live), 128 TV = 670 тестов
+
 ## v3.15.3 (09.06.2026) — metadata.ums + metadata.tvshows.ums
 
 ### YouTube-трейлеры (BL-09)

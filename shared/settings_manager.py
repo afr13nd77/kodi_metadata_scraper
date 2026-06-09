@@ -92,6 +92,10 @@ class SettingsManager:
     def enable_trailers(self) -> bool:
         return self._addon.getSettingBool("enable_trailers")
 
+    @property
+    def use_wikidata_fallback(self) -> bool:
+        return self._addon.getSettingBool("use_wikidata_fallback")
+
     def validate(self) -> list[str]:
         errors = []
         if not self.kinopoisk_api_key:

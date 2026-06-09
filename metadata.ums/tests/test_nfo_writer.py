@@ -546,3 +546,49 @@ def test_nfo_parseable_by_nfo_parser():
 
     assert result.kinopoisk_id == 301
     assert result.imdb_id == "tt0133093"
+
+
+# ---------------------------------------------------------------------------
+# 18. test_get_movie_nfo_path_directory_trailing_slash  (BL-57)
+# ---------------------------------------------------------------------------
+
+def test_get_movie_nfo_path_directory_trailing_slash():
+    assert _get_movie_nfo_path("/movies/The Matrix (1999)/") == ""
+
+
+# ---------------------------------------------------------------------------
+# 19. test_get_movie_nfo_path_directory_backslash  (BL-57)
+# ---------------------------------------------------------------------------
+
+def test_get_movie_nfo_path_directory_backslash():
+    assert _get_movie_nfo_path("C:\\Movies\\The Matrix (1999)\\") == ""
+
+
+# ---------------------------------------------------------------------------
+# 20. test_get_movie_nfo_path_directory_no_extension  (BL-57)
+# ---------------------------------------------------------------------------
+
+def test_get_movie_nfo_path_directory_no_extension():
+    assert _get_movie_nfo_path("/movies/The Matrix (1999)") == ""
+
+
+# ---------------------------------------------------------------------------
+# 21. test_get_movie_nfo_path_normal_file  (BL-57)
+# ---------------------------------------------------------------------------
+
+def test_get_movie_nfo_path_normal_file():
+    assert _get_movie_nfo_path("/movies/The Matrix (1999).mkv") == "/movies/The Matrix (1999).nfo"
+
+
+# ---------------------------------------------------------------------------
+# 22. test_write_movie_nfo_directory_path_skips  (BL-57)
+# ---------------------------------------------------------------------------
+
+def test_write_movie_nfo_directory_path_skips(sample_movie, mock_settings, mock_logger):
+    with patch("nfo_writer.xbmcvfs") as mock_vfs:
+        write_movie_nfo(sample_movie, "smb://server/Movies/The Matrix (1999)/", mock_settings, mock_logger)
+
+    mock_vfs.File.assert_not_called()
+    mock_logger.info.assert_called()
+    logged_messages = " ".join(str(call) for call in mock_logger.info.call_args_list)
+    assert "directory path detected" in logged_messages

@@ -29,6 +29,13 @@ def write_movie_nfo(
 
         nfo_path = _get_movie_nfo_path(file_path)
 
+        if not nfo_path:
+            logger.info(
+                f"write_movie_nfo: directory path detected, skipping nfo export "
+                f"kp_id={details.kinopoisk_id} path={file_path}"
+            )
+            return
+
         if xbmcvfs.exists(nfo_path) and not settings.nfo_overwrite:
             logger.info(
                 f"write_movie_nfo: nfo already exists and overwrite disabled, "
@@ -234,8 +241,15 @@ def _write_nfo_file(xml_content: str, nfo_path: str, logger: Logger) -> bool:
 
 
 def _get_movie_nfo_path(video_file_path: str) -> str:
-    """Return NFO path by replacing video file extension with .nfo."""
-    root, _ = os.path.splitext(video_file_path)
+    """Return NFO path by replacing video file extension with .nfo.
+
+    Returns empty string if the path has no extension (i.e. it is a directory),
+    which happens when Kodi passes a folder path instead of a file path during
+    library scanning via xbmc.getInfoLabel("ListItem.FileNameAndPath").
+    """
+    root, ext = os.path.splitext(video_file_path)
+    if not ext:
+        return ""
     return root + ".nfo"
 
 

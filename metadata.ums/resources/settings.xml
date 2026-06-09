@@ -127,6 +127,13 @@
           <control type="toggle"/>
         </setting>
       </group>
+      <group id="3l">
+        <setting id="use_wikidata_fallback" type="boolean" label="Wikidata fallback для IMDB ID" help="Получать IMDB ID из Wikidata, когда Кинопоиск не знает его. Без API-ключа.">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle"/>
+        </setting>
+      </group>
     </category>
     <category id="advanced" label="32200" help="">
       <group id="4">
