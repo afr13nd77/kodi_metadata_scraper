@@ -38,6 +38,7 @@
 - Детекция дублей Kinopoisk ID с уведомлением в Kodi
 - Graceful degradation: работа при недоступном API через stale-кэш и NFO-файлы
 - YouTube-трейлеры из Kinopoisk API с кэшированием и graceful degradation
+- Wikidata fallback: автоматическое получение IMDB ID через Wikidata SPARQL, когда Кинопоиск не знает его (без API-ключа)
 
 ### metadata.tvshows.ums -- TV Show Scraper
 
@@ -60,6 +61,7 @@
 - Детекция дублей Kinopoisk ID
 - Graceful degradation: работа при недоступном API через stale-кэш и NFO-файлы
 - YouTube-трейлеры из Kinopoisk API
+- Wikidata fallback для IMDB ID (аналогично movie scraper)
 
 ### Общее
 
@@ -111,6 +113,7 @@
 | `overwrite_nfo` | Перезаписывать существующие .nfo-файлы (видно только при включённом экспорте) |
 | `enable_duplicate_detection` | Предупреждать при назначении одного Kinopoisk ID разным файлам (по умолчанию вкл) |
 | `enable_trailers` | Загружать YouTube-трейлеры из Кинопоиска (по умолчанию вкл) |
+| `use_wikidata_fallback` | Получать IMDB ID из Wikidata, когда Кинопоиск не знает его (по умолчанию вкл) |
 | `debug_logging` | Включить подробное логирование |
 
 Каждый аддон (movie и TV) имеет свой независимый набор настроек.
@@ -126,7 +129,7 @@ metadata.tvshows.ums/    — TV show scraper addon
 build_zip.py             — сборка обоих ZIP-пакетов
 ```
 
-Общие модули (`shared/`) включают: HTTP-клиент с retry-логикой, клиент Kinopoisk API, клиент OMDb, клиент TVMaze, парсер NFO, NFO-экспорт (генерация XML), менеджер настроек, систему логирования, модели данных, персистентный файловый кэш и трекер дубликатов.
+Общие модули (`shared/`) включают: HTTP-клиент с retry-логикой, клиент Kinopoisk API, клиент OMDb, клиент TVMaze, клиент Wikidata SPARQL, парсер NFO, NFO-экспорт (генерация XML), менеджер настроек, систему логирования, модели данных, персистентный файловый кэш и трекер дубликатов.
 
 ---
 
@@ -150,7 +153,13 @@ cd metadata.ums && python -m pytest tests/ -v
 cd metadata.tvshows.ums && python -m pytest tests/ -v
 ```
 
-Всего: **641 тестов** (515 movie + 126 TV).
+Всего: **670 тестов** (542 movie + 128 TV).
+
+### Линтинг
+
+```bash
+ruff check .
+```
 
 ### Сборка ZIP-пакетов
 
@@ -169,6 +178,7 @@ python build_zip.py
 | Kinopoisk Unofficial API (`kinopoiskapiunofficial.tech`) | Метаданные, актёры, постеры, сезоны, эпизоды | Основной, обязательный |
 | OMDb API (`omdbapi.com`) | Рейтинги IMDB, Rotten Tomatoes, Metacritic (в рейтинговой базе Kodi) | Дополнительный, опциональный |
 | TVMaze API (`api.tvmaze.com`) | Описания эпизодов, разрешение IMDB ID (TV scraper) | Дополнительный, опциональный |
+| Wikidata SPARQL (`query.wikidata.org`) | Fallback для IMDB ID по Kinopoisk ID | Дополнительный, без API-ключа |
 
 TMDb **не используется**.
 

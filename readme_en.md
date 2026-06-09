@@ -31,6 +31,7 @@ UMS is a metadata scraper for Kodi that fetches rich movie and TV show informati
 - Duplicate Kinopoisk ID detection with toast notification
 - Graceful degradation: offline operation via stale cache and NFO file fallback
 - YouTube trailers from Kinopoisk API with caching and graceful degradation
+- Wikidata fallback: automatic IMDB ID resolution via Wikidata SPARQL when Kinopoisk doesn't have it (no API key needed)
 
 ### TV Show Scraper (`metadata.tvshows.ums`)
 
@@ -52,6 +53,7 @@ UMS is a metadata scraper for Kodi that fetches rich movie and TV show informati
 - Duplicate Kinopoisk ID detection
 - Graceful degradation: offline operation via stale cache and NFO file fallback
 - YouTube trailers from Kinopoisk API
+- Wikidata fallback for IMDB ID (same as movie scraper)
 
 ### Shared
 
@@ -71,6 +73,7 @@ UMS is a metadata scraper for Kodi that fetches rich movie and TV show informati
 | Kinopoisk Unofficial API (`kinopoiskapiunofficial.tech`) | Metadata, cast, posters, seasons, episodes | Primary, required |
 | OMDb API (`omdbapi.com`) | IMDB, Rotten Tomatoes, Metacritic ratings | Supplementary, optional |
 | TVMaze API (`api.tvmaze.com`) | Episode descriptions, IMDB ID resolution (TV only) | Supplementary, optional |
+| Wikidata SPARQL (`query.wikidata.org`) | IMDB ID fallback via Kinopoisk ID | Supplementary, no API key |
 
 TMDb is **not** used.
 
@@ -116,6 +119,7 @@ Each addon (movie and TV) has its own independent settings panel.
 | `overwrite_nfo` | Overwrite existing .nfo files (visible only when export is enabled) |
 | `enable_duplicate_detection` | Warn when the same Kinopoisk ID is assigned to different files (on by default) |
 | `enable_trailers` | Fetch YouTube trailers from Kinopoisk (on by default) |
+| `use_wikidata_fallback` | Resolve IMDB ID from Wikidata when Kinopoisk doesn't have it (on by default) |
 | `debug_logging` | Enable verbose logging |
 
 ---
@@ -130,7 +134,7 @@ build_zip.py             -- builds both ZIP packages
 docs/                    -- feature specifications (requirements, design, tasks)
 ```
 
-Shared modules include: HTTP client with retry logic, Kinopoisk API client, OMDb client, TVMaze client, NFO parser, NFO writer/exporter, settings manager, logging system, data models (dataclasses), persistent file cache, and duplicate tracker.
+Shared modules include: HTTP client with retry logic, Kinopoisk API client, OMDb client, TVMaze client, Wikidata SPARQL client, NFO parser, NFO writer/exporter, settings manager, logging system, data models (dataclasses), persistent file cache, and duplicate tracker.
 
 ---
 
@@ -141,18 +145,18 @@ Shared modules include: HTTP client with retry logic, Kinopoisk API client, OMDb
 ```
 python -m venv .venv
 .venv\Scripts\activate
-pip install -r requirements.txt
+pip install pytest
 ```
 
 ### Running Tests
 
-641 tests total (515 movie + 126 TV).
+670 tests total (542 movie + 128 TV).
 
 ```bash
-# Movie scraper tests (491 tests)
+# Movie scraper tests (542 tests)
 cd metadata.ums && python -m pytest tests/ -v
 
-# TV scraper tests (122 tests)
+# TV scraper tests (128 tests)
 cd metadata.tvshows.ums && python -m pytest tests/ -v
 ```
 
