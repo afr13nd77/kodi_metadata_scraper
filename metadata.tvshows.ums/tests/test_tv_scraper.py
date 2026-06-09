@@ -2550,3 +2550,264 @@ class TestWikidataFallbackTv:
 
         MockWikidata.assert_not_called()
         assert tvshow.imdb_id == ""
+
+
+# ---------------------------------------------------------------------------
+# BL-60: Premiere date from distributions in _handle_getdetails
+# ---------------------------------------------------------------------------
+
+class TestBL60PremiereDate:
+    """Tests for BL-60: fetching premiere date via distributions API."""
+
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_distributions_fetched_and_premiere_set(self, MockClient, MockCache):
+        """_handle_getdetails fetches distributions and sets premiere_date on TVShowDetails."""
+        mock_cache = MockCache.return_value
+        distributions_data = {"items": [{"type": {"value": "WORLD_PREMIER"}, "date": "2008-01-20"}]}
+
+        def cache_get_side_effect(key):
+            if key == "kp_distributions_462682":
+                return None
+            return None
+        mock_cache.get.side_effect = cache_get_side_effect
+
+        mock_client = MockClient.return_value
+        mock_client.fetch_details_raw.return_value = {"id": 462682}
+        mock_client.parse_details.return_value = MovieDetails(
+            kinopoisk_id=462682, imdb_id="tt0903747",
+            title_ru="Во все тяжкие", title_original="Breaking Bad",
+            year=2008, plot="Описание", ratings=[]
+        )
+        mock_client.fetch_staff_raw.return_value = None
+        mock_client.parse_staff.return_value = ([], [], [])
+        mock_client.fetch_distributions_raw.return_value = distributions_data
+        mock_client.parse_premiere_date.return_value = "2008-01-20"
+
+        settings = _mock_settings(show_ratings_in_plot=False, enable_trailers=False)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        mock_client.fetch_distributions_raw.assert_called_once_with(462682)
+        mock_cache.put.assert_any_call("kp_distributions_462682", distributions_data)
+        mock_client.parse_premiere_date.assert_called_once_with(distributions_data)
+        # setPremiered should be called via _apply_tvshow_details_to_listitem
+        listitem_instance = xbmcgui.ListItem.return_value
+        infotag_instance = listitem_instance.getVideoInfoTag.return_value
+        infotag_instance.setPremiered.assert_called_once_with("2008-01-20")
+
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_distributions_from_cache(self, MockClient, MockCache):
+        """_handle_getdetails uses cached distributions data."""
+        mock_cache = MockCache.return_value
+        cached_dist = {"items": [{"type": {"value": "WORLD_PREMIER"}, "date": "2008-01-20"}]}
+
+        def cache_get_side_effect(key):
+            if key == "kp_distributions_462682":
+                return cached_dist
+            return None
+        mock_cache.get.side_effect = cache_get_side_effect
+
+        mock_client = MockClient.return_value
+        mock_client.fetch_details_raw.return_value = {"id": 462682}
+        mock_client.parse_details.return_value = MovieDetails(
+            kinopoisk_id=462682, imdb_id="tt0903747",
+            title_ru="Во все тяжкие", title_original="Breaking Bad",
+            year=2008, plot="Описание", ratings=[]
+        )
+        mock_client.fetch_staff_raw.return_value = None
+        mock_client.parse_staff.return_value = ([], [], [])
+        mock_client.parse_premiere_date.return_value = "2008-01-20"
+
+        settings = _mock_settings(show_ratings_in_plot=False, enable_trailers=False)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        mock_client.fetch_distributions_raw.assert_not_called()
+        mock_client.parse_premiere_date.assert_called_once_with(cached_dist)
+
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_distributions_error_graceful_degradation(self, MockClient, MockCache):
+        """_handle_getdetails handles distributions error without breaking the flow."""
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = None
+
+        mock_client = MockClient.return_value
+        mock_client.fetch_details_raw.return_value = {"id": 462682}
+        mock_client.parse_details.return_value = MovieDetails(
+            kinopoisk_id=462682, imdb_id="tt0903747",
+            title_ru="Во все тяжкие", title_original="Breaking Bad",
+            year=2008, plot="Описание", ratings=[]
+        )
+        mock_client.fetch_staff_raw.return_value = None
+        mock_client.parse_staff.return_value = ([], [], [])
+        mock_client.fetch_distributions_raw.side_effect = Exception("API timeout")
+
+        settings = _mock_settings(show_ratings_in_plot=False, enable_trailers=False)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        logger.warning.assert_any_call(
+            "_handle_getdetails: distributions error for kp_id=462682: API timeout"
+        )
+
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_distributions_empty_premiere_no_setPremiered(self, MockClient, MockCache):
+        """When premiere_date is empty, setPremiered is not called."""
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = None
+
+        mock_client = MockClient.return_value
+        mock_client.fetch_details_raw.return_value = {"id": 462682}
+        mock_client.parse_details.return_value = MovieDetails(
+            kinopoisk_id=462682, imdb_id="tt0903747",
+            title_ru="Во все тяжкие", title_original="Breaking Bad",
+            year=2008, plot="Описание", ratings=[]
+        )
+        mock_client.fetch_staff_raw.return_value = None
+        mock_client.parse_staff.return_value = ([], [], [])
+        mock_client.fetch_distributions_raw.return_value = {"items": []}
+        mock_client.parse_premiere_date.return_value = ""
+
+        settings = _mock_settings(show_ratings_in_plot=False, enable_trailers=False)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        listitem_instance = xbmcgui.ListItem.return_value
+        infotag_instance = listitem_instance.getVideoInfoTag.return_value
+        infotag_instance.setPremiered.assert_not_called()
+
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_distributions_skipped_on_fallback(self, MockClient, MockCache):
+        """Distributions are NOT fetched when serving from stale cache (from_fallback=True)."""
+        mock_cache = MockCache.return_value
+
+        def cache_get_side_effect(key):
+            return None
+        mock_cache.get.side_effect = cache_get_side_effect
+        mock_cache.get_stale.return_value = {"id": 462682}
+
+        mock_client = MockClient.return_value
+        mock_client.fetch_details_raw.return_value = None
+        mock_client.parse_details.return_value = MovieDetails(
+            kinopoisk_id=462682, imdb_id="tt0903747",
+            title_ru="Во все тяжкие", title_original="Breaking Bad",
+            year=2008, plot="Описание", ratings=[]
+        )
+        mock_client.fetch_staff_raw.return_value = None
+        mock_client.parse_staff.return_value = ([], [], [])
+
+        settings = _mock_settings(show_ratings_in_plot=False, enable_trailers=False)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        mock_client.fetch_distributions_raw.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# BL-61: setPlotOutline and setPremiered in _apply_tvshow_details_to_listitem
+# ---------------------------------------------------------------------------
+
+class TestBL61PlotOutlineAndPremiered:
+    """Tests for BL-61: setPlotOutline and setPremiered in _apply_tvshow_details_to_listitem."""
+
+    def test_setPlotOutline_called_when_present(self):
+        """setPlotOutline is called when details.plot_outline is non-empty."""
+        details = _make_tvshow_details()
+        details.plot_outline = "Краткое описание сериала"
+
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+
+        settings = _mock_settings(show_ratings_in_plot=False)
+        logger = _mock_logger()
+
+        _apply_tvshow_details_to_listitem(details, listitem, settings, logger)
+
+        infotag.setPlotOutline.assert_called_once_with("Краткое описание сериала")
+
+    def test_setPlotOutline_not_called_when_empty(self):
+        """setPlotOutline is NOT called when details.plot_outline is empty."""
+        details = _make_tvshow_details()
+        details.plot_outline = ""
+
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+
+        settings = _mock_settings(show_ratings_in_plot=False)
+        logger = _mock_logger()
+
+        _apply_tvshow_details_to_listitem(details, listitem, settings, logger)
+
+        infotag.setPlotOutline.assert_not_called()
+
+    def test_setPremiered_called_when_present(self):
+        """setPremiered is called when details.premiere_date is non-empty."""
+        details = _make_tvshow_details()
+        details.premiere_date = "2008-01-20"
+
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+
+        settings = _mock_settings(show_ratings_in_plot=False)
+        logger = _mock_logger()
+
+        _apply_tvshow_details_to_listitem(details, listitem, settings, logger)
+
+        infotag.setPremiered.assert_called_once_with("2008-01-20")
+
+    def test_setPremiered_not_called_when_empty(self):
+        """setPremiered is NOT called when details.premiere_date is empty."""
+        details = _make_tvshow_details()
+        details.premiere_date = ""
+
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+
+        settings = _mock_settings(show_ratings_in_plot=False)
+        logger = _mock_logger()
+
+        _apply_tvshow_details_to_listitem(details, listitem, settings, logger)
+
+        infotag.setPremiered.assert_not_called()
+
+    def test_both_plot_outline_and_premiere_set(self):
+        """Both setPlotOutline and setPremiered are called when both fields are present."""
+        details = _make_tvshow_details()
+        details.plot_outline = "Краткое описание"
+        details.premiere_date = "2008-01-20"
+
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+
+        settings = _mock_settings(show_ratings_in_plot=False)
+        logger = _mock_logger()
+
+        _apply_tvshow_details_to_listitem(details, listitem, settings, logger)
+
+        infotag.setPlotOutline.assert_called_once_with("Краткое описание")
+        infotag.setPremiered.assert_called_once_with("2008-01-20")

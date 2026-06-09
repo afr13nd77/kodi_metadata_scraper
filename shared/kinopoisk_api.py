@@ -262,6 +262,7 @@ class KinopoiskClient:
             title_original=data.get("nameOriginal", "") or data.get("nameEn", ""),
             year=self._safe_int(data.get("year", 0)),
             plot=data.get("description", "") or "",
+            plot_outline=data.get("shortDescription", "") or "",
             tagline=self._clean_tagline(data.get("slogan", "") or ""),
             runtime=self._safe_int(data.get("filmLength", 0)),
             mpaa=mpaa,
@@ -295,6 +296,7 @@ class KinopoiskClient:
         self._logger.info(
             f"KinopoiskClient.parse_details: parsed kp_id={details.kinopoisk_id}, "
             f"title='{details.title_ru}', "
+            f"plot_outline={'yes' if details.plot_outline else 'no'}, "
             f"{len(details.ratings)} ratings, {len(details.artwork)} artwork"
         )
         return details
@@ -305,6 +307,65 @@ class KinopoiskClient:
         if data is None:
             return None
         return self.parse_details(data, genre_language)
+
+    # ------------------------------------------------------------------
+    # distributions: fetch_raw + parse_premiere_date
+    # ------------------------------------------------------------------
+
+    def fetch_distributions_raw(self, kinopoisk_id: int) -> Optional[dict]:
+        """HTTP request for film distributions (premiere dates), returns raw dict."""
+        self._logger.info(f"KinopoiskClient.fetch_distributions_raw: kp_id={kinopoisk_id}")
+        try:
+            data = self._http.get_json(f"v2.2/films/{kinopoisk_id}/distributions")
+        except HttpError as e:
+            self._logger.error(f"KinopoiskClient.fetch_distributions_raw failed: {e}")
+            return None
+        self._logger.info(
+            f"KinopoiskClient.fetch_distributions_raw: success for kp_id={kinopoisk_id}, "
+            f"total={data.get('total', 0)}"
+        )
+        return data
+
+    def parse_premiere_date(self, data: dict) -> str:
+        """Extract premiere date from distributions response.
+
+        Priority: WORLD_PREMIER > COUNTRY_SPECIFIC (Россия) > PREMIERE > empty.
+        Returns date in YYYY-MM-DD format or empty string.
+        """
+        world_dates = []
+        russia_dates = []
+        premiere_dates = []
+
+        for item in data.get("items", []):
+            item_type = item.get("type", "")
+            date_str = item.get("date") or ""
+            if not date_str:
+                continue
+
+            if item_type == "WORLD_PREMIER":
+                world_dates.append(date_str)
+            elif item_type == "COUNTRY_SPECIFIC":
+                country = item.get("country") or {}
+                if country.get("country") == "Россия":
+                    russia_dates.append(date_str)
+            elif item_type == "PREMIERE":
+                premiere_dates.append(date_str)
+
+        if world_dates:
+            result = min(world_dates)
+            self._logger.info(f"KinopoiskClient.parse_premiere_date: WORLD_PREMIER={result}")
+            return result
+        if russia_dates:
+            result = min(russia_dates)
+            self._logger.info(f"KinopoiskClient.parse_premiere_date: COUNTRY_SPECIFIC (Россия)={result}")
+            return result
+        if premiere_dates:
+            result = min(premiere_dates)
+            self._logger.info(f"KinopoiskClient.parse_premiere_date: PREMIERE={result}")
+            return result
+
+        self._logger.info("KinopoiskClient.parse_premiere_date: no premiere date found")
+        return ""
 
     # ------------------------------------------------------------------
     # staff: fetch_raw + parse + backward-compatible wrapper

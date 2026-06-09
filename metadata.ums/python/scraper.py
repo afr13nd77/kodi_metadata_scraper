@@ -517,6 +517,29 @@ def _handle_getdetails(
     else:
         logger.info(f"_handle_getdetails: staff from NFO fallback for kp_id={kp_id}")
 
+    # BL-60: premiere date from distributions
+    if not details.premiere_date:
+        try:
+            distributions_cache_key = f"distributions_{kp_id}"
+            cached_distributions = cache.get(distributions_cache_key)
+            if cached_distributions is not None:
+                logger.info(f"_handle_getdetails: distributions from cache for kp_id={kp_id}")
+                details.premiere_date = kp_client.parse_premiere_date(cached_distributions)
+            elif not from_fallback and not _kp_unavailable:
+                distributions_raw = kp_client.fetch_distributions_raw(kp_id)
+                if distributions_raw is not None:
+                    cache.put(distributions_cache_key, distributions_raw)
+                    details.premiere_date = kp_client.parse_premiere_date(distributions_raw)
+            elif _kp_unavailable:
+                stale_distributions = cache.get_stale(distributions_cache_key)
+                if stale_distributions is not None:
+                    details.premiere_date = kp_client.parse_premiere_date(stale_distributions)
+                    logger.info(f"_handle_getdetails: distributions from stale cache for kp_id={kp_id}")
+        except Exception as exc:
+            logger.warning(f"_handle_getdetails: distributions error for kp_id={kp_id}: {exc}")
+    else:
+        logger.info(f"_handle_getdetails: premiere_date already set for kp_id={kp_id}: {details.premiere_date}")
+
     if settings.enable_collections:
         try:
             cache_key_sequels = f"kp_sequels_{kp_id}"
@@ -708,6 +731,17 @@ def _apply_movie_details_to_listitem(
     infotag.setTitle(details.title_ru)
     infotag.setOriginalTitle(details.title_original)
     infotag.setPlot(details.plot)
+
+    # BL-61: plot outline (shortDescription from KP)
+    if details.plot_outline:
+        infotag.setPlotOutline(details.plot_outline)
+        logger.info(f"_apply_movie_details: setPlotOutline (len={len(details.plot_outline)})")
+
+    # BL-60: premiered date from distributions
+    if details.premiere_date:
+        infotag.setPremiered(details.premiere_date)
+        logger.info(f"_apply_movie_details: setPremiered={details.premiere_date}")
+
     infotag.setTagLine(details.tagline)
 
     infotag.setYear(details.year)

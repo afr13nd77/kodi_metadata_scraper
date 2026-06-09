@@ -1,5 +1,15 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
+## v3.17.0 — 10.06.2026
+
+### Новое
+- **BL-61: Краткое описание (setPlotOutline)** — поле `shortDescription` из KP API передаётся в Kodi через нативный `setPlotOutline()`. Отображается в карточке фильма/сериала как краткий анонс.
+- **BL-60: Дата премьеры (setPremiered)** — дата мировой премьеры из KP API endpoint `/v2.2/films/{id}/distributions` передаётся через нативный `setPremiered()`. Приоритет: WORLD_PREMIER > Россия > PREMIERE. Кэширование, graceful degradation.
+- NFO roundtrip: теги `<outline>` и `<premiered>` поддерживаются в записи и чтении .nfo файлов.
+
+### Тесты
+- 686 тестов (548 movie + 138 TV). +22 новых тестов для BL-60/BL-61.
+
 ## v3.16.0 (09.06.2026) — metadata.ums + metadata.tvshows.ums
 
 ### Wikidata fallback для IMDB ID (BL-56)

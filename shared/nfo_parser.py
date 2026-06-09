@@ -242,6 +242,16 @@ class NfoParser:
             tags=self._text_list(root, "tag"),
         )
 
+        plot_outline = self._text(root, "outline")
+        if plot_outline:
+            details.plot_outline = plot_outline
+            self._logger.info("NfoParser.parse_full_movie: found <outline>")
+
+        premiere_date = self._text(root, "premiered")
+        if premiere_date:
+            details.premiere_date = premiere_date
+            self._logger.info(f"NfoParser.parse_full_movie: found <premiered>={premiere_date}")
+
         self._parse_uniqueids(root, details)
         details.ratings = self._parse_ratings(root)
         details.directors = self._parse_directors(root)
@@ -258,7 +268,7 @@ class NfoParser:
         trailer_text = self._text(root, "trailer")
         if trailer_text:
             details.trailer_url = trailer_text
-            self._logger.debug("NfoParser.parse_full_movie: trailer_url='%s'", trailer_text)
+            self._logger.debug(f"NfoParser.parse_full_movie: trailer_url='{trailer_text}'")
 
         self._logger.info(
             f"NfoParser.parse_full_movie: success title='{details.title_ru}', "
@@ -294,6 +304,16 @@ class NfoParser:
             tags=self._text_list(root, "tag"),
         )
 
+        plot_outline = self._text(root, "outline")
+        if plot_outline:
+            details.plot_outline = plot_outline
+            self._logger.info("NfoParser.parse_full_tvshow: found <outline>")
+
+        premiere_date = self._text(root, "premiered")
+        if premiere_date:
+            details.premiere_date = premiere_date
+            self._logger.info(f"NfoParser.parse_full_tvshow: found <premiered>={premiere_date}")
+
         self._parse_uniqueids(root, details)
         details.ratings = self._parse_ratings(root)
         details.directors = self._parse_directors(root)
@@ -304,7 +324,7 @@ class NfoParser:
         trailer_text = self._text(root, "trailer")
         if trailer_text:
             details.trailer_url = trailer_text
-            self._logger.debug("NfoParser.parse_full_tvshow: trailer_url='%s'", trailer_text)
+            self._logger.debug(f"NfoParser.parse_full_tvshow: trailer_url='{trailer_text}'")
 
         self._logger.info(
             f"NfoParser.parse_full_tvshow: success title='{details.title_ru}', "

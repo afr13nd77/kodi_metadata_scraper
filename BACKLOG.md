@@ -1,7 +1,7 @@
 # Бэклог — Ultimate Movie Scraper
 
-**Версия проекта:** 3.16.0 / 3.16.0 (movie / TV)
-**Обновлён:** 09.06.2026
+**Версия проекта:** 3.17.0 / 3.17.0 (movie / TV)
+**Обновлён:** 10.06.2026
 
 ---
 
@@ -35,17 +35,21 @@
 
 | # | Название | Файл / модуль | Описание |
 |---|:---|:---|:---|
-| BL-43 | Бюджет и сборы в описании | `kinopoisk_api.py`, `scraper.py`, `tv_scraper.py` | KP API отдаёт `budget`, `grossRussia`, `grossWorld` в деталях фильма. Добавить в `plot` опционально (по аналогии с `show_ratings_in_plot`). |
 | BL-42 | TMDB ID lookup | `kinopoisk_api.py`, `models.py`, `scraper.py` | Резолвинг TMDB ID через бесплатный TMDb API (find by IMDB ID). Нужен для совместимости со скинами Kodi, подтягивающими доп. контент по TMDB ID. |
 | BL-47 | Биографии актёров | `kinopoisk_api.py`, `models.py` | KP API `/v1/staff/{id}` отдаёт краткое `description`. Kodi показывает его в карточке актёра при клике. |
 | BL-48 | Язык оригинала | `kinopoisk_api.py`, `models.py`, `scraper.py`, `tv_scraper.py` | На основе `countries` / `productionCountries` из KP API проставлять тег языка оригинала. Полезно для фильтрации иностранного контента. |
 | BL-49 | Теги тематики (keywords) | `kinopoisk_api.py`, `scraper.py`, `tv_scraper.py` | KP возвращает `keywords` для части фильмов. Добавлять как дополнительные `setTags()` рядом с тегами наград. |
+| BL-63 | Названия сезонов (addSeason) | `tv_scraper.py`, `tvmaze_client.py` | KP API `/seasons` НЕ отдаёт названия сезонов. Требуется TVMaze как источник (отдельное исследование). Передавать через нативный `addSeason(number, name)`. |
+| BL-64 | Режиссёры и сценаристы эпизодов | `tv_scraper.py`, `tvmaze_client.py` | TVMaze отдаёт crew для каждого эпизода. Передавать через `setDirectors()` и `setWriters()` на уровне эпизода. Сейчас эти поля заполняются только на уровне сериала. |
+| BL-65 | Сортировка по оригинальному названию (setSortTitle) | `scraper.py`, `tv_scraper.py` | Передавать `title_original` через `setSortTitle()`, чтобы фильмы сортировались по оригинальному названию (латиницей), а отображались по-русски. |
 
 ### 2.2 Закрыто
 
 | # | Название | Причина |
 |---|:---|:---|
 | BL-12 | ~~OpenSubtitles~~ | `won't do` — без скачивания субтитров ценности мало. Информация о наличии языков без возможности загрузки не оправдывает доп. API-ключ и запросы. Для скачивания есть `service.subtitles.opensubtitles-com`. |
+| BL-43 | ~~Бюджет и сборы в описании~~ | `won't do` — Kodi не имеет нативных полей для бюджета/сборов (нет `setBudget()`, `setRevenue()` в InfoTagVideo, нет колонок в MyVideos.db). Добавление в plot засоряет описание. |
+| BL-62 | ~~Позиция в TOP-250 (setTop250)~~ | `won't do` — KP API endpoint `/v2.2/films/top?type=TOP_250_BEST_FILMS` не содержит позицию фильма. Для определения позиции нужно загрузить все 13 страниц (250 фильмов) — нецелесообразно при лимите 500 req/day. |
 
 ### 2.3 Реализовано
 
@@ -58,6 +62,8 @@
 | BL-10 | ✅ Теги наград | `omdb_client.py`, `scraper.py`, `tv_scraper.py` | Парсинг OMDb Awards → теги Оскар/Глобус/Эмми/BAFTA/Канны → `setTags()`. Спецификация: `docs/award-tags/`. |
 | BL-11 | ✅ Нормализация жанров | `kinopoisk_api.py`, `settings_manager.py` | Маппинг 31 жанра KP рус→англ, настройка "Язык жанров". Спецификация: `docs/genre-normalization/`. |
 | BL-09 | ✅ Трейлеры YouTube | `kinopoisk_api.py`, `scraper.py`, `tv_scraper.py`, `nfo_writer.py`, `nfo_parser.py` | YouTube-трейлеры из KP API `/v2.2/films/{id}/videos` → `setTrailer()`. Кэш, graceful degradation, NFO roundtrip. Спецификация: `docs/youtube-trailers/`. |
+| BL-61 | ✅ Краткое описание (setPlotOutline) | `kinopoisk_api.py`, `models.py`, `scraper.py`, `tv_scraper.py`, `nfo_writer.py`, `nfo_parser.py` | Поле `shortDescription` из KP API → `setPlotOutline()`. NFO roundtrip через `<outline>`. Спецификация: `docs/native-kodi-fields/`. |
+| BL-60 | ✅ Дата премьеры (setPremiered) | `kinopoisk_api.py`, `models.py`, `scraper.py`, `tv_scraper.py`, `nfo_writer.py`, `nfo_parser.py` | Дата из `/v2.2/films/{id}/distributions` → `setPremiered()`. Приоритет: WORLD_PREMIER > Россия > PREMIERE. Кэш, graceful degradation. NFO roundtrip через `<premiered>`. Спецификация: `docs/native-kodi-fields/`. |
 
 ---
 
@@ -67,9 +73,9 @@
 
 | # | Название | Файл / модуль | Описание |
 |---|:---|:---|:---|
-| BL-38 | Статус сериала | `models.py`, `tv_scraper.py` | KP API отдаёт `productionStatus` (`ENDED`, `CANCELED`, `IN_PRODUCTION` и др.). Маппинг в Kodi `setTvShowInfo(status=...)`. Отображается в карточке сериала. |
+| BL-38 | Статус сериала (setTvShowStatus) | `models.py`, `tv_scraper.py` | KP API отдаёт `productionStatus` (`ENDED`, `CANCELED`, `IN_PRODUCTION` и др.). Передавать через нативный `setTvShowStatus()`. Отображается в карточке сериала. |
 | BL-40 | Сезонные постеры | `kinopoisk_api.py`, `tv_scraper.py` | KP API и TVMaze отдают постеры на уровне сезона. Kodi поддерживает season artwork через `setSeason()`. |
-| BL-41 | Превью эпизодов из TVMaze | `tvmaze_client.py`, `tv_scraper.py` | TVMaze возвращает `image.medium` для каждого эпизода. Передавать в `setEpisode(thumb=...)`. Работает при включённом `use_tvmaze`. |
+| BL-41 | Превью эпизодов из TVMaze (addAvailableArtwork) | `tvmaze_client.py`, `tv_scraper.py` | TVMaze возвращает `image.medium` для каждого эпизода. Передавать через нативный `addAvailableArtwork()` на уровне эпизода. Работает при включённом `use_tvmaze`. |
 | BL-52 | Сортировка по absolute order (аниме) | `tv_scraper.py`, `settings_manager.py` | Для аниме нумерация KP и TVMaze часто расходится. Настройка `episode_order: absolute / aired` по аналогии с TheTVDB. |
 | BL-53 | Специальные эпизоды (Season 0) | `tv_scraper.py`, `kinopoisk_api.py`, `tvmaze_client.py` | KP и TVMaze отдают specials отдельно. Сейчас они теряются. Kodi поддерживает Season 0 для спешлов. |
 
@@ -145,6 +151,7 @@
 |---|:---|:---|:---|
 | BL-30 | Letterboxd / TMDB ID | `models.py`, `scraper.py` | Дополнительные внешние ID для совместимости с другими Kodi-аддонами. Перекрыто BL-42 (TMDB ID lookup). |
 | BL-31 | Кинопоиск watchlist | — (новый модуль) | Импорт «Буду смотреть» в Kodi-плейлист. Требует OAuth/cookies. |
+| BL-59 | Совместимость с STRM файлами (Elementum / LibreELEC) | `scraper.py`, `tv_scraper.py` | Проверить и гарантировать работу скрапера с STRM файлами (Elementum, Jackett и др.) на LibreELEC 12 / Kodi 21 Omega. На Windows проблем нет, но на LibreELEC есть известный баг Kodi 21 ([xbmc/xbmc#24015](https://github.com/xbmc/xbmc/issues/24015)). Требуется тестирование на реальном LibreELEC. BUG-006. |
 
 ---
 
@@ -170,7 +177,7 @@
 
 | Статус | Кол-во | Пункты |
 |:---|:---|:---|
-| ✅ Реализовано | 28 | BL-01..BL-11, BL-13..BL-20, BL-22..BL-26, BL-35, BL-36, BL-56, BL-57 |
-| 💡 Идея | 27 | BL-27..BL-34, BL-37..BL-55, BL-58 |
-| ❌ Закрыто | 2 | BL-12, BL-21 |
-| **Итого** | **57** | |
+| ✅ Реализовано | 30 | BL-01..BL-11, BL-13..BL-20, BL-22..BL-26, BL-35, BL-36, BL-56, BL-57, BL-60, BL-61 |
+| 💡 Идея | 30 | BL-27..BL-34, BL-37..BL-42, BL-44..BL-55, BL-58, BL-59, BL-63..BL-65 |
+| ❌ Закрыто | 4 | BL-12, BL-21, BL-43, BL-62 |
+| **Итого** | **64** | |

@@ -43,7 +43,7 @@ def write_movie_nfo(
             )
             return
 
-        xml_content = _build_movie_xml(details)
+        xml_content = _build_movie_xml(details, logger)
         success = _write_nfo_file(xml_content, nfo_path, logger)
 
         if success:
@@ -85,7 +85,7 @@ def write_tvshow_nfo(
             )
             return
 
-        xml_content = _build_tvshow_xml(details)
+        xml_content = _build_tvshow_xml(details, logger)
         success = _write_nfo_file(xml_content, nfo_path, logger)
 
         if success:
@@ -102,26 +102,27 @@ def write_tvshow_nfo(
         )
 
 
-def _build_movie_xml(details: MovieDetails) -> str:
+def _build_movie_xml(details: MovieDetails, logger: Logger | None = None) -> str:
     """Build XML string for a movie NFO."""
     root = ET.Element("movie")
-    _build_common_elements(root, details)
+    _build_common_elements(root, details, logger)
     if details.set_name:
         set_elem = ET.SubElement(root, "set")
         ET.SubElement(set_elem, "name").text = details.set_name
     return _prettify_xml(root)
 
 
-def _build_tvshow_xml(details: TVShowDetails) -> str:
+def _build_tvshow_xml(details: TVShowDetails, logger: Logger | None = None) -> str:
     """Build XML string for a tvshow NFO."""
     root = ET.Element("tvshow")
-    _build_common_elements(root, details)
+    _build_common_elements(root, details, logger)
     return _prettify_xml(root)
 
 
 def _build_common_elements(
     parent: ET.Element,
     details: "MovieDetails | TVShowDetails",
+    logger: Logger | None = None,
 ) -> None:
     """Populate shared NFO elements onto parent from details."""
     ET.SubElement(parent, "title").text = details.title_ru
@@ -134,6 +135,16 @@ def _build_common_elements(
 
     if details.plot:
         ET.SubElement(parent, "plot").text = details.plot
+
+    if details.plot_outline:
+        ET.SubElement(parent, "outline").text = details.plot_outline
+        if logger:
+            logger.info("_build_common_elements: wrote <outline>")
+
+    if details.premiere_date:
+        ET.SubElement(parent, "premiered").text = details.premiere_date
+        if logger:
+            logger.info(f"_build_common_elements: wrote <premiered>={details.premiere_date}")
 
     if details.tagline:
         ET.SubElement(parent, "tagline").text = details.tagline

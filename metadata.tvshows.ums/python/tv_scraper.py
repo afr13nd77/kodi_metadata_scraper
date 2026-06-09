@@ -522,6 +522,25 @@ def _handle_getdetails(
                     )
                     return False
 
+    # BL-60: premiere date from distributions
+    premiere_date = ""
+    if not from_fallback and details is not None:
+        try:
+            distributions_cache_key = f"kp_distributions_{kp_id}"
+            cached_distributions = cache.get(distributions_cache_key)
+            if cached_distributions is not None:
+                logger.info(f"_handle_getdetails: distributions from cache for kp_id={kp_id}")
+                premiere_date = kp_client.parse_premiere_date(cached_distributions)
+            else:
+                distributions_raw = kp_client.fetch_distributions_raw(kp_id)
+                if distributions_raw is not None:
+                    cache.put(distributions_cache_key, distributions_raw)
+                    premiere_date = kp_client.parse_premiere_date(distributions_raw)
+                else:
+                    logger.info(f"_handle_getdetails: no distributions data for kp_id={kp_id}")
+        except Exception as exc:
+            logger.warning(f"_handle_getdetails: distributions error for kp_id={kp_id}: {exc}")
+
     # Map MovieDetails -> TVShowDetails (or use NFO fallback directly)
     if nfo_tvshow is not None:
         tvshow = nfo_tvshow
@@ -534,6 +553,7 @@ def _handle_getdetails(
             tagline=details.tagline,
             year=details.year,
             plot=details.plot,
+            plot_outline=details.plot_outline,
             runtime=details.runtime,
             mpaa=details.mpaa,
             genres=details.genres,
@@ -541,6 +561,7 @@ def _handle_getdetails(
             studios=details.studios,
             ratings=details.ratings,
             artwork=details.artwork,
+            premiere_date=premiere_date,
         )
 
     if not from_fallback or not tvshow.directors:
@@ -1100,6 +1121,16 @@ def _apply_tvshow_details_to_listitem(
     infotag.setOriginalTitle(details.title_original)
     infotag.setPlot(details.plot)
     infotag.setTagLine(details.tagline)
+
+    # BL-61: plot outline (shortDescription from KP)
+    if details.plot_outline:
+        infotag.setPlotOutline(details.plot_outline)
+        logger.info(f"_apply_tvshow_details_to_listitem: setPlotOutline (len={len(details.plot_outline)})")
+
+    # BL-60: premiere date from distributions
+    if details.premiere_date:
+        infotag.setPremiered(details.premiere_date)
+        logger.info(f"_apply_tvshow_details_to_listitem: setPremiered={details.premiere_date}")
 
     infotag.setYear(details.year)
     infotag.setDuration(details.runtime * 60)

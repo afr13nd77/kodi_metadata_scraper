@@ -97,6 +97,8 @@ class MovieDetails:
     set_name: str = ""
     tags: list[str] = field(default_factory=list)
     trailer_url: str = ""
+    premiere_date: str = ""
+    plot_outline: str = ""
 
 
 class ContentType(Enum):
@@ -159,3 +161,5 @@ class TVShowDetails:
     tags: list[str] = field(default_factory=list)
     is_miniseries: bool = False
     trailer_url: str = ""
+    premiere_date: str = ""
+    plot_outline: str = ""
