@@ -212,6 +212,36 @@ class KinopoiskClient:
         self._logger.info(f"KinopoiskClient.search: found {len(results)} results for '{title}'")
         return results
 
+    def get_kp_id_by_imdb_id(self, imdb_id: str) -> Optional[int]:
+        """Resolve IMDb ID to Kinopoisk ID via v2.2/films search."""
+        self._logger.info(f"KinopoiskClient.get_kp_id_by_imdb_id: imdb_id='{imdb_id}'")
+
+        try:
+            data = self._http.get_json("v2.2/films", {"imdbId": imdb_id})
+        except HttpError as e:
+            self._logger.error(f"KinopoiskClient.get_kp_id_by_imdb_id failed: {e}")
+            return None
+
+        items = data.get("items", [])
+        if not items:
+            self._logger.info(
+                f"KinopoiskClient.get_kp_id_by_imdb_id: no results for imdb_id='{imdb_id}'"
+            )
+            return None
+
+        kp_id = self._safe_int(items[0].get("kinopoiskId", 0))
+        if not kp_id:
+            self._logger.warning(
+                f"KinopoiskClient.get_kp_id_by_imdb_id: item found but kinopoiskId is missing "
+                f"for imdb_id='{imdb_id}'"
+            )
+            return None
+
+        self._logger.info(
+            f"KinopoiskClient.get_kp_id_by_imdb_id: resolved imdb_id='{imdb_id}' -> kp_id={kp_id}"
+        )
+        return kp_id
+
     # ------------------------------------------------------------------
     # details: fetch_raw + parse + backward-compatible wrapper
     # ------------------------------------------------------------------

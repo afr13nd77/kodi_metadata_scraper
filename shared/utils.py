@@ -456,13 +456,22 @@ def search_kp_by_imdb(imdb_id: str, settings: SettingsManager, logger: Logger) -
         logger.error("search_kp_by_imdb: no API key")
         return 0
 
+    # Step 1: KP API — direct IMDB→KP resolution
     kp_client = KinopoiskClient(settings.kinopoisk_api_key, logger)
-    results = kp_client.search(imdb_id)
+    kp_id = kp_client.get_kp_id_by_imdb_id(imdb_id)
+    if kp_id:
+        logger.info(f"search_kp_by_imdb: KP API resolved kp_id={kp_id} for imdb_id={imdb_id}")
+        return kp_id
 
-    for result in results:
-        if result.kinopoisk_id:
-            logger.info(f"search_kp_by_imdb: found kp_id={result.kinopoisk_id} for imdb_id={imdb_id}")
-            return result.kinopoisk_id
+    logger.info(f"search_kp_by_imdb: KP API returned no result for imdb_id={imdb_id}, trying Wikidata fallback")
 
-    logger.warning(f"search_kp_by_imdb: no results for imdb_id={imdb_id}")
+    # Step 2: Wikidata fallback — SPARQL P345→P2603
+    from wikidata_client import WikidataClient
+    wikidata = WikidataClient(logger)
+    wd_kp_id = wikidata.get_kp_id_by_imdb_id(imdb_id)
+    if wd_kp_id and wd_kp_id > 0:
+        logger.info(f"search_kp_by_imdb: Wikidata resolved kp_id={wd_kp_id} for imdb_id={imdb_id}")
+        return wd_kp_id
+
+    logger.warning(f"search_kp_by_imdb: no results for imdb_id={imdb_id} (KP API + Wikidata both failed)")
     return 0

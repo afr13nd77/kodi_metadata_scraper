@@ -191,9 +191,7 @@ class TestSearchKpByImdb:
     @patch("utils.KinopoiskClient")
     def test_found_result(self, MockKpClient):
         mock_client = MockKpClient.return_value
-        mock_client.search.return_value = [
-            MovieSearchResult(title_ru="Матрица", kinopoisk_id=301, year=1999)
-        ]
+        mock_client.get_kp_id_by_imdb_id.return_value = 301
 
         logger = _mock_logger()
         settings = MagicMock(spec=SettingsManager)
@@ -202,12 +200,16 @@ class TestSearchKpByImdb:
         result = search_kp_by_imdb("tt0133093", settings, logger)
 
         assert result == 301
-        mock_client.search.assert_called_once_with("tt0133093")
+        mock_client.get_kp_id_by_imdb_id.assert_called_once_with("tt0133093")
 
+    @patch("wikidata_client.WikidataClient")
     @patch("utils.KinopoiskClient")
-    def test_no_results(self, MockKpClient):
+    def test_no_results(self, MockKpClient, MockWdClient):
         mock_client = MockKpClient.return_value
-        mock_client.search.return_value = []
+        mock_client.get_kp_id_by_imdb_id.return_value = None
+
+        mock_wd = MockWdClient.return_value
+        mock_wd.get_kp_id_by_imdb_id.return_value = 0
 
         logger = _mock_logger()
         settings = MagicMock(spec=SettingsManager)
@@ -227,6 +229,76 @@ class TestSearchKpByImdb:
 
         assert result == 0
         logger.error.assert_called()
+
+    @patch("utils.KinopoiskClient")
+    def test_kp_api_finds(self, MockKpClient):
+        """KP API находит → Wikidata не вызывается."""
+        mock_client = MockKpClient.return_value
+        mock_client.get_kp_id_by_imdb_id.return_value = 301
+
+        logger = _mock_logger()
+        settings = MagicMock(spec=SettingsManager)
+        settings.kinopoisk_api_key = "test-key"
+
+        result = search_kp_by_imdb("tt0133093", settings, logger)
+
+        assert result == 301
+        mock_client.get_kp_id_by_imdb_id.assert_called_once_with("tt0133093")
+
+    @patch("wikidata_client.WikidataClient")
+    @patch("utils.KinopoiskClient")
+    def test_kp_api_fails_wikidata_finds(self, MockKpClient, MockWdClient):
+        """KP API → None, Wikidata → 301."""
+        mock_client = MockKpClient.return_value
+        mock_client.get_kp_id_by_imdb_id.return_value = None
+
+        mock_wd = MockWdClient.return_value
+        mock_wd.get_kp_id_by_imdb_id.return_value = 301
+
+        logger = _mock_logger()
+        settings = MagicMock(spec=SettingsManager)
+        settings.kinopoisk_api_key = "test-key"
+
+        result = search_kp_by_imdb("tt0133093", settings, logger)
+
+        assert result == 301
+        mock_wd.get_kp_id_by_imdb_id.assert_called_once_with("tt0133093")
+
+    @patch("wikidata_client.WikidataClient")
+    @patch("utils.KinopoiskClient")
+    def test_both_fail(self, MockKpClient, MockWdClient):
+        """KP API → None, Wikidata → 0 → result 0."""
+        mock_client = MockKpClient.return_value
+        mock_client.get_kp_id_by_imdb_id.return_value = None
+
+        mock_wd = MockWdClient.return_value
+        mock_wd.get_kp_id_by_imdb_id.return_value = 0
+
+        logger = _mock_logger()
+        settings = MagicMock(spec=SettingsManager)
+        settings.kinopoisk_api_key = "test-key"
+
+        result = search_kp_by_imdb("tt9999999", settings, logger)
+
+        assert result == 0
+
+    @patch("wikidata_client.WikidataClient")
+    @patch("utils.KinopoiskClient")
+    def test_wikidata_network_error(self, MockKpClient, MockWdClient):
+        """KP API → None, Wikidata → None → result 0."""
+        mock_client = MockKpClient.return_value
+        mock_client.get_kp_id_by_imdb_id.return_value = None
+
+        mock_wd = MockWdClient.return_value
+        mock_wd.get_kp_id_by_imdb_id.return_value = None
+
+        logger = _mock_logger()
+        settings = MagicMock(spec=SettingsManager)
+        settings.kinopoisk_api_key = "test-key"
+
+        result = search_kp_by_imdb("tt0133093", settings, logger)
+
+        assert result == 0
 
 
 # ---------------------------------------------------------------------------
