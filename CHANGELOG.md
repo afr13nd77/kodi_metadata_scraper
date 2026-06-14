@@ -1,5 +1,18 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
+## v3.17.1 — 14.06.2026
+
+### Исправления (BUG-007, [#1](https://github.com/afr13nd77/kodi_metadata_scraper/issues/1))
+
+- **Скрейпинг фильмов из Elementum/LibreELEC полностью не работал**: `search_kp_by_imdb()` искал IMDB ID как текстовое ключевое слово (`v2.1/films/search-by-keyword?keyword=tt0062622`), что всегда возвращало 0 результатов
+- Добавлен `KinopoiskClient.get_kp_id_by_imdb_id()` — прямой lookup через `GET /v2.2/films?imdbId=`
+- Добавлен `WikidataClient.get_kp_id_by_imdb_id()` — обратный SPARQL P345→P2603 как fallback
+- Переписан `search_kp_by_imdb()` с 2-ступенчатым fallback: KP API → Wikidata
+- Исправление затрагивает оба аддона (movie + TV) через общий `shared/utils.py`
+
+### Тесты
+- 702 тестов (564 movie (558 unit + 6 live) + 138 TV). +32 новых тестов.
+
 ## v3.17.0 — 10.06.2026
 
 ### Новое
