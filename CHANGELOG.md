@@ -1,5 +1,16 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
+## v3.17.2 — 17.07.2026
+
+### Исправления (BUG-008)
+
+- **TV scraper: getepisodelist падал при миграции с чужого скрапера (TMDb/TVDB)**: при переключении скрапера Kodi передаёт episodeguide без `kinopoisk_id` (только `tmdb`/`imdb`/`tvdb` ID). Скрапер не мог загрузить сезоны и эпизоды.
+- `_handle_getepisodelist` теперь извлекает IMDB ID из guide (ключи `imdb_id` или `imdb`) и резолвит KP ID через `search_kp_by_imdb()` (KP API → Wikidata fallback).
+- Также исправлено извлечение `imdb_id` для передачи в `getepisodedetails` — поддержка обоих форматов ключа.
+
+### Тесты
+- 702 тестов (564 movie + 138 TV). Без изменений.
+
 ## v3.17.1 — 14.06.2026
 
 ### Исправления (BUG-007, [#1](https://github.com/afr13nd77/kodi_metadata_scraper/issues/1))

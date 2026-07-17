@@ -712,8 +712,14 @@ def _handle_getepisodelist(
 
     kp_id = int(guide.get("kinopoisk_id", 0))
     if not kp_id:
-        logger.error("_handle_getepisodelist: no kinopoisk_id in guide")
-        return
+        imdb_id = guide.get("imdb_id") or guide.get("imdb") or ""
+        if imdb_id:
+            logger.info(f"_handle_getepisodelist: no kinopoisk_id, resolving from imdb_id={imdb_id}")
+            kp_id = search_kp_by_imdb(imdb_id, settings, logger)
+        if not kp_id:
+            logger.error(f"_handle_getepisodelist: no kinopoisk_id in guide and IMDB resolve failed (imdb_id='{imdb_id}')")
+            return
+        logger.info(f"_handle_getepisodelist: resolved kp_id={kp_id} from imdb_id={imdb_id}")
 
     kp_client = None
     cache = None
@@ -757,7 +763,7 @@ def _handle_getepisodelist(
                 kp_id, guide, kp_client, settings, logger, cache
             )
 
-    imdb_id = guide.get("imdb_id", "")
+    imdb_id = guide.get("imdb_id") or guide.get("imdb") or ""
     title_original = guide.get("title_original", "")
     total_episodes = 0
     for season in seasons:
