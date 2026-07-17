@@ -1,5 +1,19 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
+## v3.18.0 — 17.07.2026
+
+### Новое (BL-40, BL-63)
+
+- **Сезонные постеры и названия сезонов из TVMaze**: при сканировании библиотеки скрапер загружает постеры и названия сезонов из TVMaze API. Kodi отображает их в папках сезонов.
+- Новый метод `TvmazeClient.get_seasons()` — `GET /shows/{id}/seasons` с in-memory кэшем (до 10 сериалов).
+- Новый dataclass `SeasonArtInfo` — TVMaze-модель сезона (number, name, poster_url, poster_preview_url).
+- Новая функция `_apply_season_art()` — изолированная интеграция в `_handle_getdetails` с graceful degradation.
+- Настройка «Постеры и названия сезонов» (`use_season_art`) — по умолчанию включена при `use_tvmaze=true`.
+- Дополнительная нагрузка: 1 HTTP-запрос к TVMaze на сериал (при cache miss).
+
+### Тесты
+- 715 тестов (564 movie + 145 TV + 6 shared). +13 новых тестов (7 для _apply_season_art, 6 для get_seasons).
+
 ## v3.17.2 — 17.07.2026
 
 ### Исправления (BUG-008)

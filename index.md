@@ -1,6 +1,6 @@
 # Kodi Metadata Scraper — Индекс проекта
 
-**Версия**: 3.17.1 / 3.17.2 (movie / TV)
+**Версия**: 3.17.2 / 3.18.0 (movie / TV)
 **Статус**: Полностью реализован — Movies + TV Shows (независимые аддоны)
 **Обновлён**: 17.07.2026
 
@@ -403,7 +403,7 @@ Kodi требует **отдельные addon ID** для movie и TV scrapers:
 
 ## Текущая версия
 
-**Movie 3.17.1 / TV 3.17.2** — BUG-008 fix: getepisodelist резолвит KP ID из IMDB при миграции с чужого скрапера (TMDb/TVDB). Также: BUG-007 fix (IMDB→KP lookup для Elementum/strm), Wikidata fallback для IMDB ID (BL-56), BL-57 fix (NFO directory guard), YouTube-трейлеры (BL-09), Graceful degradation (BL-24), CI/CD (BL-35), детекция дублей (BL-26), NFO-экспорт (BL-25), умный парсинг (BL-15), теги наград (BL-10), нормализация жанров (BL-11), персистентный кэш (BL-20). 702 теста (564 movie (558 unit + 6 live) + 138 TV).
+**Movie 3.17.2 / TV 3.18.0** — BL-40/63: сезонные постеры и названия из TVMaze (`get_seasons()`, `SeasonArtInfo`, `_apply_season_art()`). BUG-008 fix: getepisodelist резолвит KP ID из IMDB при миграции с чужого скрапера (TMDb/TVDB). Также: BUG-007 fix (IMDB→KP lookup для Elementum/strm), Wikidata fallback для IMDB ID (BL-56), BL-57 fix (NFO directory guard), YouTube-трейлеры (BL-09), Graceful degradation (BL-24), CI/CD (BL-35), детекция дублей (BL-26), NFO-экспорт (BL-25), умный парсинг (BL-15), теги наград (BL-10), нормализация жанров (BL-11), персистентный кэш (BL-20). 715 тестов (564 movie + 145 TV + 6 shared).
 
 ---
 

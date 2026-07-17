@@ -36,6 +36,10 @@ class SettingsManager:
         return self._addon.getSettingBool("use_tvmaze")
 
     @property
+    def use_season_art(self) -> bool:
+        return self._addon.getSettingBool("use_season_art")
+
+    @property
     def preferred_rating_source(self) -> DataSource:
         value = self._addon.getSettingInt("preferred_rating")
         return self._RATING_MAP.get(value, DataSource.KINOPOISK)

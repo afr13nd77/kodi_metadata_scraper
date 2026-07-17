@@ -5,6 +5,7 @@ import threading
 from typing import Any, Optional
 
 from http_client import HttpClient, HttpError, RateLimiter
+from models import SeasonArtInfo
 
 
 _tvmaze_limiter = RateLimiter(2.0)
@@ -14,6 +15,8 @@ _episodes_cache: dict[int, list[dict]] = {}
 _tvmaze_cache_lock = threading.Lock()
 _TVMAZE_CACHE_MAX_SHOWS = 20
 _TVMAZE_CACHE_MAX_EPISODES = 10
+_seasons_cache: dict[int, list[SeasonArtInfo]] = {}
+_TVMAZE_CACHE_MAX_SEASONS = 10
 
 
 class TvmazeClient:
@@ -286,6 +289,67 @@ class TvmazeClient:
             f"{len(data)} episodes"
         )
         return data
+
+    def get_seasons(self, show_id: int) -> Optional[list[SeasonArtInfo]]:
+        with _tvmaze_cache_lock:
+            if show_id in _seasons_cache:
+                self._log_debug(
+                    f"TvmazeClient.get_seasons: cache hit for show_id={show_id}"
+                )
+                return _seasons_cache[show_id]
+
+        self._log_info(
+            f"TvmazeClient.get_seasons: fetching seasons for show_id={show_id}"
+        )
+
+        try:
+            data = self._http.get_json(f"/shows/{show_id}/seasons")
+        except HttpError as exc:
+            self._log_warning(
+                f"TvmazeClient.get_seasons: HTTP error for show_id={show_id}: {exc}"
+            )
+            return None
+        except Exception as exc:
+            self._log_warning(
+                f"TvmazeClient.get_seasons: unexpected error for show_id={show_id}: {exc}"
+            )
+            return None
+
+        if not isinstance(data, list):
+            self._log_warning(
+                f"TvmazeClient.get_seasons: unexpected response type "
+                f"for show_id={show_id}: {type(data).__name__}"
+            )
+            return None
+
+        result: list[SeasonArtInfo] = []
+        for item in data:
+            num = item.get("number")
+            if num is None:
+                self._log_warning(
+                    f"TvmazeClient.get_seasons: skipping season with "
+                    f"number=None in show_id={show_id}"
+                )
+                continue
+            image = item.get("image") or {}
+            result.append(SeasonArtInfo(
+                number=int(num),
+                name=item.get("name") or "",
+                poster_url=image.get("original", ""),
+                poster_preview_url=image.get("medium", ""),
+            ))
+
+        with _tvmaze_cache_lock:
+            if len(_seasons_cache) >= _TVMAZE_CACHE_MAX_SEASONS:
+                oldest_key = next(iter(_seasons_cache))
+                del _seasons_cache[oldest_key]
+            _seasons_cache[show_id] = result
+
+        self._log_info(
+            f"TvmazeClient.get_seasons: success for show_id={show_id}, "
+            f"{len(result)} seasons"
+        )
+        return result
 
     def _strip_html(self, html: str) -> str:
         if not html:

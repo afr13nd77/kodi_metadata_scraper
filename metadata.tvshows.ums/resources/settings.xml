@@ -62,6 +62,16 @@
           <control type="toggle"/>
         </setting>
       </group>
+      <group id="3ca">
+        <setting id="use_season_art" type="boolean" label="32160" help="32161">
+          <level>0</level>
+          <default>true</default>
+          <dependencies>
+            <dependency type="visible" setting="use_tvmaze">true</dependency>
+          </dependencies>
+          <control type="toggle"/>
+        </setting>
+      </group>
       <group id="3d">
         <setting id="auto_select_exact_match" type="boolean" label="32150" help="32151">
           <level>0</level>

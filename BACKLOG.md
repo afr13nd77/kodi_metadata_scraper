@@ -1,6 +1,6 @@
 # Бэклог — Ultimate Movie Scraper
 
-**Версия проекта:** 3.17.1 / 3.17.2 (movie / TV)
+**Версия проекта:** 3.17.2 / 3.18.0 (movie / TV)
 **Обновлён:** 17.07.2026
 
 ---
@@ -39,7 +39,6 @@
 | BL-47 | Биографии актёров | `kinopoisk_api.py`, `models.py` | KP API `/v1/staff/{id}` отдаёт краткое `description`. Kodi показывает его в карточке актёра при клике. |
 | BL-48 | Язык оригинала | `kinopoisk_api.py`, `models.py`, `scraper.py`, `tv_scraper.py` | На основе `countries` / `productionCountries` из KP API проставлять тег языка оригинала. Полезно для фильтрации иностранного контента. |
 | BL-49 | Теги тематики (keywords) | `kinopoisk_api.py`, `scraper.py`, `tv_scraper.py` | KP возвращает `keywords` для части фильмов. Добавлять как дополнительные `setTags()` рядом с тегами наград. |
-| BL-63 | Названия сезонов (addSeason) | `tv_scraper.py`, `tvmaze_client.py` | KP API `/seasons` НЕ отдаёт названия сезонов. Требуется TVMaze как источник (отдельное исследование). Передавать через нативный `addSeason(number, name)`. |
 | BL-64 | Режиссёры и сценаристы эпизодов | `tv_scraper.py`, `tvmaze_client.py` | TVMaze отдаёт crew для каждого эпизода. Передавать через `setDirectors()` и `setWriters()` на уровне эпизода. Сейчас эти поля заполняются только на уровне сериала. |
 | BL-65 | Сортировка по оригинальному названию (setSortTitle) | `scraper.py`, `tv_scraper.py` | Передавать `title_original` через `setSortTitle()`, чтобы фильмы сортировались по оригинальному названию (латиницей), а отображались по-русски. |
 
@@ -50,6 +49,7 @@
 | BL-12 | ~~OpenSubtitles~~ | `won't do` — без скачивания субтитров ценности мало. Информация о наличии языков без возможности загрузки не оправдывает доп. API-ключ и запросы. Для скачивания есть `service.subtitles.opensubtitles-com`. |
 | BL-43 | ~~Бюджет и сборы в описании~~ | `won't do` — Kodi не имеет нативных полей для бюджета/сборов (нет `setBudget()`, `setRevenue()` в InfoTagVideo, нет колонок в MyVideos.db). Добавление в plot засоряет описание. |
 | BL-62 | ~~Позиция в TOP-250 (setTop250)~~ | `won't do` — KP API endpoint `/v2.2/films/top?type=TOP_250_BEST_FILMS` не содержит позицию фильма. Для определения позиции нужно загрузить все 13 страниц (250 фильмов) — нецелесообразно при лимите 500 req/day. |
+| BL-63 | ~~Названия сезонов (addSeason)~~ | `решено в BL-40` — реализовано через TVMaze `get_seasons()` с `addSeason(number, name)`. |
 
 ### 2.3 Реализовано
 
@@ -74,7 +74,6 @@
 | # | Название | Файл / модуль | Описание |
 |---|:---|:---|:---|
 | BL-38 | Статус сериала (setTvShowStatus) | `models.py`, `tv_scraper.py` | KP API отдаёт `productionStatus` (`ENDED`, `CANCELED`, `IN_PRODUCTION` и др.). Передавать через нативный `setTvShowStatus()`. Отображается в карточке сериала. |
-| BL-40 | Сезонные постеры | `kinopoisk_api.py`, `tv_scraper.py` | KP API и TVMaze отдают постеры на уровне сезона. Kodi поддерживает season artwork через `setSeason()`. |
 | BL-41 | Превью эпизодов из TVMaze (addAvailableArtwork) | `tvmaze_client.py`, `tv_scraper.py` | TVMaze возвращает `image.medium` для каждого эпизода. Передавать через нативный `addAvailableArtwork()` на уровне эпизода. Работает при включённом `use_tvmaze`. |
 | BL-52 | Сортировка по absolute order (аниме) | `tv_scraper.py`, `settings_manager.py` | Для аниме нумерация KP и TVMaze часто расходится. Настройка `episode_order: absolute / aired` по аналогии с TheTVDB. |
 | BL-53 | Специальные эпизоды (Season 0) | `tv_scraper.py`, `kinopoisk_api.py`, `tvmaze_client.py` | KP и TVMaze отдают specials отдельно. Сейчас они теряются. Kodi поддерживает Season 0 для спешлов. |
@@ -88,6 +87,7 @@
 | BL-16 | ✅ Детекция аниме-сериалов | `shared/utils.py` | Абсолютная нумерация с ведущим нулём (001, 042) = номер эпизода, не год. Спецификация: `docs/smart-parsing/`. |
 | BL-17 | ✅ Обработка многосерийных фильмов | `shared/utils.py` | «Часть/Part/Vol/Том» → два кандидата (полное + базовое). Спецификация: `docs/smart-parsing/`. |
 | BL-18 | ✅ Поддержка мини-сериалов | `shared/models.py`, `tv_scraper.py` | `is_miniseries` из KP API type="MINI_SERIES", тег «Мини-сериал». Спецификация: `docs/smart-parsing/`. |
+| BL-40 | ✅ Сезонные постеры и названия сезонов | `tv_scraper.py`, `tvmaze_client.py`, `models.py`, `settings_manager.py` | TVMaze `GET /shows/{id}/seasons` → `addSeason(number, name)` + `addAvailableArtwork(url, "poster", season=N)`. Новый `SeasonArtInfo` dataclass, in-memory кэш. Настройка `use_season_art` (при `use_tvmaze=true`). Спецификация: `docs/BL-40_season-posters/`. |
 
 ---
 
@@ -182,7 +182,7 @@
 
 | Статус | Кол-во | Пункты |
 |:---|:---|:---|
-| ✅ Реализовано | 30 | BL-01..BL-11, BL-13..BL-20, BL-22..BL-26, BL-35, BL-36, BL-56, BL-57, BL-60, BL-61 |
-| 💡 Идея | 29 | BL-27..BL-34, BL-37..BL-42, BL-44..BL-55, BL-58, BL-63..BL-65 |
-| ❌ Закрыто | 5 | BL-12, BL-21, BL-43, BL-59, BL-62 |
+| ✅ Реализовано | 31 | BL-01..BL-11, BL-13..BL-20, BL-22..BL-26, BL-35, BL-36, BL-40, BL-56, BL-57, BL-60, BL-61 |
+| 💡 Идея | 27 | BL-27..BL-34, BL-37..BL-39, BL-41, BL-42, BL-44..BL-55, BL-58, BL-64, BL-65 |
+| ❌ Закрыто | 6 | BL-12, BL-21, BL-43, BL-59, BL-62, BL-63 |
 | **Итого** | **64** | |

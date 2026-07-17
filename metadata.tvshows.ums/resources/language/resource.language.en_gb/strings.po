@@ -176,3 +176,11 @@ msgstr ""
 msgctxt "#32251"
 msgid "Fetch YouTube trailer links from Kinopoisk (uses 1 extra API request per TV show)"
 msgstr ""
+
+msgctxt "#32160"
+msgid "Season posters and names"
+msgstr ""
+
+msgctxt "#32161"
+msgid "Fetch season posters and names from TVMaze (1 extra API request per TV show)"
+msgstr ""

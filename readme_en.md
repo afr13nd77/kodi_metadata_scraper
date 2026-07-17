@@ -4,7 +4,7 @@
 
 # Ultimate Movie Scraper (UMS) for Kodi
 
-**Version:** 3.17.1 / 3.17.2 (movie / TV) | **Platform:** Kodi v20 Nexus / v21 Omega | **Language:** Python 3.8 | **License:** MIT
+**Version:** 3.17.2 / 3.18.0 (movie / TV) | **Platform:** Kodi v20 Nexus / v21 Omega | **Language:** Python 3.8 | **License:** MIT
 
 UMS is a metadata scraper for Kodi that fetches rich movie and TV show information from Kinopoisk, OMDb, and TVMaze. It is designed for users who prefer Russian-language metadata while also supporting English titles, international ratings, and full cast and crew data. The project ships as two fully independent addons — install either or both with no cross-dependencies.
 
@@ -39,6 +39,7 @@ UMS is a metadata scraper for Kodi that fetches rich movie and TV show informati
 - Full series metadata with episode guide
 - Season and episode information
 - Episode descriptions from TVMaze (optional, English, may require VPN)
+- Season posters and names from TVMaze
 - Auto-resolve IMDB ID via TVMaze when missing from Kinopoisk
 - Per-episode IMDB ratings
 - Series ratings from Kinopoisk, IMDB, Rotten Tomatoes, and Metacritic
@@ -73,7 +74,7 @@ UMS is a metadata scraper for Kodi that fetches rich movie and TV show informati
 |---|---|---|
 | Kinopoisk Unofficial API (`kinopoiskapiunofficial.tech`) | Metadata, cast, posters, seasons, episodes | Primary, required |
 | OMDb API (`omdbapi.com`) | IMDB, Rotten Tomatoes, Metacritic ratings | Supplementary, optional |
-| TVMaze API (`api.tvmaze.com`) | Episode descriptions, IMDB ID resolution (TV only) | Supplementary, optional |
+| TVMaze API (`api.tvmaze.com`) | Episode descriptions, season posters, IMDB ID resolution (TV only) | Supplementary, optional |
 | Wikidata SPARQL (`query.wikidata.org`) | IMDB ID fallback via Kinopoisk ID | Supplementary, no API key |
 
 TMDb is **not** used.
@@ -91,8 +92,8 @@ TMDb is **not** used.
 1. Download the ZIP archives from the [Releases](https://github.com/afr13nd77/kodi_metadata_scraper/releases) section.
 2. In Kodi, go to **Settings > Add-ons > Install from zip file**.
 3. Install the desired addon(s):
-   - `metadata.ums-3.17.1.zip` — movie scraper
-   - `metadata.tvshows.ums-3.17.2.zip` — TV show scraper
+   - `metadata.ums-3.17.2.zip` — movie scraper
+   - `metadata.tvshows.ums-3.18.0.zip` — TV show scraper
 4. Open addon settings and enter your Kinopoisk API key.
 
 ### API Keys
@@ -114,6 +115,7 @@ Each addon (movie and TV) has its own independent settings panel.
 | `fetch_actor_photos` | Fetch actor photos from Kinopoisk |
 | `show_ratings_in_plot` | Append ratings to the plot text |
 | `use_tvmaze` | Fetch episode descriptions from TVMaze (TV scraper only, off by default) |
+| `use_season_art` | Fetch season posters and names from TVMaze (when TVMaze is enabled, on by default) |
 | `genre_language` | Genre language: Russian or English (default: Russian) |
 | `auto_select_exact_match` | Auto-select when title + year match exactly |
 | `enable_nfo_export` | Write .nfo files next to video files after scraping (off by default) |
@@ -151,7 +153,7 @@ pip install pytest
 
 ### Running Tests
 
-686 tests total (548 movie + 138 TV).
+715 tests total (564 movie + 145 TV + 6 shared).
 
 ```bash
 # Movie scraper tests (548 tests)

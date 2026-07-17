@@ -22,7 +22,7 @@ from omdb_client import OmdbClient, parse_rt_rating, parse_mc_rating, parse_awar
 from tvmaze_client import TvmazeClient
 from nfo_parser import NfoParser
 from models import (
-    TVShowDetails, Season, Episode,
+    TVShowDetails, Season, Episode, SeasonArtInfo,
     ArtworkType, DataSource, Rating
 )
 from utils import (
@@ -669,6 +669,11 @@ def _handle_getdetails(
     _apply_tvshow_details_to_listitem(tvshow, listitem, settings, logger)
 
     infotag = listitem.getVideoInfoTag()
+
+    # --- BL-40/63: Season artwork and names ---
+    _apply_season_art(tvshow.imdb_id, infotag, settings, logger)
+    # --- end BL-40/63 ---
+
     infotag.setEpisodeGuide(episodeguide)
 
     write_tvshow_nfo(tvshow, video_file_path, settings, logger)
@@ -1201,6 +1206,57 @@ def _apply_tvshow_details_to_listitem(
     logger.debug(
         f"_apply_tvshow_details_to_listitem: mapped '{details.title_ru}' "
         f"with {len(details.ratings)} ratings, {len(details.cast)} cast"
+    )
+
+
+def _apply_season_art(
+    imdb_id: str,
+    infotag,
+    settings: SettingsManager,
+    logger: Logger,
+) -> None:
+    if not settings.use_tvmaze:
+        logger.debug("_apply_season_art: use_tvmaze=false, skipping")
+        return
+    if not settings.use_season_art:
+        logger.debug("_apply_season_art: use_season_art=false, skipping")
+        return
+    if not imdb_id:
+        logger.warning("_apply_season_art: no IMDB ID, cannot fetch season art")
+        return
+
+    logger.info(f"_apply_season_art: fetching season art for imdb_id={imdb_id}")
+
+    tvmaze = TvmazeClient(logger)
+
+    show_id = tvmaze.lookup_show(imdb_id)
+    if show_id is None:
+        logger.warning(f"_apply_season_art: TVMaze show not found for imdb_id={imdb_id}")
+        return
+
+    seasons = tvmaze.get_seasons(show_id)
+    if seasons is None:
+        logger.warning(f"_apply_season_art: failed to fetch seasons for show_id={show_id}")
+        return
+    if not seasons:
+        logger.info(f"_apply_season_art: no seasons returned for show_id={show_id}")
+        return
+
+    art_count = 0
+    for s in seasons:
+        infotag.addSeason(s.number, s.name)
+        if s.poster_url:
+            infotag.addAvailableArtwork(
+                s.poster_url,
+                arttype="poster",
+                preview=s.poster_preview_url,
+                season=s.number,
+            )
+            art_count += 1
+
+    logger.info(
+        f"_apply_season_art: applied {len(seasons)} seasons, "
+        f"{art_count} posters for imdb_id={imdb_id}"
     )
 
 

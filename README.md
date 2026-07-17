@@ -4,7 +4,7 @@
 
 # Ultimate Movie Scraper (UMS) для Kodi
 
-**Версия:** 3.17.1 / 3.17.2 (movie / TV)  
+**Версия:** 3.17.2 / 3.18.0 (movie / TV)  
 **Платформа:** Kodi v20 Nexus / v21 Omega  
 **Язык:** Python 3.8  
 
@@ -46,6 +46,7 @@
 - Полные метаданные сериала с episode guide
 - Информация о сезонах и эпизодах
 - Описания серий из TVMaze (опционально, на английском, требуется VPN)
+- Сезонные постеры и названия сезонов из TVMaze
 - Автоматическое получение IMDB ID через TVMaze при отсутствии в Кинопоиске
 - Рейтинги эпизодов (IMDB)
 - Рейтинги сериала: Кинопоиск, IMDB, Rotten Tomatoes, Metacritic (в рейтинговой базе Kodi)
@@ -86,8 +87,8 @@
 1. Скачайте ZIP-архивы из раздела релизов
 2. В Kodi: **Settings** -> **Add-ons** -> **Install from zip file**
 3. Установите нужные аддоны:
-   - `metadata.ums-3.17.1.zip` -- scraper фильмов
-   - `metadata.tvshows.ums-3.17.2.zip` -- scraper сериалов
+   - `metadata.ums-3.17.2.zip` -- scraper фильмов
+   - `metadata.tvshows.ums-3.18.0.zip` -- scraper сериалов
    - Можно установить оба или только один
 4. Откройте настройки установленного аддона и укажите API-ключ Кинопоиска
 
@@ -108,6 +109,7 @@
 | `fetch_actor_photos` | Загружать фотографии актёров с Кинопоиска |
 | `show_ratings_in_plot` | Добавлять рейтинги в описание фильма/сериала |
 | `use_tvmaze` | Загружать описания серий из TVMaze (только TV scraper, по умолчанию выкл) |
+| `use_season_art` | Загружать постеры и названия сезонов из TVMaze (при включённом TVMaze, по умолчанию вкл) |
 | `genre_language` | Язык жанров: русский или английский (по умолчанию: русский) |
 | `auto_select_exact_match` | Автовыбор при точном совпадении по названию и году |
 | `enable_nfo_export` | Экспорт .nfo-файлов рядом с видео после скрапинга (по умолчанию выкл) |
@@ -154,7 +156,7 @@ cd metadata.ums && python -m pytest tests/ -v
 cd metadata.tvshows.ums && python -m pytest tests/ -v
 ```
 
-Всего: **686 тестов** (548 movie + 138 TV).
+Всего: **715 тестов** (564 movie + 145 TV + 6 shared).
 
 ### Линтинг
 
@@ -178,7 +180,7 @@ python build_zip.py
 |---|---|---|
 | Kinopoisk Unofficial API (`kinopoiskapiunofficial.tech`) | Метаданные, актёры, постеры, сезоны, эпизоды | Основной, обязательный |
 | OMDb API (`omdbapi.com`) | Рейтинги IMDB, Rotten Tomatoes, Metacritic (в рейтинговой базе Kodi) | Дополнительный, опциональный |
-| TVMaze API (`api.tvmaze.com`) | Описания эпизодов, разрешение IMDB ID (TV scraper) | Дополнительный, опциональный |
+| TVMaze API (`api.tvmaze.com`) | Описания эпизодов, сезонные постеры, разрешение IMDB ID (TV scraper) | Дополнительный, опциональный |
 | Wikidata SPARQL (`query.wikidata.org`) | Fallback для IMDB ID по Kinopoisk ID | Дополнительный, без API-ключа |
 
 TMDb **не используется**.

@@ -127,6 +127,14 @@ class Season:
 
 
 @dataclass
+class SeasonArtInfo:
+    number: int = 0
+    name: str = ""
+    poster_url: str = ""
+    poster_preview_url: str = ""
+
+
+@dataclass
 class TVShowSearchResult:
     title_ru: str
     title_original: str = ""
