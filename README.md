@@ -4,7 +4,7 @@
 
 # Ultimate Movie Scraper (UMS) для Kodi
 
-**Версия:** 3.17.0  
+**Версия:** 3.17.1 / 3.17.2 (movie / TV)  
 **Платформа:** Kodi v20 Nexus / v21 Omega  
 **Язык:** Python 3.8  
 
@@ -62,6 +62,7 @@
 - Graceful degradation: работа при недоступном API через stale-кэш и NFO-файлы
 - YouTube-трейлеры из Kinopoisk API
 - Wikidata fallback для IMDB ID (аналогично movie scraper)
+- Совместимость с TMDb/TVDB: автоматический резолв KP ID при миграции с другого скрапера
 
 ### Общее
 
@@ -85,8 +86,8 @@
 1. Скачайте ZIP-архивы из раздела релизов
 2. В Kodi: **Settings** -> **Add-ons** -> **Install from zip file**
 3. Установите нужные аддоны:
-   - `metadata.ums-3.17.0.zip` -- scraper фильмов
-   - `metadata.tvshows.ums-3.17.0.zip` -- scraper сериалов
+   - `metadata.ums-3.17.1.zip` -- scraper фильмов
+   - `metadata.tvshows.ums-3.17.2.zip` -- scraper сериалов
    - Можно установить оба или только один
 4. Откройте настройки установленного аддона и укажите API-ключ Кинопоиска
 

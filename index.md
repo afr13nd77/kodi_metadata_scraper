@@ -403,7 +403,7 @@ Kodi требует **отдельные addon ID** для movie и TV scrapers:
 
 ## Текущая версия
 
-**Movie 3.17.1 / TV 3.17.1** — BUG-007 fix: IMDB→KP lookup для Elementum/strm файлов (2-ступенчатый fallback: KP API `get_kp_id_by_imdb_id()` → Wikidata SPARQL `get_kp_id_by_imdb_id()`). Также: Wikidata fallback для IMDB ID (BL-56), BL-57 fix (NFO directory guard), YouTube-трейлеры (BL-09), Graceful degradation (BL-24), CI/CD (BL-35), детекция дублей (BL-26), NFO-экспорт (BL-25), умный парсинг (BL-15), теги наград (BL-10), нормализация жанров (BL-11), персистентный кэш (BL-20). 702 теста (564 movie (558 unit + 6 live) + 138 TV).
+**Movie 3.17.1 / TV 3.17.2** — BUG-008 fix: getepisodelist резолвит KP ID из IMDB при миграции с чужого скрапера (TMDb/TVDB). Также: BUG-007 fix (IMDB→KP lookup для Elementum/strm), Wikidata fallback для IMDB ID (BL-56), BL-57 fix (NFO directory guard), YouTube-трейлеры (BL-09), Graceful degradation (BL-24), CI/CD (BL-35), детекция дублей (BL-26), NFO-экспорт (BL-25), умный парсинг (BL-15), теги наград (BL-10), нормализация жанров (BL-11), персистентный кэш (BL-20). 702 теста (564 movie (558 unit + 6 live) + 138 TV).
 
 ---
 

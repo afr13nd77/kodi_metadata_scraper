@@ -4,7 +4,7 @@
 
 # Ultimate Movie Scraper (UMS) for Kodi
 
-**Version:** 3.17.0 | **Platform:** Kodi v20 Nexus / v21 Omega | **Language:** Python 3.8 | **License:** MIT
+**Version:** 3.17.1 / 3.17.2 (movie / TV) | **Platform:** Kodi v20 Nexus / v21 Omega | **Language:** Python 3.8 | **License:** MIT
 
 UMS is a metadata scraper for Kodi that fetches rich movie and TV show information from Kinopoisk, OMDb, and TVMaze. It is designed for users who prefer Russian-language metadata while also supporting English titles, international ratings, and full cast and crew data. The project ships as two fully independent addons — install either or both with no cross-dependencies.
 
@@ -54,6 +54,7 @@ UMS is a metadata scraper for Kodi that fetches rich movie and TV show informati
 - Graceful degradation: offline operation via stale cache and NFO file fallback
 - YouTube trailers from Kinopoisk API
 - Wikidata fallback for IMDB ID (same as movie scraper)
+- TMDb/TVDB compatibility: auto-resolve KP ID when migrating from another scraper
 
 ### Shared
 
@@ -90,8 +91,8 @@ TMDb is **not** used.
 1. Download the ZIP archives from the [Releases](https://github.com/afr13nd77/kodi_metadata_scraper/releases) section.
 2. In Kodi, go to **Settings > Add-ons > Install from zip file**.
 3. Install the desired addon(s):
-   - `metadata.ums-3.17.0.zip` — movie scraper
-   - `metadata.tvshows.ums-3.17.0.zip` — TV show scraper
+   - `metadata.ums-3.17.1.zip` — movie scraper
+   - `metadata.tvshows.ums-3.17.2.zip` — TV show scraper
 4. Open addon settings and enter your Kinopoisk API key.
 
 ### API Keys
