@@ -170,7 +170,7 @@ ruff check .
 python build_zip.py
 ```
 
-Результат: `metadata.ums-3.17.0.zip` и `metadata.tvshows.ums-3.17.0.zip` в корне проекта.
+Результат: `metadata.ums-3.17.2.zip` и `metadata.tvshows.ums-3.18.0.zip` в корне проекта.
 
 ---
 

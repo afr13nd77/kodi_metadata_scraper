@@ -175,7 +175,7 @@ ruff check .
 python build_zip.py
 ```
 
-Output: `metadata.ums-3.17.0.zip` and `metadata.tvshows.ums-3.17.0.zip` in the project root.
+Output: `metadata.ums-3.17.2.zip` and `metadata.tvshows.ums-3.18.0.zip` in the project root.
 
 ---
 
