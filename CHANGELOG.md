@@ -1,5 +1,17 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
+## v3.18.1 — 26.07.2026
+
+### Исправления (BUG-009)
+
+- **clean_title() не удаляла технические теги из имени файла**: имена вида `Braveheart. (1995). BDRip-HEVC 1080p. x265 10Bit. (AI). от Scorpion 1986` передавали в API мусорный keyword (`Braveheart BDRip-HEVC 1080p x265 10Bit (AI) от Scorpion`), API возвращал 0 результатов, фильм не добавлялся в библиотеку.
+- Добавлен шаг 3.0 в `clean_title()` — обрезка по первому техническому тегу (рип-тэги, разрешение, кодеки, аудио, HDR, маркеры релиза).
+- Добавлен `_RELEASER_PATTERN` — удаление маркера релизера `от <имя>`.
+- Покрытие: BDRip, BRRip, HDRip, WEBRip, WEB-DL, DVDRip, BluRay, Remux, 480p–2160p, x264/x265, HEVC, AAC, AC3, DTS, HDR, 10bit, PROPER, REPACK, IMAX и др.
+
+### Тесты
+- 722 теста (577 movie + 145 TV). +13 новых тестов (`TestCleanTitleReleaseTags`).
+
 ## v3.18.0 — 17.07.2026
 
 ### Новое (BL-40, BL-63)

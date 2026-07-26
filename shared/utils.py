@@ -157,6 +157,32 @@ _MULTI_PART_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# BUG-009: Release/encoding tags pattern for truncation.
+# Matches the first technical tag (rip, resolution, codec, audio, HDR, marker)
+# and everything after it is discarded.
+_RELEASE_TAG_PATTERN = re.compile(
+    r'\b(?:'
+    # Rip tags
+    r'BDRip|BRRip|HDRip|WEBRip|WEB-DL|WEBDL|WEB(?:-DL|Rip|DL)|'
+    r'DVDRip|DVDScr|CAMRip|HDCAM|HDTV|PDTV|SDTV|'
+    r'Blu-?ray|Remux|DVDR|TVRip|SATRip|HDTVRip|'
+    # Resolution
+    r'480p|576p|720p|1080p|1080i|2160p|4K|UHD|'
+    # Codecs
+    r'x264|x265|H\.?264|H\.?265|HEVC|AVC|XviD|DivX|AV1|VP9|MPEG-?2|MPEG-?4|'
+    # Audio
+    r'AAC|AC3|DTS-HD|DTS-X|DTS|DD5\.1|DD2\.0|DD7\.1|Atmos|TrueHD|FLAC|EAC3|LPCM|'
+    # Bit depth / HDR
+    r'10bit|8bit|HDR10\+?|HDR|DV|DoVi|SDR|'
+    # Markers
+    r'PROPER|REPACK|EXTENDED|Remastered|Unrated|Uncut|IMAX|Open\.?Matte'
+    r')\b',
+    re.IGNORECASE,
+)
+
+# BUG-009: Russian releaser marker "от <name>"
+_RELEASER_PATTERN = re.compile(r'\bот\s+\S+', re.IGNORECASE)
+
 
 def _strip_season_episode(cleaned: str, extracted_year: str, logger: Logger) -> tuple[str, str]:
     for pattern in _SEASON_EPISODE_PATTERNS:
@@ -304,6 +330,19 @@ def clean_title(raw_title: str, logger: Logger) -> tuple[list[str], str]:
     cleaned = re.sub(r'[._]+', ' ', cleaned)
 
     cleaned = cleaned.strip(' -,')
+
+    # Step 3.0: Remove release/encoding tags (BUG-009)
+    release_match = _RELEASE_TAG_PATTERN.search(cleaned)
+    if release_match:
+        removed = cleaned[release_match.start():]
+        cleaned = cleaned[:release_match.start()].strip(' -,')
+        logger.info(f"clean_title: removed release tags: '{removed}', result='{cleaned}'")
+    # Also strip Russian releaser marker "от <name>"
+    releaser_match = _RELEASER_PATTERN.search(cleaned)
+    if releaser_match:
+        removed_rel = cleaned[releaser_match.start():]
+        cleaned = cleaned[:releaser_match.start()].strip(' -,')
+        logger.info(f"clean_title: removed releaser marker: '{removed_rel}', result='{cleaned}'")
 
     # Step 3.1: Remove season/episode patterns (BL-15)
     cleaned, extracted_year = _strip_season_episode(cleaned, extracted_year, logger)

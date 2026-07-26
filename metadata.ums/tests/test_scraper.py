@@ -712,11 +712,10 @@ class TestCleanTitle:
         assert year == "2004"
 
     def test_dotted_filename_without_year(self):
-        """Format: 'The.Matrix.BDRip'"""
+        """Format: 'The.Matrix.BDRip' — BDRip is stripped as release tag (BUG-009)."""
         logger = _mock_logger()
         candidates, year = clean_title("The.Matrix.BDRip", logger)
-        # Without a recognizable year, the whole thing becomes one candidate
-        assert candidates == ["The Matrix BDRip"]
+        assert candidates == ["The Matrix"]
         assert year == ""
 
     def test_simple_clean_title(self):

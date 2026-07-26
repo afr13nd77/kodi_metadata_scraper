@@ -1,8 +1,8 @@
 # Kodi Metadata Scraper — Индекс проекта
 
-**Версия**: 3.17.2 / 3.18.0 (movie / TV)
+**Версия**: 3.18.1 / 3.18.0 (movie / TV)
 **Статус**: Полностью реализован — Movies + TV Shows (независимые аддоны)
-**Обновлён**: 17.07.2026
+**Обновлён**: 26.07.2026
 
 ---
 
@@ -228,8 +228,8 @@ Kodi требует **отдельные addon ID** для movie и TV scrapers:
 
 | Команда | Описание |
 |---|---|
-| `cd metadata.ums && python -m pytest tests/ -v` | Запуск юнит-тестов (564 теста: 558 unit + 6 live, включая WikidataClient, DuplicateTracker и Graceful Degradation) |
-| `cd metadata.tvshows.ums && python -m pytest tests/ -v` | Запуск юнит-тестов TV (138 тестов) |
+| `cd metadata.ums && python -m pytest tests/ -v` | Запуск юнит-тестов (577 тестов: 571 unit + 6 live, включая WikidataClient, DuplicateTracker, Graceful Degradation и TestCleanTitleReleaseTags) |
+| `cd metadata.tvshows.ums && python -m pytest tests/ -v` | Запуск юнит-тестов TV (145 тестов) |
 | `cd metadata.ums && python -m pytest tests/test_duplicate_tracker.py -v` | Запуск юнит-тестов DuplicateTracker (12 тестов) |
 | `python build_zip.py` | Сборка обоих ZIP-пакетов (metadata.ums и metadata.tvshows.ums) |
 | `ruff check .` | Проверка стиля кода (ruff, target: Python 3.8) |
