@@ -4,7 +4,7 @@
 
 # Ultimate Movie Scraper (UMS) для Kodi
 
-**Версия:** 3.17.2 / 3.18.0 (movie / TV)  
+**Версия:** 3.18.1  
 **Платформа:** Kodi v20 Nexus / v21 Omega  
 **Язык:** Python 3.8  
 
@@ -39,6 +39,7 @@
 - Graceful degradation: работа при недоступном API через stale-кэш и NFO-файлы
 - YouTube-трейлеры из Kinopoisk API с кэшированием и graceful degradation
 - Wikidata fallback: автоматическое получение IMDB ID через Wikidata SPARQL, когда Кинопоиск не знает его (без API-ключа)
+- Автоочистка технических тегов из имён файлов (BDRip, x265, 1080p, HDR, DTS, IMAX и др.)
 
 ### metadata.tvshows.ums -- TV Show Scraper
 
@@ -156,7 +157,7 @@ cd metadata.ums && python -m pytest tests/ -v
 cd metadata.tvshows.ums && python -m pytest tests/ -v
 ```
 
-Всего: **715 тестов** (564 movie + 145 TV + 6 shared).
+Всего: **722 теста** (577 movie + 145 TV).
 
 ### Линтинг
 
