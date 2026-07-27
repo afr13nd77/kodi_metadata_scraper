@@ -229,6 +229,11 @@ def _build_common_elements(
     if details.original_language:
         ET.SubElement(parent, "language").text = details.original_language
 
+    if hasattr(details, 'status') and details.status:
+        ET.SubElement(parent, "status").text = details.status
+        if logger:
+            logger.info(f"_build_common_elements: wrote <status>={details.status}")
+
 
 def _prettify_xml(element: ET.Element) -> str:
     """Return indented XML string with custom declaration."""

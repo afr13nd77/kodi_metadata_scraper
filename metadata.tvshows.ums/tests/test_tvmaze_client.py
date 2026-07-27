@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import patch, MagicMock
 from tvmaze_client import (
-    TvmazeClient, _show_cache, _episodes_cache, _crew_cache, _tvdb_cache, _TVMAZE_CACHE_MAX_SHOWS,
+    TvmazeClient, _show_cache, _episodes_cache, _crew_cache, _tvdb_cache, _status_cache, _TVMAZE_CACHE_MAX_SHOWS,
 )
 from http_client import HttpError
 
@@ -15,11 +15,13 @@ def clear_tvmaze_cache():
     _episodes_cache.clear()
     _crew_cache.clear()
     _tvdb_cache.clear()
+    _status_cache.clear()
     yield
     _show_cache.clear()
     _episodes_cache.clear()
     _crew_cache.clear()
     _tvdb_cache.clear()
+    _status_cache.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -489,3 +491,269 @@ class TestGetTvdbId:
 
         assert r1 == r2 == 121361
         mock_http.get_json.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Tests for get_show_status
+# ---------------------------------------------------------------------------
+
+class TestGetShowStatus:
+
+    @patch('tvmaze_client.HttpClient')
+    def test_status_ended(self, mock_http_cls):
+        """TVMaze status='Ended' -> 'Ended'."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.return_value = {"id": 169, "status": "Ended"}
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_show_status("tt0903747")
+        assert result == "Ended"
+
+    @patch('tvmaze_client.HttpClient')
+    def test_status_running(self, mock_http_cls):
+        """TVMaze status='Running' -> 'Returning Series'."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.return_value = {"id": 100, "status": "Running"}
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_show_status("tt1234567")
+        assert result == "Returning Series"
+
+    @patch('tvmaze_client.HttpClient')
+    def test_status_tbd(self, mock_http_cls):
+        """TVMaze status='To Be Determined' -> 'Returning Series'."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.return_value = {"id": 100, "status": "To Be Determined"}
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_show_status("tt1234567")
+        assert result == "Returning Series"
+
+    @patch('tvmaze_client.HttpClient')
+    def test_status_in_development(self, mock_http_cls):
+        """TVMaze status='In Development' -> 'In Production'."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.return_value = {"id": 100, "status": "In Development"}
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_show_status("tt1234567")
+        assert result == "In Production"
+
+    @patch('tvmaze_client.HttpClient')
+    def test_status_unknown(self, mock_http_cls):
+        """Unknown TVMaze status -> '' + warning."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.return_value = {"id": 100, "status": "Hiatus"}
+
+        logger = MagicMock()
+        client = TvmazeClient(logger=logger)
+        result = client.get_show_status("tt1234567")
+        assert result == ""
+        logger.warning.assert_called()
+
+    @patch('tvmaze_client.HttpClient')
+    def test_status_show_not_found(self, mock_http_cls):
+        """404 from TVMaze -> ''."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = HttpError(404, "Not Found", "url")
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_show_status("tt0000000")
+        assert result == ""
+
+    @patch('tvmaze_client.HttpClient')
+    def test_status_http_error(self, mock_http_cls):
+        """HTTP error -> ''."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = HttpError(500, "Server Error", "url")
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_show_status("tt1234567")
+        assert result == ""
+
+    @patch('tvmaze_client.HttpClient')
+    def test_status_title_fallback(self, mock_http_cls):
+        """No imdb_id, title fallback -> singlesearch used."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.return_value = {"id": 169, "status": "Ended"}
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_show_status("", title_original="Breaking Bad")
+        assert result == "Ended"
+        mock_http.get_json.assert_called_once_with("/singlesearch/shows?q=Breaking Bad")
+
+    @patch('tvmaze_client.HttpClient')
+    def test_status_no_ids(self, mock_http_cls):
+        """No imdb_id and no title -> ''."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_show_status("", title_original="")
+        assert result == ""
+        mock_http.get_json.assert_not_called()
+
+    @patch('tvmaze_client.HttpClient')
+    def test_status_cache_hit(self, mock_http_cls):
+        """Second call -> cached, no extra HTTP."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.return_value = {"id": 169, "status": "Ended"}
+
+        client = TvmazeClient(logger=MagicMock())
+        r1 = client.get_show_status("tt0903747")
+        r2 = client.get_show_status("tt0903747")
+        assert r1 == r2 == "Ended"
+        mock_http.get_json.assert_called_once()
+
+    @patch('tvmaze_client.HttpClient')
+    def test_status_populates_show_cache(self, mock_http_cls):
+        """get_show_status populates _show_cache as side effect."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.return_value = {"id": 169, "status": "Ended"}
+
+        client = TvmazeClient(logger=MagicMock())
+        client.get_show_status("tt0903747")
+        assert _show_cache.get("tt0903747") == 169
+
+
+# ---------------------------------------------------------------------------
+# Tests for get_episode_image
+# ---------------------------------------------------------------------------
+
+class TestGetEpisodeImage:
+
+    @patch('tvmaze_client.HttpClient')
+    def test_episode_with_image(self, mock_http_cls):
+        """Episode has both original and medium image URLs."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = [
+            {"id": 100},  # lookup
+            [{"season": 1, "number": 1, "image": {
+                "original": "https://img/original.jpg",
+                "medium": "https://img/medium.jpg",
+            }}],  # episodes
+        ]
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_episode_image("tt1234567", 1, 1)
+        assert result == ("https://img/original.jpg", "https://img/medium.jpg")
+
+    @patch('tvmaze_client.HttpClient')
+    def test_episode_image_null(self, mock_http_cls):
+        """Episode image is null -> ("", "")."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = [
+            {"id": 100},
+            [{"season": 1, "number": 1, "image": None}],
+        ]
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_episode_image("tt1234567", 1, 1)
+        assert result == ("", "")
+
+    @patch('tvmaze_client.HttpClient')
+    def test_episode_no_image_key(self, mock_http_cls):
+        """Episode has no 'image' key at all -> ("", "")."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = [
+            {"id": 100},
+            [{"season": 1, "number": 1}],
+        ]
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_episode_image("tt1234567", 1, 1)
+        assert result == ("", "")
+
+    @patch('tvmaze_client.HttpClient')
+    def test_episode_original_only(self, mock_http_cls):
+        """Only original, no medium -> use original for both."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = [
+            {"id": 100},
+            [{"season": 1, "number": 1, "image": {"original": "https://img/original.jpg"}}],
+        ]
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_episode_image("tt1234567", 1, 1)
+        assert result == ("https://img/original.jpg", "https://img/original.jpg")
+
+    @patch('tvmaze_client.HttpClient')
+    def test_episode_medium_only(self, mock_http_cls):
+        """Only medium, no original -> use medium for both."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = [
+            {"id": 100},
+            [{"season": 1, "number": 1, "image": {"medium": "https://img/medium.jpg"}}],
+        ]
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_episode_image("tt1234567", 1, 1)
+        assert result == ("https://img/medium.jpg", "https://img/medium.jpg")
+
+    @patch('tvmaze_client.HttpClient')
+    def test_episode_not_found(self, mock_http_cls):
+        """Season/episode mismatch -> ("", "")."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = [
+            {"id": 100},
+            [{"season": 1, "number": 1, "image": {"original": "https://img.jpg"}}],
+        ]
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_episode_image("tt1234567", 2, 5)
+        assert result == ("", "")
+
+    @patch('tvmaze_client.HttpClient')
+    def test_show_not_found(self, mock_http_cls):
+        """Show not found -> ("", "")."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = HttpError(404, "Not Found", "url")
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_episode_image("tt0000000", 1, 1)
+        assert result == ("", "")
+
+    @patch('tvmaze_client.HttpClient')
+    def test_no_ids(self, mock_http_cls):
+        """No imdb_id and no title -> ("", "")."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_episode_image("", 1, 1, title_original="")
+        assert result == ("", "")
+        mock_http.get_json.assert_not_called()
+
+    @patch('tvmaze_client.HttpClient')
+    def test_cache_hit(self, mock_http_cls):
+        """Second call for same show -> episodes from _episodes_cache, no extra HTTP."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = [
+            {"id": 100},  # lookup
+            [{"season": 1, "number": 1, "image": {"original": "https://img.jpg", "medium": "https://med.jpg"}}],
+        ]
+
+        client = TvmazeClient(logger=MagicMock())
+        r1 = client.get_episode_image("tt1234567", 1, 1)
+        r2 = client.get_episode_image("tt1234567", 1, 1)
+        assert r1 == r2
+        # lookup + episodes = 2 calls for first invocation, 0 for second (cached)
+        assert mock_http.get_json.call_count == 2

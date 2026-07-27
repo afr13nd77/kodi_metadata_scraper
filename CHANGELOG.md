@@ -1,5 +1,14 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
+## v3.23.0 — 28.07.2026
+
+### Добавлено
+- **BL-38: Статус сериала (setTvShowStatus)** — 3-уровневый resolve: TVMaze → KP productionStatus → KP completed. NFO roundtrip для `<status>`.
+- **BL-41: Превью эпизодов из TVMaze (addAvailableArtwork)** — извлечение thumbnail из TVMaze episodes API, zero extra HTTP requests.
+
+### Тесты
+- 868 тестов (610 movie + 224 TV + 34 shared). 0 new failures.
+
 ## v3.22.0 — 27.07.2026
 
 ### Новое (BL-68, BL-69)

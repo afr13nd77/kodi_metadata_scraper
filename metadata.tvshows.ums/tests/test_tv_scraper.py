@@ -3300,3 +3300,365 @@ class TestFanartTvShowIntegration:
         infotag_instance.addAvailableArtwork.assert_any_call(
             "https://url/thumb.jpg", "landscape", season=1
         )
+
+
+# ---------------------------------------------------------------------------
+# BL-38: Tests for NFO roundtrip of <status> element
+# ---------------------------------------------------------------------------
+
+class TestNfoStatus:
+
+    def test_nfo_write_with_status(self):
+        """TVShowDetails with status='Ended' -> XML contains <status>Ended</status>."""
+        from nfo_writer import _build_tvshow_xml
+        import xml.etree.ElementTree as ET
+
+        details = _make_tvshow_details()
+        details.status = "Ended"
+
+        xml_str = _build_tvshow_xml(details, logger=_mock_logger())
+
+        root = ET.fromstring(xml_str)
+        status_el = root.find("status")
+        assert status_el is not None
+        assert status_el.text == "Ended"
+
+    def test_nfo_write_without_status(self):
+        """TVShowDetails without status -> XML does not contain <status>."""
+        from nfo_writer import _build_tvshow_xml
+        import xml.etree.ElementTree as ET
+
+        details = _make_tvshow_details()
+        # status defaults to ""
+
+        xml_str = _build_tvshow_xml(details, logger=_mock_logger())
+
+        root = ET.fromstring(xml_str)
+        status_el = root.find("status")
+        assert status_el is None
+
+    def test_nfo_read_with_status(self):
+        """XML with <status>Returning Series</status> -> details.status == 'Returning Series'."""
+        from nfo_parser import NfoParser
+
+        nfo_xml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <tvshow>
+            <title>Breaking Bad</title>
+            <status>Returning Series</status>
+        </tvshow>'''
+
+        parser = NfoParser(logger=_mock_logger())
+        details = parser.parse_full_tvshow(nfo_xml)
+        assert details is not None
+        assert details.status == "Returning Series"
+
+    def test_nfo_read_without_status(self):
+        """XML without <status> -> details.status == ''."""
+        from nfo_parser import NfoParser
+
+        nfo_xml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <tvshow>
+            <title>Breaking Bad</title>
+        </tvshow>'''
+
+        parser = NfoParser(logger=_mock_logger())
+        details = parser.parse_full_tvshow(nfo_xml)
+        assert details is not None
+        assert details.status == ""
+
+    def test_nfo_roundtrip_status(self):
+        """Write -> Read -> status matches."""
+        from nfo_writer import _build_tvshow_xml
+        from nfo_parser import NfoParser
+
+        details = _make_tvshow_details()
+        details.status = "In Production"
+
+        xml_str = _build_tvshow_xml(details, logger=_mock_logger())
+
+        parser = NfoParser(logger=_mock_logger())
+        parsed = parser.parse_full_tvshow(xml_str)
+        assert parsed is not None
+        assert parsed.status == "In Production"
+
+
+# ---------------------------------------------------------------------------
+# BL-38: Tests for TV show status integration in tv_scraper
+# ---------------------------------------------------------------------------
+
+class TestStatusIntegration:
+
+    def test_apply_with_status(self):
+        """details.status='Ended' -> infotag.setTvShowStatus('Ended') called."""
+        details = _make_tvshow_details()
+        details.status = "Ended"
+
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+
+        settings = _mock_settings(show_ratings_in_plot=False)
+        logger = _mock_logger()
+
+        _apply_tvshow_details_to_listitem(details, listitem, settings, logger)
+
+        infotag.setTvShowStatus.assert_called_once_with("Ended")
+
+    def test_apply_without_status(self):
+        """details.status='' -> infotag.setTvShowStatus not called."""
+        details = _make_tvshow_details()
+        # status defaults to ""
+
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+
+        settings = _mock_settings(show_ratings_in_plot=False)
+        logger = _mock_logger()
+
+        _apply_tvshow_details_to_listitem(details, listitem, settings, logger)
+
+        infotag.setTvShowStatus.assert_not_called()
+
+    @patch("tv_scraper.TvmazeClient")
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_status_tvmaze_running(self, mock_kp_cls, mock_cache_cls, mock_tvmaze_cls):
+        """use_tvmaze=True, TVMaze='Running' -> setTvShowStatus('Returning Series')."""
+        mock_cache = mock_cache_cls.return_value
+        mock_cache.get.return_value = None
+
+        mock_kp = mock_kp_cls.return_value
+        mock_kp.fetch_details_raw.return_value = {
+            "kinopoiskId": 462682,
+            "imdbId": "tt0903747",
+            "nameRu": "Во все тяжкие",
+            "nameOriginal": "Breaking Bad",
+            "year": 2008,
+            "type": "TV_SERIES",
+            "completed": False,
+        }
+        mock_kp.parse_details.return_value = _make_tvshow_details()
+        mock_kp.fetch_staff_raw.return_value = None
+        mock_kp.parse_staff.return_value = ([], [], [])
+
+        mock_tvmaze = mock_tvmaze_cls.return_value
+        mock_tvmaze.get_show_status.return_value = "Returning Series"
+        mock_tvmaze.get_tvdb_id.return_value = None
+
+        settings = _mock_settings(use_tvmaze=True, omdb_key="", enable_trailers=False,
+                                  use_fanart=False, use_season_art=False,
+                                  enable_nfo_export=False,
+                                  enable_duplicate_detection=False,
+                                  use_wikidata_fallback=False)
+        logger = _mock_logger()
+
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        _handle_getdetails(params, 1, settings, logger)
+
+        listitem_instance = xbmcgui.ListItem.return_value
+        infotag = listitem_instance.getVideoInfoTag.return_value
+        infotag.setTvShowStatus.assert_called_with("Returning Series")
+
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_status_tvmaze_disabled_kp_completed(self, mock_kp_cls, mock_cache_cls):
+        """use_tvmaze=False, completed=True -> setTvShowStatus('Ended')."""
+        mock_cache = mock_cache_cls.return_value
+        mock_cache.get.return_value = None
+
+        mock_kp = mock_kp_cls.return_value
+        mock_kp.fetch_details_raw.return_value = {
+            "kinopoiskId": 462682,
+            "imdbId": "tt0903747",
+            "nameRu": "Во все тяжкие",
+            "nameOriginal": "Breaking Bad",
+            "year": 2008,
+            "type": "TV_SERIES",
+            "completed": True,
+        }
+        mock_kp.parse_details.return_value = _make_tvshow_details()
+        mock_kp.fetch_staff_raw.return_value = None
+        mock_kp.parse_staff.return_value = ([], [], [])
+
+        settings = _mock_settings(use_tvmaze=False, omdb_key="", enable_trailers=False,
+                                  use_fanart=False, use_season_art=False,
+                                  enable_nfo_export=False,
+                                  enable_duplicate_detection=False,
+                                  use_wikidata_fallback=False)
+        logger = _mock_logger()
+
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        _handle_getdetails(params, 1, settings, logger)
+
+        listitem_instance = xbmcgui.ListItem.return_value
+        infotag = listitem_instance.getVideoInfoTag.return_value
+        infotag.setTvShowStatus.assert_called_with("Ended")
+
+
+# ---------------------------------------------------------------------------
+# BL-41: Tests for episode thumbnail integration
+# ---------------------------------------------------------------------------
+
+class TestEpisodeThumbnail:
+
+    def test_apply_with_thumb(self):
+        """tvmaze_thumb_url provided -> addAvailableArtwork called."""
+        episode = Episode(season_number=1, episode_number=1, title_ru="Пилот")
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+
+        settings = _mock_settings()
+        logger = _mock_logger()
+
+        _apply_episode_to_listitem(
+            episode, 1, 1, None, listitem, settings, logger,
+            tvmaze_thumb_url="https://img/original.jpg",
+            tvmaze_thumb_preview="https://img/medium.jpg",
+        )
+
+        infotag.addAvailableArtwork.assert_called_once_with(
+            "https://img/original.jpg", "thumb", "https://img/medium.jpg"
+        )
+
+    def test_apply_without_thumb(self):
+        """tvmaze_thumb_url empty -> addAvailableArtwork NOT called."""
+        episode = Episode(season_number=1, episode_number=1, title_ru="Пилот")
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+
+        settings = _mock_settings()
+        logger = _mock_logger()
+
+        _apply_episode_to_listitem(
+            episode, 1, 1, None, listitem, settings, logger,
+            tvmaze_thumb_url="",
+        )
+
+        infotag.addAvailableArtwork.assert_not_called()
+
+    def test_apply_thumb_no_preview(self):
+        """tvmaze_thumb_url provided, no preview -> addAvailableArtwork with empty preview."""
+        episode = Episode(season_number=1, episode_number=1, title_ru="Пилот")
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+
+        settings = _mock_settings()
+        logger = _mock_logger()
+
+        _apply_episode_to_listitem(
+            episode, 1, 1, None, listitem, settings, logger,
+            tvmaze_thumb_url="https://img/original.jpg",
+            tvmaze_thumb_preview="",
+        )
+
+        infotag.addAvailableArtwork.assert_called_once_with(
+            "https://img/original.jpg", "thumb", ""
+        )
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_episodedetails_tvmaze_true_image(self, mock_tvmaze_cls):
+        """use_tvmaze=True, image available -> addAvailableArtwork called."""
+        mock_tvmaze = MagicMock()
+        mock_tvmaze_cls.return_value = mock_tvmaze
+        mock_tvmaze.get_episode_plot.return_value = None
+        mock_tvmaze.get_episode_crew.return_value = ([], [])
+        mock_tvmaze.get_episode_image.return_value = ("https://img/orig.jpg", "https://img/med.jpg")
+
+        seasons = [Season(number=1, episodes=[
+            Episode(season_number=1, episode_number=1, title_ru="Пилот",
+                    title_en="Pilot", synopsis="Some synopsis", release_date="2008-01-20"),
+        ])]
+        _cache_put(462682, seasons, _mock_logger())
+
+        settings = _mock_settings(omdb_key="", use_tvmaze=True)
+        logger = _mock_logger()
+        guide = json.dumps({"kinopoisk_id": 462682, "imdb_id": "tt0903747",
+                            "season": 1, "episode": 1})
+        params = {"url": guide}
+
+        _handle_getepisodedetails(params, 1, settings, logger)
+
+        listitem_instance = xbmcgui.ListItem.return_value
+        infotag = listitem_instance.getVideoInfoTag.return_value
+        infotag.addAvailableArtwork.assert_called_with(
+            "https://img/orig.jpg", "thumb", "https://img/med.jpg"
+        )
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_episodedetails_tvmaze_true_no_image(self, mock_tvmaze_cls):
+        """use_tvmaze=True, image=null -> addAvailableArtwork NOT called."""
+        mock_tvmaze = MagicMock()
+        mock_tvmaze_cls.return_value = mock_tvmaze
+        mock_tvmaze.get_episode_plot.return_value = None
+        mock_tvmaze.get_episode_crew.return_value = ([], [])
+        mock_tvmaze.get_episode_image.return_value = ("", "")
+
+        seasons = [Season(number=1, episodes=[
+            Episode(season_number=1, episode_number=1, title_ru="Пилот",
+                    title_en="Pilot", synopsis="Some synopsis", release_date="2008-01-20"),
+        ])]
+        _cache_put(462682, seasons, _mock_logger())
+
+        settings = _mock_settings(omdb_key="", use_tvmaze=True)
+        logger = _mock_logger()
+        guide = json.dumps({"kinopoisk_id": 462682, "imdb_id": "tt0903747",
+                            "season": 1, "episode": 1})
+        params = {"url": guide}
+
+        _handle_getepisodedetails(params, 1, settings, logger)
+
+        listitem_instance = xbmcgui.ListItem.return_value
+        infotag = listitem_instance.getVideoInfoTag.return_value
+        infotag.addAvailableArtwork.assert_not_called()
+
+    def test_episodedetails_tvmaze_false(self):
+        """use_tvmaze=False -> TVMaze not called, no thumbnail."""
+        seasons = [Season(number=1, episodes=[
+            Episode(season_number=1, episode_number=1, title_ru="Пилот",
+                    title_en="Pilot", synopsis="Some synopsis", release_date="2008-01-20"),
+        ])]
+        _cache_put(462682, seasons, _mock_logger())
+
+        settings = _mock_settings(omdb_key="", use_tvmaze=False)
+        logger = _mock_logger()
+        guide = json.dumps({"kinopoisk_id": 462682, "imdb_id": "tt0903747",
+                            "season": 1, "episode": 1})
+        params = {"url": guide}
+
+        _handle_getepisodedetails(params, 1, settings, logger)
+
+        listitem_instance = xbmcgui.ListItem.return_value
+        infotag = listitem_instance.getVideoInfoTag.return_value
+        infotag.addAvailableArtwork.assert_not_called()
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_episodedetails_tvmaze_error(self, mock_tvmaze_cls):
+        """TVMaze error -> scraping succeeds without thumbnail."""
+        mock_tvmaze = MagicMock()
+        mock_tvmaze_cls.return_value = mock_tvmaze
+        mock_tvmaze.get_episode_plot.return_value = None
+        mock_tvmaze.get_episode_crew.return_value = ([], [])
+        mock_tvmaze.get_episode_image.side_effect = Exception("Connection timeout")
+
+        seasons = [Season(number=1, episodes=[
+            Episode(season_number=1, episode_number=1, title_ru="Пилот",
+                    title_en="Pilot", synopsis="Some synopsis", release_date="2008-01-20"),
+        ])]
+        _cache_put(462682, seasons, _mock_logger())
+
+        settings = _mock_settings(omdb_key="", use_tvmaze=True)
+        logger = _mock_logger()
+        guide = json.dumps({"kinopoisk_id": 462682, "imdb_id": "tt0903747",
+                            "season": 1, "episode": 1})
+        params = {"url": guide}
+
+        result = _handle_getepisodedetails(params, 1, settings, logger)
+
+        assert result is True
+        logger.warning.assert_any_call("_handle_getepisodedetails: TVMaze image error: Connection timeout")

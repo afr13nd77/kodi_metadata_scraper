@@ -165,6 +165,54 @@ def country_to_language(countries: list[str], logger) -> str:
     return lang
 
 
+_PRODUCTION_STATUS_MAP: dict[str, str] = {
+    "COMPLETED": "Ended",
+    "FILMING": "In Production",
+    "PRE_PRODUCTION": "In Production",
+    "POST_PRODUCTION": "In Production",
+    "ANNOUNCED": "Planned",
+}
+
+
+def map_production_status(raw: dict, logger=None) -> str:
+    """Map KP API productionStatus/completed to Kodi-compatible status string.
+
+    Priority: productionStatus field -> completed field -> empty string.
+    """
+    production_status = raw.get("productionStatus")
+    if production_status is not None:
+        mapped = _PRODUCTION_STATUS_MAP.get(production_status)
+        if mapped:
+            if logger:
+                logger.info(
+                    f"map_production_status: '{production_status}' -> '{mapped}'"
+                )
+            return mapped
+        if logger:
+            logger.warning(
+                f"map_production_status: unknown productionStatus '{production_status}'"
+            )
+        return ""
+
+    completed = raw.get("completed")
+    if completed is True:
+        if logger:
+            logger.info("map_production_status: completed=True -> 'Ended'")
+        return "Ended"
+    if completed is False:
+        if logger:
+            logger.info(
+                "map_production_status: completed=False -> 'Returning Series'"
+            )
+        return "Returning Series"
+
+    if logger:
+        logger.debug(
+            "map_production_status: no productionStatus or completed field"
+        )
+    return ""
+
+
 _kp_global_limiter = RateLimiter(18.0)
 _kp_staff_limiter = RateLimiter(9.0)
 

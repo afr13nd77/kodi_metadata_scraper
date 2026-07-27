@@ -177,6 +177,7 @@ class TVShowDetails:
     artwork: list[Artwork] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
     is_miniseries: bool = False
+    status: str = ""
     trailer_url: str = ""
     premiere_date: str = ""
     plot_outline: str = ""

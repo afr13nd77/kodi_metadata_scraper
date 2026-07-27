@@ -21,6 +21,15 @@ _crew_cache: dict[int, list[dict]] = {}
 _TVMAZE_CACHE_MAX_CREW = 50
 _tvdb_cache: dict[str, Optional[int]] = {}
 _TVMAZE_CACHE_MAX_TVDB = 20
+_status_cache: dict[str, str] = {}
+_TVMAZE_CACHE_MAX_STATUS = 20
+
+_TVMAZE_STATUS_MAP: dict[str, str] = {
+    "Running": "Returning Series",
+    "Ended": "Ended",
+    "To Be Determined": "Returning Series",
+    "In Development": "In Production",
+}
 
 
 class TvmazeClient:
@@ -245,6 +254,93 @@ class TvmazeClient:
             f"imdb_id={imdb_id}"
         )
         return imdb_id
+
+    def get_show_status(self, imdb_id: str, title_original: str = "") -> str:
+        """Resolve TV show status via TVMaze API.
+
+        Returns Kodi-compatible status string or "" if not available.
+        """
+        if not imdb_id and not title_original:
+            self._log_debug(
+                "TvmazeClient.get_show_status: no imdb_id or title_original, skipping"
+            )
+            return ""
+
+        cache_key = imdb_id if imdb_id else title_original
+
+        with _tvmaze_cache_lock:
+            if cache_key in _status_cache:
+                cached = _status_cache[cache_key]
+                self._log_debug(
+                    f"TvmazeClient.get_show_status: cache hit for '{cache_key}': '{cached}'"
+                )
+                return cached
+
+        self._log_info(
+            f"TvmazeClient.get_show_status: resolving status for "
+            f"imdb_id='{imdb_id}', title='{title_original}'"
+        )
+
+        data = None
+        if imdb_id:
+            try:
+                data = self._http.get_json(f"/lookup/shows?imdb={imdb_id}")
+            except HttpError as exc:
+                self._log_warning(
+                    f"TvmazeClient.get_show_status: lookup by imdb failed: {exc}"
+                )
+
+        if data is None and title_original:
+            try:
+                data = self._http.get_json(
+                    f"/singlesearch/shows?q={title_original}"
+                )
+            except HttpError as exc:
+                self._log_warning(
+                    f"TvmazeClient.get_show_status: search by title failed: {exc}"
+                )
+
+        if data is None:
+            self._log_debug(
+                f"TvmazeClient.get_show_status: show not found for "
+                f"imdb_id='{imdb_id}', title='{title_original}'"
+            )
+            with _tvmaze_cache_lock:
+                if len(_status_cache) >= _TVMAZE_CACHE_MAX_STATUS:
+                    oldest_key = next(iter(_status_cache))
+                    del _status_cache[oldest_key]
+                _status_cache[cache_key] = ""
+            return ""
+
+        show_id = data.get("id")
+        if show_id is not None and imdb_id:
+            with _tvmaze_cache_lock:
+                _show_cache[imdb_id] = show_id
+
+        raw_status = data.get("status", "")
+        if not raw_status:
+            self._log_debug(
+                "TvmazeClient.get_show_status: no status field in response"
+            )
+            result = ""
+        elif raw_status in _TVMAZE_STATUS_MAP:
+            result = _TVMAZE_STATUS_MAP[raw_status]
+            self._log_info(
+                f"TvmazeClient.get_show_status: '{raw_status}' -> '{result}'"
+            )
+        else:
+            self._log_warning(
+                f"TvmazeClient.get_show_status: unknown status '{raw_status}'"
+            )
+            result = ""
+
+        with _tvmaze_cache_lock:
+            if len(_status_cache) >= _TVMAZE_CACHE_MAX_STATUS:
+                oldest_key = next(iter(_status_cache))
+                del _status_cache[oldest_key]
+            _status_cache[cache_key] = result
+
+        return result
 
     def get_tvdb_id(self, imdb_id: str, title_original: str = "") -> Optional[int]:
         """Resolve TVDB ID via TVMaze lookup by IMDB ID, with title fallback."""
@@ -569,6 +665,67 @@ class TvmazeClient:
                 f"directors={len(directors)}, writers={len(writers)}"
             )
         return (directors, writers)
+
+    def get_episode_image(
+        self,
+        imdb_id: str,
+        season: int,
+        episode: int,
+        title_original: str = "",
+    ) -> tuple[str, str]:
+        """Return (original_url, medium_url) for episode thumbnail.
+
+        Uses _episodes_cache — no extra HTTP if episodes were already fetched
+        via get_episode_plot or get_episode_crew.
+        Returns ("", "") if image is unavailable.
+        """
+        if not imdb_id and not title_original:
+            self._log_debug(
+                "TvmazeClient.get_episode_image: no imdb_id or title_original, skipping"
+            )
+            return ("", "")
+
+        self._log_info(
+            f"TvmazeClient.get_episode_image: "
+            f"imdb_id={imdb_id}, S{season:02d}E{episode:02d}"
+        )
+
+        show_id = None
+        if imdb_id:
+            show_id = self.lookup_show(imdb_id)
+        if show_id is None and title_original:
+            show_id = self.search_show(title_original)
+        if show_id is None:
+            return ("", "")
+
+        episodes = self.get_episodes(show_id)
+        if episodes is None:
+            return ("", "")
+
+        for ep in episodes:
+            if ep.get("season") == season and ep.get("number") == episode:
+                image = ep.get("image")
+                if not image:
+                    self._log_debug(
+                        f"TvmazeClient.get_episode_image: image=null for "
+                        f"S{season:02d}E{episode:02d}"
+                    )
+                    return ("", "")
+                original = image.get("original", "")
+                medium = image.get("medium", "")
+                original = original or medium
+                medium = medium or original
+                self._log_info(
+                    f"TvmazeClient.get_episode_image: found image for "
+                    f"S{season:02d}E{episode:02d}"
+                )
+                return (original, medium)
+
+        self._log_debug(
+            f"TvmazeClient.get_episode_image: episode not found for "
+            f"S{season:02d}E{episode:02d}"
+        )
+        return ("", "")
 
     def _strip_html(self, html: str) -> str:
         if not html:

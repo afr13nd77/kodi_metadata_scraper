@@ -17,7 +17,7 @@ from cache import FileCache
 from duplicate_tracker import DuplicateTracker
 from logger import Logger
 from settings_manager import SettingsManager
-from kinopoisk_api import KinopoiskClient
+from kinopoisk_api import KinopoiskClient, map_production_status
 from omdb_client import OmdbClient, parse_rt_rating, parse_mc_rating, parse_award_tags
 from tvmaze_client import TvmazeClient
 from fanart_client import FanartClient
@@ -617,6 +617,30 @@ def _handle_getdetails(
     else:
         logger.debug(f"_handle_getdetails: content_type='{content_type}', not mini-series")
 
+    # --- BL-38: TV show status ---
+    show_status = ""
+    if settings.use_tvmaze and (tvshow.imdb_id or tvshow.title_original):
+        try:
+            tvmaze_status = TvmazeClient(logger)
+            show_status = tvmaze_status.get_show_status(
+                tvshow.imdb_id, title_original=tvshow.title_original
+            )
+            if show_status:
+                logger.info(f"_handle_getdetails: status from TVMaze: '{show_status}'")
+        except Exception as exc:
+            logger.warning(f"_handle_getdetails: TVMaze status error: {exc}")
+
+    if not show_status:
+        show_status = map_production_status(details_raw or {}, logger)
+        if show_status:
+            logger.info(f"_handle_getdetails: status from KP fallback: '{show_status}'")
+
+    if show_status:
+        tvshow.status = show_status
+    else:
+        logger.debug(f"_handle_getdetails: no status resolved for kp_id={kp_id}")
+    # --- end BL-38 ---
+
     # --- BL-09: YouTube trailer ---
     if settings.enable_trailers and not tvshow.trailer_url:
         cache_key_videos = f"kp_videos_{kp_id}"
@@ -957,10 +981,13 @@ def _handle_getepisodedetails(
         except Exception as exc:
             logger.warning(f"_handle_getepisodedetails: OMDb error: {exc}")
 
+    tvmaze: Optional[TvmazeClient] = None
+    if settings.use_tvmaze and (imdb_id or title_original):
+        tvmaze = TvmazeClient(logger)
+
     tvmaze_plot = None
-    if not episode.synopsis and settings.use_tvmaze and (imdb_id or title_original):
+    if tvmaze and not episode.synopsis:
         try:
-            tvmaze = TvmazeClient(logger)
             tvmaze_plot = tvmaze.get_episode_plot(imdb_id, season_num, episode_num, title_original=title_original)
             if tvmaze_plot:
                 logger.info(
@@ -972,9 +999,8 @@ def _handle_getepisodedetails(
 
     tvmaze_directors: list[str] = []
     tvmaze_writers: list[str] = []
-    if settings.use_tvmaze and (imdb_id or title_original):
+    if tvmaze:
         try:
-            tvmaze = TvmazeClient(logger)
             tvmaze_directors, tvmaze_writers = tvmaze.get_episode_crew(
                 imdb_id, season_num, episode_num, title_original=title_original
             )
@@ -987,11 +1013,27 @@ def _handle_getepisodedetails(
         except Exception as exc:
             logger.warning(f"_handle_getepisodedetails: TVMaze crew error: {exc}")
 
+    tvmaze_thumb_url = ""
+    tvmaze_thumb_preview = ""
+    if tvmaze:
+        try:
+            tvmaze_thumb_url, tvmaze_thumb_preview = tvmaze.get_episode_image(
+                imdb_id, season_num, episode_num, title_original=title_original
+            )
+            if tvmaze_thumb_url:
+                logger.info(
+                    f"_handle_getepisodedetails: TVMaze thumbnail for "
+                    f"S{season_num:02d}E{episode_num:02d}"
+                )
+        except Exception as exc:
+            logger.warning(f"_handle_getepisodedetails: TVMaze image error: {exc}")
+
     listitem = xbmcgui.ListItem(offscreen=True)
     _apply_episode_to_listitem(
         episode, season_num, episode_num, imdb_rating, listitem, settings, logger,
         tvmaze_plot=tvmaze_plot, imdb_votes=imdb_votes,
         tvmaze_directors=tvmaze_directors, tvmaze_writers=tvmaze_writers,
+        tvmaze_thumb_url=tvmaze_thumb_url, tvmaze_thumb_preview=tvmaze_thumb_preview,
     )
     xbmcplugin.setResolvedUrl(handle, True, listitem)
 
@@ -1228,6 +1270,10 @@ def _apply_tvshow_details_to_listitem(
             f"_apply_tvshow_details_to_listitem: setTags({details.tags})"
         )
 
+    if details.status:
+        infotag.setTvShowStatus(details.status)
+        logger.info(f"_apply_tvshow_details_to_listitem: setTvShowStatus='{details.status}'")
+
     uniqueids = {}
     default_id = "kinopoisk"
     if details.kinopoisk_id:
@@ -1360,6 +1406,8 @@ def _apply_episode_to_listitem(
     imdb_votes: int = 0,
     tvmaze_directors: Optional[list[str]] = None,
     tvmaze_writers: Optional[list[str]] = None,
+    tvmaze_thumb_url: str = "",
+    tvmaze_thumb_preview: str = "",
 ) -> None:
     """Map Episode fields onto a Kodi ListItem via VideoInfoTag."""
     infotag = listitem.getVideoInfoTag()
@@ -1400,11 +1448,19 @@ def _apply_episode_to_listitem(
             f"for S{season_num:02d}E{ep_num:02d}"
         )
 
+    if tvmaze_thumb_url:
+        infotag.addAvailableArtwork(tvmaze_thumb_url, "thumb", tvmaze_thumb_preview)
+        logger.info(
+            f"_apply_episode_to_listitem: addAvailableArtwork(thumb) for "
+            f"S{season_num:02d}E{ep_num:02d}"
+        )
+
     logger.debug(
         f"_apply_episode_to_listitem: S{season_num:02d}E{ep_num:02d} "
         f"title='{title}', kp_rating={episode.rating}, imdb_rating={imdb_rating}, "
         f"plot_source={'kp' if episode.synopsis else ('tvmaze' if tvmaze_plot else 'none')}, "
-        f"directors={len(directors)}, writers={len(writers)}"
+        f"directors={len(directors)}, writers={len(writers)}, "
+        f"thumb={'yes' if tvmaze_thumb_url else 'no'}"
     )
 
 

@@ -336,6 +336,11 @@ class NfoParser:
             details.original_language = original_language
             self._logger.info(f"NfoParser.parse_full_tvshow: found <language>={original_language}")
 
+        status = self._text(root, "status")
+        if status:
+            details.status = status
+            self._logger.info(f"NfoParser.parse_full_tvshow: found <status>={status}")
+
         self._logger.info(
             f"NfoParser.parse_full_tvshow: success title='{details.title_ru}', "
             f"kp_id={details.kinopoisk_id}, year={details.year}, "
