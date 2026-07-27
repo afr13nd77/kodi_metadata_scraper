@@ -200,3 +200,19 @@ msgstr ""
 msgctxt "#32271"
 msgid "Получать IMDB ID из Wikidata, когда Кинопоиск не знает его. Без API-ключа"
 msgstr ""
+
+msgctxt "#32015"
+msgid "API-ключ FanArt.tv"
+msgstr ""
+
+msgctxt "#32016"
+msgid "Получите бесплатный ключ на fanart.tv/get-an-api-key/ (опционально)"
+msgstr ""
+
+msgctxt "#32280"
+msgid "Артворк FanArt.tv"
+msgstr ""
+
+msgctxt "#32281"
+msgid "Загружать дополнительный артворк (clearlogo, banner и др.) с FanArt.tv"
+msgstr ""

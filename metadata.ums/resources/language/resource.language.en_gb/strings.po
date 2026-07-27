@@ -200,3 +200,19 @@ msgstr ""
 msgctxt "#32271"
 msgid "Fetch IMDB ID from Wikidata when Kinopoisk doesn't have it. No API key required"
 msgstr ""
+
+msgctxt "#32015"
+msgid "FanArt.tv API Key"
+msgstr ""
+
+msgctxt "#32016"
+msgid "Get a free key at fanart.tv/get-an-api-key/ (optional)"
+msgstr ""
+
+msgctxt "#32280"
+msgid "FanArt.tv artwork"
+msgstr ""
+
+msgctxt "#32281"
+msgid "Fetch additional artwork (clearlogo, banner, etc.) from FanArt.tv"
+msgstr ""

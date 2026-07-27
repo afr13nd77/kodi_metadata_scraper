@@ -105,6 +105,14 @@ class SettingsManager:
     def use_wikidata_fallback(self) -> bool:
         return self._addon.getSettingBool("use_wikidata_fallback")
 
+    @property
+    def use_fanart(self) -> bool:
+        return self._addon.getSettingBool("use_fanart")
+
+    @property
+    def fanart_api_key(self) -> str:
+        return self._addon.getSetting("fanart_api_key").strip()
+
     def validate(self) -> list[str]:
         errors = []
         if not self.kinopoisk_api_key:

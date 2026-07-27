@@ -20,6 +20,7 @@ from settings_manager import SettingsManager
 from kinopoisk_api import KinopoiskClient
 from omdb_client import OmdbClient, parse_rt_rating, parse_mc_rating, parse_award_tags
 from tvmaze_client import TvmazeClient
+from fanart_client import FanartClient
 from nfo_parser import NfoParser
 from models import (
     TVShowDetails, Season, Episode,
@@ -658,6 +659,34 @@ def _handle_getdetails(
         logger.info("_handle_getdetails: Trailers disabled, skipping")
     # --- end BL-09 ---
 
+    # --- BL-69: FanArt.tv artwork for TV shows ---
+    fanart_show_art: dict[str, str] = {}
+    fanart_season_art: dict[int, dict[str, str]] = {}
+    if settings.use_fanart and settings.fanart_api_key:
+        if not settings.use_tvmaze:
+            logger.debug("_handle_getdetails: TVMaze disabled, skipping FanArt.tv")
+        elif not tvshow.imdb_id and not tvshow.title_original:
+            logger.debug("_handle_getdetails: no IMDB ID or title for FanArt.tv")
+        else:
+            try:
+                tvmaze_fa = TvmazeClient(logger)
+                tvdb_id = tvmaze_fa.get_tvdb_id(tvshow.imdb_id, tvshow.title_original)
+                if tvdb_id:
+                    fc = FanartClient(settings.fanart_api_key, logger)
+                    fanart_show_art, fanart_season_art = fc.get_tv_art(tvdb_id)
+                    if fanart_show_art or fanart_season_art:
+                        logger.info(
+                            f"_handle_getdetails: FanArt.tv returned {len(fanart_show_art)} show types + "
+                            f"{len(fanart_season_art)} seasons for tvdb_id={tvdb_id}"
+                        )
+                else:
+                    logger.debug("_handle_getdetails: no TVDB ID from TVMaze")
+            except Exception as exc:
+                logger.warning(f"_handle_getdetails: FanArt.tv error: {exc}")
+    elif settings.use_fanart and not settings.fanart_api_key:
+        logger.debug("_handle_getdetails: FanArt.tv API key not configured")
+    # --- end BL-69 ---
+
     # Build episodeguide JSON
     episodeguide = json.dumps({
         "kinopoisk_id": tvshow.kinopoisk_id,
@@ -666,13 +695,20 @@ def _handle_getdetails(
     })
 
     listitem = xbmcgui.ListItem(offscreen=True)
-    _apply_tvshow_details_to_listitem(tvshow, listitem, settings, logger)
+    _apply_tvshow_details_to_listitem(tvshow, listitem, settings, logger, fanart_show_art)
 
     infotag = listitem.getVideoInfoTag()
 
     # --- BL-40/63: Season artwork and names ---
     _apply_season_art(tvshow.imdb_id, infotag, settings, logger)
     # --- end BL-40/63 ---
+
+    # --- BL-69: FanArt.tv season-level artwork ---
+    for season_num, season_arts in fanart_season_art.items():
+        for art_type, art_url in season_arts.items():
+            infotag.addAvailableArtwork(art_url, art_type, season=season_num)
+            logger.debug(f"_handle_getdetails: FanArt.tv season {season_num} addAvailableArtwork({art_type})")
+    # --- end BL-69 ---
 
     infotag.setEpisodeGuide(episodeguide)
 
@@ -1145,7 +1181,8 @@ def _apply_tvshow_details_to_listitem(
     details: TVShowDetails,
     listitem: xbmcgui.ListItem,
     settings: SettingsManager,
-    logger: Logger
+    logger: Logger,
+    fanart_art: dict[str, str] | None = None,
 ) -> None:
     """Map TVShowDetails fields onto a Kodi ListItem via VideoInfoTag."""
     logger.debug("_apply_tvshow_details_to_listitem: mapping details to ListItem")
@@ -1242,6 +1279,13 @@ def _apply_tvshow_details_to_listitem(
             })
     if fanart_list:
         listitem.setAvailableFanart(fanart_list)
+
+    # --- BL-69: FanArt.tv show-level artwork ---
+    if fanart_art:
+        for art_type, art_url in fanart_art.items():
+            infotag.addAvailableArtwork(art_url, art_type)
+            logger.debug(f"_apply_tvshow_details: FanArt.tv addAvailableArtwork({art_type})")
+    # --- end BL-69 ---
 
     if details.trailer_url:
         infotag.setTrailer(details.trailer_url)

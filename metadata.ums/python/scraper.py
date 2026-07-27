@@ -617,8 +617,25 @@ def _handle_getdetails(
         logger.info("_handle_getdetails: Trailers disabled, skipping")
     # --- end BL-09 ---
 
+    # --- BL-68: FanArt.tv artwork ---
+    fanart_art: dict[str, str] = {}
+    if settings.use_fanart and settings.fanart_api_key and details.imdb_id:
+        try:
+            from fanart_client import FanartClient
+            fc = FanartClient(settings.fanart_api_key, logger)
+            fanart_art = fc.get_movie_art(details.imdb_id)
+            if fanart_art:
+                logger.info(f"_handle_getdetails: FanArt.tv returned {len(fanart_art)} art types for imdb_id={details.imdb_id}")
+        except Exception as exc:
+            logger.warning(f"_handle_getdetails: FanArt.tv error: {exc}")
+    elif settings.use_fanart and not settings.fanart_api_key:
+        logger.debug("_handle_getdetails: FanArt.tv API key not configured")
+    elif settings.use_fanart and not details.imdb_id:
+        logger.debug("_handle_getdetails: no IMDB ID for FanArt.tv lookup")
+    # --- end BL-68 ---
+
     listitem = xbmcgui.ListItem(offscreen=True)
-    _apply_movie_details_to_listitem(details, listitem, settings, logger)
+    _apply_movie_details_to_listitem(details, listitem, settings, logger, fanart_art)
 
     write_movie_nfo(details, video_file_path, settings, logger)
 
@@ -722,7 +739,8 @@ def _apply_movie_details_to_listitem(
     details: MovieDetails,
     listitem: xbmcgui.ListItem,
     settings: SettingsManager,
-    logger: Logger
+    logger: Logger,
+    fanart_art: dict[str, str] | None = None,
 ) -> None:
     logger.debug("_apply_movie_details_to_listitem: mapping details to ListItem")
 
@@ -825,6 +843,13 @@ def _apply_movie_details_to_listitem(
             })
     if fanart_list:
         listitem.setAvailableFanart(fanart_list)
+
+    # --- BL-68: FanArt.tv artwork ---
+    if fanart_art:
+        for art_type, art_url in fanart_art.items():
+            infotag.addAvailableArtwork(art_url, art_type)
+            logger.debug(f"_apply_movie_details: FanArt.tv addAvailableArtwork({art_type})")
+    # --- end BL-68 ---
 
     if details.trailer_url:
         infotag.setTrailer(details.trailer_url)

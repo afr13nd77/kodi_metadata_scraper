@@ -19,6 +19,8 @@ _seasons_cache: dict[int, list[SeasonArtInfo]] = {}
 _TVMAZE_CACHE_MAX_SEASONS = 10
 _crew_cache: dict[int, list[dict]] = {}
 _TVMAZE_CACHE_MAX_CREW = 50
+_tvdb_cache: dict[str, Optional[int]] = {}
+_TVMAZE_CACHE_MAX_TVDB = 20
 
 
 class TvmazeClient:
@@ -243,6 +245,102 @@ class TvmazeClient:
             f"imdb_id={imdb_id}"
         )
         return imdb_id
+
+    def get_tvdb_id(self, imdb_id: str, title_original: str = "") -> Optional[int]:
+        """Resolve TVDB ID via TVMaze lookup by IMDB ID, with title fallback."""
+        if not imdb_id and not title_original:
+            self._log_debug(
+                "TvmazeClient.get_tvdb_id: no imdb_id or title_original, skipping"
+            )
+            return None
+
+        cache_key = imdb_id if imdb_id else title_original
+
+        with _tvmaze_cache_lock:
+            if cache_key in _tvdb_cache:
+                self._log_debug(
+                    f"TvmazeClient.get_tvdb_id: cache hit for key='{cache_key}'"
+                )
+                return _tvdb_cache[cache_key]
+
+        self._log_info(
+            f"TvmazeClient.get_tvdb_id: resolving tvdb_id for imdb_id={imdb_id}"
+        )
+
+        tvdb_id: Optional[int] = None
+
+        # Step 1: try IMDB lookup
+        if imdb_id:
+            try:
+                data = self._http.get_json("/lookup/shows", {"imdb": imdb_id})
+                raw = data.get("externals", {}).get("thetvdb")
+                if raw is not None:
+                    tvdb_id = int(raw)
+            except HttpError as exc:
+                if exc.status_code == 404:
+                    self._log_debug(
+                        f"TvmazeClient.get_tvdb_id: show not found for imdb_id={imdb_id}"
+                    )
+                else:
+                    self._log_warning(
+                        f"TvmazeClient.get_tvdb_id: HTTP error for imdb_id={imdb_id}: {exc}"
+                    )
+                    self._save_tvdb_cache(cache_key, None)
+                    return None
+            except Exception as exc:
+                self._log_warning(
+                    f"TvmazeClient.get_tvdb_id: unexpected error for imdb_id={imdb_id}: {exc}"
+                )
+                self._save_tvdb_cache(cache_key, None)
+                return None
+
+        # Step 2: fallback to title search
+        if tvdb_id is None and title_original:
+            try:
+                data = self._http.get_json("/singlesearch/shows", {"q": title_original})
+                raw = data.get("externals", {}).get("thetvdb")
+                if raw is not None:
+                    tvdb_id = int(raw)
+            except HttpError as exc:
+                if exc.status_code == 404:
+                    self._log_debug(
+                        f"TvmazeClient.get_tvdb_id: show not found for "
+                        f"title_original='{title_original}'"
+                    )
+                else:
+                    self._log_warning(
+                        f"TvmazeClient.get_tvdb_id: HTTP error for "
+                        f"title_original='{title_original}': {exc}"
+                    )
+                self._save_tvdb_cache(cache_key, None)
+                return None
+            except Exception as exc:
+                self._log_warning(
+                    f"TvmazeClient.get_tvdb_id: unexpected error for "
+                    f"title_original='{title_original}': {exc}"
+                )
+                self._save_tvdb_cache(cache_key, None)
+                return None
+
+        self._save_tvdb_cache(cache_key, tvdb_id)
+
+        if tvdb_id is not None:
+            self._log_info(
+                f"TvmazeClient.get_tvdb_id: success imdb_id={imdb_id} -> tvdb_id={tvdb_id}"
+            )
+        else:
+            self._log_info(
+                f"TvmazeClient.get_tvdb_id: no TVDB ID found for imdb_id={imdb_id}"
+            )
+
+        return tvdb_id
+
+    def _save_tvdb_cache(self, cache_key: str, tvdb_id: Optional[int]) -> None:
+        with _tvmaze_cache_lock:
+            if len(_tvdb_cache) >= _TVMAZE_CACHE_MAX_TVDB:
+                oldest_key = next(iter(_tvdb_cache))
+                del _tvdb_cache[oldest_key]
+            _tvdb_cache[cache_key] = tvdb_id
 
     def get_episodes(self, show_id: int) -> Optional[list[dict]]:
         with _tvmaze_cache_lock:

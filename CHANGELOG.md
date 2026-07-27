@@ -1,5 +1,17 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
+## v3.22.0 — 27.07.2026
+
+### Новое (BL-68, BL-69)
+
+- **FanArt.tv артворк для фильмов**: новый модуль `shared/fanart_client.py` — clearlogo, clearart, banner, landscape, discart через FanArt.tv API v3. In-memory кэш (20 записей), rate limiter (1 req/s). Приоритет: английский язык → без языка → любой, сортировка по likes. Graceful degradation при недоступности сервиса.
+- **FanArt.tv артворк для сериалов**: show-level (clearlogo, clearart, banner, landscape, characterart) + season-level (banner, landscape) артворк. TVDB ID резолвится через TVMaze `externals.thetvdb` (новый метод `TvmazeClient.get_tvdb_id()`).
+- **Настройки**: `use_fanart` (toggle, по умолч. выкл.) и `fanart_api_key` (строка) в обоих аддонах.
+- **Graceful degradation**: FanArt.tv полностью опциональна — при ошибках, отсутствии API-ключа или IMDB/TVDB ID скрапинг продолжается штатно.
+
+### Тесты
+- 819 тестов (610 movie + 188 TV + 21 shared). +24 новых (15 fanart_client + 5 tvmaze get_tvdb_id + 5 movie integration + 4 TV integration). 0 new failures.
+
 ## v3.21.3 — 27.07.2026
 
 ### Исправлено

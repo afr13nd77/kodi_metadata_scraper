@@ -54,7 +54,13 @@ def _mock_settings(api_key="test-key", omdb_key="omdb-key",
                    clear_cache=False,
                    enable_trailers=True,
                    use_wikidata_fallback=False,
-                   actor_name_language="ru"):
+                   actor_name_language="ru",
+                   use_fanart=False,
+                   fanart_api_key="",
+                   enable_nfo_export=False,
+                   nfo_overwrite=False,
+                   enable_duplicate_detection=False,
+                   use_season_art=False):
     settings = MagicMock(spec=SettingsManager)
     settings.kinopoisk_api_key = api_key
     settings.omdb_api_key = omdb_key
@@ -71,6 +77,12 @@ def _mock_settings(api_key="test-key", omdb_key="omdb-key",
     settings.enable_trailers = enable_trailers
     settings.use_wikidata_fallback = use_wikidata_fallback
     settings.actor_name_language = actor_name_language
+    settings.use_fanart = use_fanart
+    settings.fanart_api_key = fanart_api_key
+    settings.enable_nfo_export = enable_nfo_export
+    settings.nfo_overwrite = nfo_overwrite
+    settings.enable_duplicate_detection = enable_duplicate_detection
+    settings.use_season_art = use_season_art
     return settings
 
 
@@ -3122,3 +3134,169 @@ class TestActorNameLanguage:
         _apply_tvshow_details_to_listitem(details, listitem, settings, logger)
 
         xbmc.Actor.assert_called_once_with("Сидор", "Hero", 0, "")
+
+
+# ---------------------------------------------------------------------------
+# BL-69: FanArt.tv integration in _handle_getdetails
+# ---------------------------------------------------------------------------
+
+class TestFanartTvShowIntegration:
+    """Tests for BL-69: FanArt.tv artwork integration in TV scraper."""
+
+    def _setup_mocks(self, MockClient, MockCache):
+        """Set up standard KP client and cache mocks for getdetails."""
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = None  # cache miss
+
+        mock_client = MockClient.return_value
+        mock_client.fetch_details_raw.return_value = {"id": 462682, "type": "TV_SERIES"}
+        mock_client.parse_details.return_value = MovieDetails(
+            kinopoisk_id=462682,
+            imdb_id="tt0944947",
+            title_ru="Игра престолов",
+            title_original="Game of Thrones",
+            year=2011,
+            plot="Борьба за Железный трон.",
+            ratings=[Rating(DataSource.KINOPOISK, 9.0, 500000)],
+        )
+        mock_client.fetch_staff_raw.return_value = None
+        mock_client.parse_staff.return_value = ([], [], [])
+
+        return mock_client, mock_cache
+
+    @patch("tv_scraper.FanartClient")
+    @patch("tv_scraper.TvmazeClient")
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_getdetails_tv_with_fanart_enabled(
+        self, MockClient, MockCache, MockTvmaze, MockFanart
+    ):
+        """FanArt enabled + TVMaze enabled -> FanartClient.get_tv_art called, clearlogo artwork set."""
+        mock_client, mock_cache = self._setup_mocks(MockClient, MockCache)
+
+        mock_tvmaze = MockTvmaze.return_value
+        mock_tvmaze.get_tvdb_id.return_value = 121361
+
+        mock_fanart = MockFanart.return_value
+        mock_fanart.get_tv_art.return_value = (
+            {"clearlogo": "https://assets.fanart.tv/logo.png"},
+            {},
+        )
+
+        settings = _mock_settings(
+            show_ratings_in_plot=False,
+            enable_trailers=False,
+            use_fanart=True,
+            fanart_api_key="test-key",
+            use_tvmaze=True,
+        )
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        mock_tvmaze.get_tvdb_id.assert_called_once_with("tt0944947", "Game of Thrones")
+        MockFanart.assert_called_once_with("test-key", logger)
+        mock_fanart.get_tv_art.assert_called_once_with(121361)
+
+        listitem_instance = xbmcgui.ListItem.return_value
+        infotag_instance = listitem_instance.getVideoInfoTag.return_value
+        infotag_instance.addAvailableArtwork.assert_any_call(
+            "https://assets.fanart.tv/logo.png", "clearlogo"
+        )
+
+    @patch("tv_scraper.FanartClient")
+    @patch("tv_scraper.TvmazeClient")
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_getdetails_tv_fanart_no_tvmaze(
+        self, MockClient, MockCache, MockTvmaze, MockFanart
+    ):
+        """FanArt enabled + TVMaze disabled -> FanartClient NOT instantiated."""
+        mock_client, mock_cache = self._setup_mocks(MockClient, MockCache)
+
+        settings = _mock_settings(
+            show_ratings_in_plot=False,
+            enable_trailers=False,
+            use_fanart=True,
+            fanart_api_key="test-key",
+            use_tvmaze=False,
+        )
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        MockFanart.assert_not_called()
+
+    @patch("tv_scraper.FanartClient")
+    @patch("tv_scraper.TvmazeClient")
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_getdetails_tv_fanart_no_tvdb_id(
+        self, MockClient, MockCache, MockTvmaze, MockFanart
+    ):
+        """FanArt enabled + TVMaze returns no TVDB ID -> FanartClient NOT instantiated."""
+        mock_client, mock_cache = self._setup_mocks(MockClient, MockCache)
+
+        mock_tvmaze = MockTvmaze.return_value
+        mock_tvmaze.get_tvdb_id.return_value = None
+
+        settings = _mock_settings(
+            show_ratings_in_plot=False,
+            enable_trailers=False,
+            use_fanart=True,
+            fanart_api_key="test-key",
+            use_tvmaze=True,
+        )
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        mock_tvmaze.get_tvdb_id.assert_called_once()
+        MockFanart.assert_not_called()
+
+    @patch("tv_scraper.FanartClient")
+    @patch("tv_scraper.TvmazeClient")
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_getdetails_tv_fanart_season_banner_landscape(
+        self, MockClient, MockCache, MockTvmaze, MockFanart
+    ):
+        """FanArt returns season-level artwork -> addAvailableArtwork called with season param."""
+        mock_client, mock_cache = self._setup_mocks(MockClient, MockCache)
+
+        mock_tvmaze = MockTvmaze.return_value
+        mock_tvmaze.get_tvdb_id.return_value = 121361
+
+        mock_fanart = MockFanart.return_value
+        mock_fanart.get_tv_art.return_value = (
+            {},
+            {1: {"banner": "https://url/banner.jpg", "landscape": "https://url/thumb.jpg"}},
+        )
+
+        settings = _mock_settings(
+            show_ratings_in_plot=False,
+            enable_trailers=False,
+            use_fanart=True,
+            fanart_api_key="test-key",
+            use_tvmaze=True,
+        )
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "462682"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        listitem_instance = xbmcgui.ListItem.return_value
+        infotag_instance = listitem_instance.getVideoInfoTag.return_value
+        infotag_instance.addAvailableArtwork.assert_any_call(
+            "https://url/banner.jpg", "banner", season=1
+        )
+        infotag_instance.addAvailableArtwork.assert_any_call(
+            "https://url/thumb.jpg", "landscape", season=1
+        )

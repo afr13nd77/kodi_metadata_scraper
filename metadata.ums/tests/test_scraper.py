@@ -43,7 +43,8 @@ def _mock_settings(api_key="test-key", preferred_rating=DataSource.KINOPOISK,
                    enable_dual_search=True, omdb_api_key="",
                    show_ratings_in_plot=False, enable_collections=False,
                    enable_award_tags=True, genre_language="ru",
-                   enable_trailers=True):
+                   enable_trailers=True, use_fanart=False,
+                   fanart_api_key=""):
     settings = MagicMock(spec=SettingsManager)
     settings.kinopoisk_api_key = api_key
     settings.preferred_rating_source = preferred_rating
@@ -57,6 +58,14 @@ def _mock_settings(api_key="test-key", preferred_rating=DataSource.KINOPOISK,
     settings.enable_award_tags = enable_award_tags
     settings.genre_language = genre_language
     settings.enable_trailers = enable_trailers
+    settings.use_fanart = use_fanart
+    settings.fanart_api_key = fanart_api_key
+    # Attributes read by _handle_getdetails flow (hardcoded defaults)
+    settings.enable_nfo_export = False
+    settings.nfo_overwrite = False
+    settings.enable_duplicate_detection = False
+    settings.actor_name_language = "ru"
+    settings.use_wikidata_fallback = False
     return settings
 
 
@@ -1973,3 +1982,149 @@ class TestActorNameLanguage:
         _handle_getdetails(params, 1, settings, logger)
 
         xbmc.Actor.assert_called_once_with("Сидор", "Hero", 0, "")
+
+
+class TestFanartTvIntegration:
+    """BL-68: Tests for FanArt.tv artwork integration in _handle_getdetails."""
+
+    def _setup_success_path(self, mock_client, mock_cache, imdb_id="tt0120737"):
+        """Configure mocks so _handle_getdetails reaches the FanArt block."""
+        cache = mock_cache.return_value
+        cache.get.return_value = None
+
+        client = mock_client.return_value
+        client.fetch_details_raw.return_value = {"kinopoiskId": 301}
+        client.parse_details.return_value = MovieDetails(
+            kinopoisk_id=301,
+            title_ru="Матрица",
+            title_original="The Matrix",
+            year=1999,
+            plot="Описание фильма",
+            imdb_id=imdb_id,
+            ratings=[Rating(DataSource.KINOPOISK, 8.5, 10000)],
+        )
+        client.fetch_staff_raw.return_value = []
+        client.parse_staff.return_value = ([], [], [])
+        # Trailer mocks (trailer block runs before fanart)
+        client.fetch_videos_raw.return_value = None
+        client.parse_trailer_url.return_value = ""
+        return client, cache
+
+    @patch("fanart_client.FanartClient")
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_getdetails_with_fanart_enabled(self, MockClient, MockCache,
+                                            MockFanartClient):
+        """FanArt enabled + API key + IMDB ID -> clearlogo and banner added."""
+        client, cache = self._setup_success_path(MockClient, MockCache)
+
+        mock_fc = MockFanartClient.return_value
+        mock_fc.get_movie_art.return_value = {
+            "clearlogo": "https://assets.fanart.tv/logo.png",
+            "banner": "https://assets.fanart.tv/banner.jpg",
+        }
+
+        settings = _mock_settings(
+            use_fanart=True, fanart_api_key="test-fanart-key",
+            enable_trailers=True,
+        )
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        MockFanartClient.assert_called_once_with("test-fanart-key", logger)
+        mock_fc.get_movie_art.assert_called_once_with("tt0120737")
+
+        resolved_call = xbmcplugin.setResolvedUrl.call_args
+        listitem = resolved_call[0][2]
+        infotag = listitem.getVideoInfoTag.return_value
+        artwork_calls = infotag.addAvailableArtwork.call_args_list
+        artwork_args = [c[0] for c in artwork_calls]
+        assert ("https://assets.fanart.tv/logo.png", "clearlogo") in artwork_args
+        assert ("https://assets.fanart.tv/banner.jpg", "banner") in artwork_args
+
+    @patch("fanart_client.FanartClient")
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_getdetails_with_fanart_disabled(self, MockClient, MockCache,
+                                             MockFanartClient):
+        """FanArt disabled -> FanartClient NOT instantiated."""
+        client, cache = self._setup_success_path(MockClient, MockCache)
+        client.fetch_videos_raw.return_value = None
+        client.parse_trailer_url.return_value = ""
+
+        settings = _mock_settings(use_fanart=False, enable_trailers=True)
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        MockFanartClient.assert_not_called()
+
+    @patch("fanart_client.FanartClient")
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_getdetails_with_fanart_no_api_key(self, MockClient, MockCache,
+                                                MockFanartClient):
+        """FanArt enabled but no API key -> FanartClient NOT instantiated."""
+        client, cache = self._setup_success_path(MockClient, MockCache)
+
+        settings = _mock_settings(
+            use_fanart=True, fanart_api_key="", enable_trailers=True,
+        )
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        MockFanartClient.assert_not_called()
+
+    @patch("fanart_client.FanartClient")
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_getdetails_with_fanart_no_imdb_id(self, MockClient, MockCache,
+                                                MockFanartClient):
+        """FanArt enabled + API key but no IMDB ID -> FanartClient NOT instantiated."""
+        client, cache = self._setup_success_path(
+            MockClient, MockCache, imdb_id="",
+        )
+
+        settings = _mock_settings(
+            use_fanart=True, fanart_api_key="test-key", enable_trailers=True,
+        )
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        MockFanartClient.assert_not_called()
+
+    @patch("fanart_client.FanartClient")
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_getdetails_with_fanart_unavailable(self, MockClient, MockCache,
+                                                 MockFanartClient):
+        """FanArt API error -> scraping still succeeds (graceful degradation)."""
+        client, cache = self._setup_success_path(MockClient, MockCache)
+
+        mock_fc = MockFanartClient.return_value
+        mock_fc.get_movie_art.side_effect = Exception("Connection refused")
+
+        settings = _mock_settings(
+            use_fanart=True, fanart_api_key="test-key", enable_trailers=True,
+        )
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+
+        result = _handle_getdetails(params, 1, settings, logger)
+
+        assert result is True
+        mock_fc.get_movie_art.assert_called_once_with("tt0120737")
+        # Verify the warning was logged
+        log_calls = [str(c) for c in logger.warning.call_args_list]
+        assert any("FanArt.tv error" in c for c in log_calls)

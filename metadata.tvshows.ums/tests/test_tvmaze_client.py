@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import patch, MagicMock
 from tvmaze_client import (
-    TvmazeClient, _show_cache, _episodes_cache, _crew_cache, _TVMAZE_CACHE_MAX_SHOWS,
+    TvmazeClient, _show_cache, _episodes_cache, _crew_cache, _tvdb_cache, _TVMAZE_CACHE_MAX_SHOWS,
 )
 from http_client import HttpError
 
@@ -14,10 +14,12 @@ def clear_tvmaze_cache():
     _show_cache.clear()
     _episodes_cache.clear()
     _crew_cache.clear()
+    _tvdb_cache.clear()
     yield
     _show_cache.clear()
     _episodes_cache.clear()
     _crew_cache.clear()
+    _tvdb_cache.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -406,3 +408,84 @@ class TestStripHtml:
     def test_strip_html_with_extra_spaces(self):
         client = self._make_client()
         assert client._strip_html("<p>  spaced  </p>") == "spaced"
+
+
+# ---------------------------------------------------------------------------
+# Tests for get_tvdb_id
+# ---------------------------------------------------------------------------
+
+class TestGetTvdbId:
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_tvdb_id_success(self, mock_http_cls):
+        """IMDB lookup returns valid thetvdb ID."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.return_value = {
+            "id": 82,
+            "name": "Game of Thrones",
+            "externals": {"tvrage": 24493, "thetvdb": 121361, "imdb": "tt0944947"},
+        }
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_tvdb_id("tt0944947")
+
+        assert result == 121361
+        mock_http.get_json.assert_called_once_with("/lookup/shows", {"imdb": "tt0944947"})
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_tvdb_id_null_thetvdb(self, mock_http_cls):
+        """externals.thetvdb is None -> result is None."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.return_value = {
+            "id": 100,
+            "externals": {"tvrage": None, "thetvdb": None, "imdb": "tt1234567"},
+        }
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_tvdb_id("tt1234567")
+
+        assert result is None
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_tvdb_id_no_externals(self, mock_http_cls):
+        """Response without externals field -> result is None."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.return_value = {"id": 100}
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_tvdb_id("tt1234567")
+
+        assert result is None
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_tvdb_id_fallback_to_search(self, mock_http_cls):
+        """IMDB lookup 404 -> fallback to singlesearch by title_original."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = [
+            HttpError(404, "Not Found", "url"),  # IMDB lookup fails
+            {"id": 82, "externals": {"thetvdb": 121361, "imdb": "tt0944947"}},  # singlesearch succeeds
+        ]
+
+        client = TvmazeClient(logger=MagicMock())
+        result = client.get_tvdb_id("tt0000000", title_original="Game of Thrones")
+
+        assert result == 121361
+        assert mock_http.get_json.call_count == 2
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_tvdb_id_cache_hit(self, mock_http_cls):
+        """Second call with same IMDB ID -> served from cache, no extra HTTP."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.return_value = {"externals": {"thetvdb": 121361}}
+
+        client = TvmazeClient(logger=MagicMock())
+        r1 = client.get_tvdb_id("tt0944947")
+        r2 = client.get_tvdb_id("tt0944947")
+
+        assert r1 == r2 == 121361
+        mock_http.get_json.assert_called_once()
