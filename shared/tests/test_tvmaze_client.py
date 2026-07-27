@@ -14,9 +14,8 @@ sys.modules.setdefault("xbmcgui", MagicMock())
 sys.modules.setdefault("xbmcplugin", MagicMock())
 sys.modules.setdefault("xbmcvfs", MagicMock())
 
-from tvmaze_client import TvmazeClient, _seasons_cache, _tvmaze_cache_lock
-from models import SeasonArtInfo
-from http_client import HttpError
+from tvmaze_client import TvmazeClient, _seasons_cache, _tvmaze_cache_lock  # noqa: E402
+from http_client import HttpError  # noqa: E402
 
 
 @pytest.fixture(autouse=True)

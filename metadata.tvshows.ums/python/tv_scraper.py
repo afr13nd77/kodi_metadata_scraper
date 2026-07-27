@@ -22,7 +22,7 @@ from omdb_client import OmdbClient, parse_rt_rating, parse_mc_rating, parse_awar
 from tvmaze_client import TvmazeClient
 from nfo_parser import NfoParser
 from models import (
-    TVShowDetails, Season, Episode, SeasonArtInfo,
+    TVShowDetails, Season, Episode,
     ArtworkType, DataSource, Rating
 )
 from utils import (
@@ -722,7 +722,9 @@ def _handle_getepisodelist(
             logger.info(f"_handle_getepisodelist: no kinopoisk_id, resolving from imdb_id={imdb_id}")
             kp_id = search_kp_by_imdb(imdb_id, settings, logger)
         if not kp_id:
-            logger.error(f"_handle_getepisodelist: no kinopoisk_id in guide and IMDB resolve failed (imdb_id='{imdb_id}')")
+            logger.error(
+                f"_handle_getepisodelist: no kinopoisk_id in guide and IMDB resolve failed (imdb_id='{imdb_id}')"
+            )
             return
         logger.info(f"_handle_getepisodelist: resolved kp_id={kp_id} from imdb_id={imdb_id}")
 

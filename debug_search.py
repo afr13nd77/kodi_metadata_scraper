@@ -10,10 +10,9 @@ Requires only Python 3.8+ stdlib. Mocks xbmc/xbmcaddon so that shared/
 modules can be imported without a running Kodi instance.
 """
 
-import json
-import os
-import sys
-import types
+import os  # noqa: E402
+import sys  # noqa: E402
+import types  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # 1. Mock xbmc and xbmcaddon BEFORE any shared/ imports

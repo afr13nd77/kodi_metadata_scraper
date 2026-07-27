@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import pytest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 from models import SeasonArtInfo
 from tv_scraper import _apply_season_art
