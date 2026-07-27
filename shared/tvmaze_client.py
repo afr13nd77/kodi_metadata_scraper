@@ -406,7 +406,7 @@ class TvmazeClient:
                 return self._parse_crew(crew_data, season, episode)
 
         try:
-            crew_data = self._http.get_json(f"/episodes/{episode_id}/crew")
+            crew_data = self._http.get_json(f"/episodes/{episode_id}/guestcrew")
         except HttpError as exc:
             if exc.status_code == 404:
                 self._log_debug(
