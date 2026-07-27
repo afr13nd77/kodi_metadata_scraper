@@ -911,10 +911,13 @@ def _handle_getepisodedetails(
 
     # OMDb episode rating (optional)
     imdb_rating = None
+    imdb_votes = 0
     if settings.omdb_api_key and imdb_id:
         try:
             omdb = OmdbClient(settings.omdb_api_key, logger)
-            imdb_rating = omdb.get_episode_rating(imdb_id, season_num, episode_num)
+            omdb_result = omdb.get_episode_rating(imdb_id, season_num, episode_num)
+            if omdb_result is not None:
+                imdb_rating, imdb_votes = omdb_result
         except Exception as exc:
             logger.warning(f"_handle_getepisodedetails: OMDb error: {exc}")
 
@@ -931,9 +934,28 @@ def _handle_getepisodedetails(
         except Exception as exc:
             logger.warning(f"_handle_getepisodedetails: TVMaze error: {exc}")
 
+    tvmaze_directors: list[str] = []
+    tvmaze_writers: list[str] = []
+    if settings.use_tvmaze and (imdb_id or title_original):
+        try:
+            tvmaze = TvmazeClient(logger)
+            tvmaze_directors, tvmaze_writers = tvmaze.get_episode_crew(
+                imdb_id, season_num, episode_num, title_original=title_original
+            )
+            if tvmaze_directors or tvmaze_writers:
+                logger.info(
+                    f"_handle_getepisodedetails: TVMaze crew for "
+                    f"S{season_num:02d}E{episode_num:02d}, "
+                    f"directors={len(tvmaze_directors)}, writers={len(tvmaze_writers)}"
+                )
+        except Exception as exc:
+            logger.warning(f"_handle_getepisodedetails: TVMaze crew error: {exc}")
+
     listitem = xbmcgui.ListItem(offscreen=True)
     _apply_episode_to_listitem(
-        episode, season_num, episode_num, imdb_rating, listitem, settings, logger, tvmaze_plot=tvmaze_plot
+        episode, season_num, episode_num, imdb_rating, listitem, settings, logger,
+        tvmaze_plot=tvmaze_plot, imdb_votes=imdb_votes,
+        tvmaze_directors=tvmaze_directors, tvmaze_writers=tvmaze_writers,
     )
     xbmcplugin.setResolvedUrl(handle, True, listitem)
 
@@ -1149,6 +1171,16 @@ def _apply_tvshow_details_to_listitem(
     infotag.setDuration(details.runtime * 60)
     infotag.setMpaa(details.mpaa)
 
+    if details.original_language:
+        try:
+            infotag.setOriginalLanguage(details.original_language)
+            logger.info(f"_apply_tvshow_details: setOriginalLanguage('{details.original_language}')")
+        except AttributeError:
+            logger.debug(
+                f"setOriginalLanguage not available (Kodi < v22), "
+                f"original_language='{details.original_language}' skipped"
+            )
+
     infotag.setGenres(details.genres)
     infotag.setCountries(details.countries)
     infotag.setStudios(details.studios)
@@ -1281,6 +1313,9 @@ def _apply_episode_to_listitem(
     settings: SettingsManager,
     logger: Logger,
     tvmaze_plot: Optional[str] = None,
+    imdb_votes: int = 0,
+    tvmaze_directors: Optional[list[str]] = None,
+    tvmaze_writers: Optional[list[str]] = None,
 ) -> None:
     """Map Episode fields onto a Kodi ListItem via VideoInfoTag."""
     infotag = listitem.getVideoInfoTag()
@@ -1294,12 +1329,38 @@ def _apply_episode_to_listitem(
         infotag.setPlot(tvmaze_plot)
     if episode.release_date:
         infotag.setFirstAired(episode.release_date)
-    if imdb_rating is not None:
-        infotag.setRating(imdb_rating)
+    ratings: dict[str, tuple[float, int]] = {}
+    if episode.rating and episode.rating > 0:
+        ratings["kinopoisk"] = (episode.rating, 0)
+    if imdb_rating is not None and imdb_rating > 0:
+        ratings["imdb"] = (imdb_rating, imdb_votes or 0)
+    if ratings:
+        default_source = settings.preferred_rating_source.value
+        if default_source not in ratings:
+            default_source = next(iter(ratings))
+        infotag.setRatings(ratings, default_source)
+
+    directors = tvmaze_directors or []
+    if directors:
+        infotag.setDirectors(directors)
+        logger.debug(
+            f"_apply_episode_to_listitem: set {len(directors)} directors "
+            f"for S{season_num:02d}E{ep_num:02d}"
+        )
+
+    writers = tvmaze_writers or []
+    if writers:
+        infotag.setWriters(writers)
+        logger.debug(
+            f"_apply_episode_to_listitem: set {len(writers)} writers "
+            f"for S{season_num:02d}E{ep_num:02d}"
+        )
+
     logger.debug(
         f"_apply_episode_to_listitem: S{season_num:02d}E{ep_num:02d} "
-        f"title='{title}', imdb_rating={imdb_rating}, "
-        f"plot_source={'kp' if episode.synopsis else ('tvmaze' if tvmaze_plot else 'none')}"
+        f"title='{title}', kp_rating={episode.rating}, imdb_rating={imdb_rating}, "
+        f"plot_source={'kp' if episode.synopsis else ('tvmaze' if tvmaze_plot else 'none')}, "
+        f"directors={len(directors)}, writers={len(writers)}"
     )
 
 

@@ -348,6 +348,7 @@ class TestGetEpisodeRatingSuccess:
         data = {
             "Title": "Pilot",
             "imdbRating": "9.0",
+            "imdbVotes": "2,700",
             "Response": "True",
         }
         mock_resp = _make_response(data)
@@ -355,14 +356,44 @@ class TestGetEpisodeRatingSuccess:
         with patch("urllib.request.urlopen", return_value=mock_resp):
             result = client.get_episode_rating("tt0903747", season=1, episode=1)
 
-        assert result == 9.0
+        assert result == (9.0, 2700)
         logger.info.assert_called()
+
+    def test_votes_na(self):
+        logger = MagicMock()
+        client = OmdbClient(api_key="test_key", logger=logger)
+        data = {
+            "imdbRating": "8.5",
+            "imdbVotes": "N/A",
+            "Response": "True",
+        }
+        mock_resp = _make_response(data)
+
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            result = client.get_episode_rating("tt0903747", season=1, episode=1)
+
+        assert result == (8.5, 0)
+
+    def test_votes_missing(self):
+        logger = MagicMock()
+        client = OmdbClient(api_key="test_key", logger=logger)
+        data = {
+            "imdbRating": "8.5",
+            "Response": "True",
+        }
+        mock_resp = _make_response(data)
+
+        with patch("urllib.request.urlopen", return_value=mock_resp):
+            result = client.get_episode_rating("tt0903747", season=1, episode=1)
+
+        assert result == (8.5, 0)
 
     def test_url_contains_season_and_episode(self):
         client = OmdbClient(api_key="test_key")
         data = {
             "Title": "Pilot",
             "imdbRating": "8.5",
+            "imdbVotes": "500",
             "Response": "True",
         }
         mock_resp = _make_response(data)
@@ -449,6 +480,7 @@ class TestGetEpisodeRatingNetworkError:
         data = {
             "Title": "Pilot",
             "imdbRating": "9.5",
+            "imdbVotes": "1,000",
             "Response": "True",
         }
         mock_resp = _make_response(data)
@@ -456,7 +488,7 @@ class TestGetEpisodeRatingNetworkError:
         with patch("urllib.request.urlopen", side_effect=[url_exc, mock_resp]):
             result = client.get_episode_rating("tt0903747", season=1, episode=1)
 
-        assert result == 9.5
+        assert result == (9.5, 1000)
 
 
 class TestGetEpisodeRatingInvalidJson:

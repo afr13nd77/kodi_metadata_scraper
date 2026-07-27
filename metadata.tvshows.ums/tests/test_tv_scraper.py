@@ -83,6 +83,25 @@ def _make_seasons():
     return [
         Season(number=1, episodes=[
             Episode(season_number=1, episode_number=1, title_ru="Пилот",
+                    title_en="Pilot", synopsis="First episode", release_date="2008-01-20",
+                    rating=8.1),
+            Episode(season_number=1, episode_number=2, title_ru="Кот в мешке",
+                    title_en="Cat's in the Bag...", synopsis="Second episode",
+                    release_date="2008-01-27"),
+        ]),
+        Season(number=2, episodes=[
+            Episode(season_number=2, episode_number=1, title_ru="Семь-тридцать семь",
+                    title_en="Seven Thirty-Seven", synopsis="Season 2 premiere",
+                    release_date="2009-03-08"),
+        ]),
+    ]
+
+
+def _make_seasons_no_rating():
+    """Create sample seasons data without KP ratings (all rating=0.0)."""
+    return [
+        Season(number=1, episodes=[
+            Episode(season_number=1, episode_number=1, title_ru="Пилот",
                     title_en="Pilot", synopsis="First episode", release_date="2008-01-20"),
             Episode(season_number=1, episode_number=2, title_ru="Кот в мешке",
                     title_en="Cat's in the Bag...", synopsis="Second episode",
@@ -533,7 +552,7 @@ class TestHandleGetepisodedetails:
         mock_kp.fetch_seasons_raw.return_value = {"items": []}
         mock_kp.parse_seasons.return_value = _make_seasons()
         mock_omdb = MockOmdb.return_value
-        mock_omdb.get_episode_rating.return_value = 9.8
+        mock_omdb.get_episode_rating.return_value = (9.8, 500)
 
         settings = _mock_settings()
         logger = _mock_logger()
@@ -631,6 +650,27 @@ class TestHandleGetepisodedetails:
 
         assert result is True  # Success despite OMDb failure
 
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    @patch("tv_scraper.OmdbClient")
+    def test_omdb_returns_none_votes_zero(self, MockOmdb, MockKp, MockCache):
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = None
+        mock_kp = MockKp.return_value
+        mock_kp.fetch_seasons_raw.return_value = {"items": []}
+        mock_kp.parse_seasons.return_value = _make_seasons()
+        mock_omdb = MockOmdb.return_value
+        mock_omdb.get_episode_rating.return_value = None
+
+        settings = _mock_settings()
+        logger = _mock_logger()
+        guide = json.dumps({"kinopoisk_id": 462682, "imdb_id": "tt0903747", "season": 1, "episode": 1})
+        params = {"url": guide}
+
+        result = _handle_getepisodedetails(params, 1, settings, logger)
+
+        assert result is True
+
     @patch("tv_scraper.KinopoiskClient")
     def test_episode_no_api_key(self, MockKp):
         settings = _mock_settings(api_key="")
@@ -660,6 +700,69 @@ class TestHandleGetepisodedetails:
         result = _handle_getepisodedetails(params, 1, settings, logger)
 
         assert result is True
+
+    @patch("tv_scraper.TvmazeClient")
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_getepisodedetails_tvmaze_crew_success(self, MockKp, MockCache, MockTvmaze):
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = None
+        mock_kp = MockKp.return_value
+        mock_kp.fetch_seasons_raw.return_value = {"items": []}
+        mock_kp.parse_seasons.return_value = _make_seasons()
+        mock_tvmaze = MockTvmaze.return_value
+        mock_tvmaze.get_episode_crew.return_value = (["Dir1"], ["Wr1"])
+        mock_tvmaze.get_episode_plot.return_value = None
+
+        settings = _mock_settings(omdb_key="", use_tvmaze=True)
+        logger = _mock_logger()
+        guide = json.dumps({"kinopoisk_id": 462682, "imdb_id": "tt0903747", "season": 1, "episode": 1})
+        params = {"url": guide}
+
+        result = _handle_getepisodedetails(params, 1, settings, logger)
+        assert result is True
+        mock_tvmaze.get_episode_crew.assert_called_once()
+
+    @patch("tv_scraper.TvmazeClient")
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_getepisodedetails_tvmaze_disabled(self, MockKp, MockCache, MockTvmaze):
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = None
+        mock_kp = MockKp.return_value
+        mock_kp.fetch_seasons_raw.return_value = {"items": []}
+        mock_kp.parse_seasons.return_value = _make_seasons()
+
+        settings = _mock_settings(omdb_key="", use_tvmaze=False)
+        logger = _mock_logger()
+        guide = json.dumps({"kinopoisk_id": 462682, "imdb_id": "tt0903747", "season": 1, "episode": 1})
+        params = {"url": guide}
+
+        result = _handle_getepisodedetails(params, 1, settings, logger)
+        assert result is True
+        MockTvmaze.assert_not_called()
+
+    @patch("tv_scraper.TvmazeClient")
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_getepisodedetails_tvmaze_crew_error(self, MockKp, MockCache, MockTvmaze):
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = None
+        mock_kp = MockKp.return_value
+        mock_kp.fetch_seasons_raw.return_value = {"items": []}
+        mock_kp.parse_seasons.return_value = _make_seasons()
+        mock_tvmaze = MockTvmaze.return_value
+        mock_tvmaze.get_episode_crew.side_effect = Exception("TVMaze timeout")
+        mock_tvmaze.get_episode_plot.return_value = None
+
+        settings = _mock_settings(omdb_key="", use_tvmaze=True)
+        logger = _mock_logger()
+        guide = json.dumps({"kinopoisk_id": 462682, "imdb_id": "tt0903747", "season": 1, "episode": 1})
+        params = {"url": guide}
+
+        result = _handle_getepisodedetails(params, 1, settings, logger)
+        assert result is True
+        logger.warning.assert_any_call("_handle_getepisodedetails: TVMaze crew error: TVMaze timeout")
 
 
 # ---------------------------------------------------------------------------
@@ -942,7 +1045,7 @@ class TestApplyEpisodeToListitem:
         infotag.setEpisode.assert_called_once_with(3)
         infotag.setPlot.assert_called_once_with("Plot of episode 3")
         infotag.setFirstAired.assert_called_once_with("2008-02-10")
-        infotag.setRating.assert_called_once_with(8.5)
+        infotag.setRatings.assert_called_once_with({"imdb": (8.5, 0)}, "imdb")
 
     def test_fallback_to_english_title(self):
         episode = Episode(
@@ -959,7 +1062,7 @@ class TestApplyEpisodeToListitem:
         _apply_episode_to_listitem(episode, 1, 1, None, listitem, settings, logger)
 
         infotag.setTitle.assert_called_once_with("Pilot")
-        infotag.setRating.assert_not_called()
+        infotag.setRatings.assert_not_called()
 
     def test_fallback_to_episode_number(self):
         episode = Episode(
@@ -991,7 +1094,71 @@ class TestApplyEpisodeToListitem:
 
         _apply_episode_to_listitem(episode, 1, 1, None, listitem, settings, logger)
 
-        infotag.setRating.assert_not_called()
+        infotag.setRatings.assert_not_called()
+
+    def test_kp_rating_only(self):
+        episode = Episode(season_number=1, episode_number=1, title_ru="Пилот", rating=8.1)
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+        settings = _mock_settings()
+        logger = _mock_logger()
+        _apply_episode_to_listitem(episode, 1, 1, None, listitem, settings, logger)
+        infotag.setRatings.assert_called_once_with({"kinopoisk": (8.1, 0)}, "kinopoisk")
+
+    def test_kp_and_imdb_preferred_kp(self):
+        episode = Episode(season_number=1, episode_number=1, title_ru="Пилот", rating=8.1)
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+        settings = _mock_settings()  # preferred=kinopoisk by default
+        logger = _mock_logger()
+        _apply_episode_to_listitem(episode, 1, 1, 7.5, listitem, settings, logger, imdb_votes=1234)
+        infotag.setRatings.assert_called_once_with(
+            {"kinopoisk": (8.1, 0), "imdb": (7.5, 1234)}, "kinopoisk"
+        )
+
+    def test_kp_and_imdb_preferred_imdb(self):
+        episode = Episode(season_number=1, episode_number=1, title_ru="Пилот", rating=8.1)
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+        settings = _mock_settings(preferred_rating=DataSource.IMDB)
+        logger = _mock_logger()
+        _apply_episode_to_listitem(episode, 1, 1, 7.5, listitem, settings, logger, imdb_votes=1234)
+        infotag.setRatings.assert_called_once_with(
+            {"kinopoisk": (8.1, 0), "imdb": (7.5, 1234)}, "imdb"
+        )
+
+    def test_no_kp_only_imdb(self):
+        episode = Episode(season_number=1, episode_number=1, title_ru="Пилот", rating=0.0)
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+        settings = _mock_settings()  # preferred=kinopoisk
+        logger = _mock_logger()
+        _apply_episode_to_listitem(episode, 1, 1, 7.5, listitem, settings, logger, imdb_votes=1234)
+        infotag.setRatings.assert_called_once_with({"imdb": (7.5, 1234)}, "imdb")
+
+    def test_no_ratings_at_all(self):
+        episode = Episode(season_number=1, episode_number=1, title_ru="Пилот", rating=0.0)
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+        settings = _mock_settings()
+        logger = _mock_logger()
+        _apply_episode_to_listitem(episode, 1, 1, None, listitem, settings, logger)
+        infotag.setRatings.assert_not_called()
+
+    def test_preferred_source_fallback(self):
+        episode = Episode(season_number=1, episode_number=1, title_ru="Пилот", rating=8.1)
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+        settings = _mock_settings(preferred_rating=DataSource.IMDB)  # preferred=imdb, but no imdb
+        logger = _mock_logger()
+        _apply_episode_to_listitem(episode, 1, 1, None, listitem, settings, logger)
+        infotag.setRatings.assert_called_once_with({"kinopoisk": (8.1, 0)}, "kinopoisk")
 
     def test_no_synopsis_or_date(self):
         episode = Episode(
@@ -1010,6 +1177,75 @@ class TestApplyEpisodeToListitem:
 
         infotag.setPlot.assert_not_called()
         infotag.setFirstAired.assert_not_called()
+
+    def test_apply_episode_directors_and_writers(self):
+        episode = Episode(season_number=1, episode_number=1, title_ru="Пилот")
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+        settings = _mock_settings()
+        logger = _mock_logger()
+        _apply_episode_to_listitem(
+            episode, 1, 1, None, listitem, settings, logger,
+            tvmaze_directors=["David Nutter"], tvmaze_writers=["D. Benioff", "D.B. Weiss"],
+        )
+        infotag.setDirectors.assert_called_once_with(["David Nutter"])
+        infotag.setWriters.assert_called_once_with(["D. Benioff", "D.B. Weiss"])
+
+    def test_apply_episode_only_writers(self):
+        episode = Episode(season_number=1, episode_number=1, title_ru="Пилот")
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+        settings = _mock_settings()
+        logger = _mock_logger()
+        _apply_episode_to_listitem(
+            episode, 1, 1, None, listitem, settings, logger,
+            tvmaze_directors=[], tvmaze_writers=["Jane Goldman"],
+        )
+        infotag.setDirectors.assert_not_called()
+        infotag.setWriters.assert_called_once_with(["Jane Goldman"])
+
+    def test_apply_episode_only_directors(self):
+        episode = Episode(season_number=1, episode_number=1, title_ru="Пилот")
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+        settings = _mock_settings()
+        logger = _mock_logger()
+        _apply_episode_to_listitem(
+            episode, 1, 1, None, listitem, settings, logger,
+            tvmaze_directors=["Tim Van Patten"], tvmaze_writers=[],
+        )
+        infotag.setDirectors.assert_called_once_with(["Tim Van Patten"])
+        infotag.setWriters.assert_not_called()
+
+    def test_apply_episode_no_crew(self):
+        episode = Episode(season_number=1, episode_number=1, title_ru="Пилот")
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+        settings = _mock_settings()
+        logger = _mock_logger()
+        _apply_episode_to_listitem(
+            episode, 1, 1, None, listitem, settings, logger,
+            tvmaze_directors=None, tvmaze_writers=None,
+        )
+        infotag.setDirectors.assert_not_called()
+        infotag.setWriters.assert_not_called()
+
+    def test_apply_episode_multiple_directors(self):
+        episode = Episode(season_number=1, episode_number=1, title_ru="Пилот")
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+        settings = _mock_settings()
+        logger = _mock_logger()
+        _apply_episode_to_listitem(
+            episode, 1, 1, None, listitem, settings, logger,
+            tvmaze_directors=["A", "B", "C"], tvmaze_writers=[],
+        )
+        infotag.setDirectors.assert_called_once_with(["A", "B", "C"])
 
 
 # ---------------------------------------------------------------------------
@@ -1330,7 +1566,11 @@ class TestGetepisodedetailsTvmaze:
 
     @patch("tv_scraper.TvmazeClient")
     def test_getepisodedetails_kp_synopsis_priority(self, mock_tvmaze_cls):
-        """When KP synopsis exists, TVMaze should not be consulted even if enabled."""
+        """When KP synopsis exists, TVMaze plot is not fetched but crew still is."""
+        mock_tvmaze = MagicMock()
+        mock_tvmaze_cls.return_value = mock_tvmaze
+        mock_tvmaze.get_episode_crew.return_value = ([], [])
+
         self._setup_cached_seasons(synopsis="KP description")
 
         settings = _mock_settings(omdb_key="", use_tvmaze=True)
@@ -1342,9 +1582,8 @@ class TestGetepisodedetailsTvmaze:
         result = _handle_getepisodedetails(params, 1, settings, logger)
 
         assert result is True
-        # TvmazeClient should NOT have been instantiated
-        mock_tvmaze_cls.assert_not_called()
-        # Verify KP synopsis was used
+        mock_tvmaze.get_episode_plot.assert_not_called()
+        mock_tvmaze.get_episode_crew.assert_called_once()
         listitem_instance = xbmcgui.ListItem.return_value
         infotag_instance = listitem_instance.getVideoInfoTag.return_value
         infotag_instance.setPlot.assert_called_once_with("KP description")

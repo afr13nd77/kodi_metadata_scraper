@@ -1,5 +1,30 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
+## v3.20.0 — 27.07.2026
+
+### Новое (BL-67)
+
+- **Рейтинг эпизода из KP API**: новое поле `Episode.rating` парсится из ответа `/v2.2/films/{id}/seasons`. Kinopoisk теперь возвращает рейтинг для большинства эпизодов популярных сериалов.
+- **setRatings() для эпизодов**: вместо одиночного `setRating()` используется dict-формат `setRatings()` с двумя источниками: `kinopoisk` (KP API) и `imdb` (OMDb). Default source определяется настройкой `preferred_rating`.
+- **OMDb votes для эпизодов**: `get_episode_rating()` теперь возвращает `(rating, votes)` tuple. Голоса парсятся из поля `imdbVotes` (обработка N/A, запятых, отсутствия поля).
+- Fallback на первый доступный источник, если preferred source отсутствует.
+
+### Тесты
+- 799 тестов (605 movie + 179 TV + 15 shared). +19 новых тестов TV (11 tvmaze crew + 8 scraper crew).
+
+### Новое (BL-64)
+
+- **Режиссёры и сценаристы эпизодов из TVMaze**: новый метод `get_episode_crew()` получает crew для каждого эпизода через TVMaze API `/episodes/{id}/crew`. Парсинг по типам: Director → `setDirectors()`, Writer → `setWriters()`.
+- In-memory кэш crew (до 50 записей) с FIFO eviction. Переиспользование существующих кэшей `_show_cache` и `_episodes_cache`.
+- Работает при `use_tvmaze=true`, независимо от наличия KP synopsis.
+- Graceful degradation: ошибки TVMaze API не блокируют обработку эпизода.
+
+### Новое (BL-66)
+
+- **Оригинальный язык фильма/сериала**: маппинг ~45 стран KP API → ISO 639-1 (`country_to_language()`). Заполняется автоматически по первой стране производства.
+- **`setOriginalLanguage()` для Kodi v22+**: нативное поле библиотеки для фильтрации по языку в скинах. Graceful degradation для Kodi v20/v21 (try/except AttributeError).
+- **NFO roundtrip**: тег `<language>` записывается и читается при NFO-экспорте/импорте.
+
 ## v3.19.0 — 27.07.2026
 
 ### Новое (BL-70)

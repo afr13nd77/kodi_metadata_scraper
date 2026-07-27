@@ -315,10 +315,10 @@ class OmdbClient:
 
     def get_episode_rating(
         self, imdb_id: str, season: int, episode: int
-    ) -> Optional[float]:
+    ) -> Optional[tuple[float, int]]:
         """Fetch individual episode rating from OMDb by IMDB ID, season, episode.
 
-        Returns float rating on success, None on any failure.
+        Returns (rating, votes) tuple on success, None on any failure.
         Never raises exceptions to callers.
 
         Args:
@@ -327,7 +327,7 @@ class OmdbClient:
             episode: Episode number (1-based).
 
         Returns:
-            Episode rating as float (e.g. 9.8) or None.
+            Episode rating and votes as tuple (e.g. (9.8, 1234)) or None.
         """
         if not imdb_id or not imdb_id.strip():
             self._log_warning(
@@ -361,11 +361,12 @@ class OmdbClient:
 
     def _fetch_episode(
         self, imdb_id: str, season: int, episode: int, attempt: int
-    ) -> Optional[float]:
+    ) -> Optional[tuple[float, int]]:
         """Execute a single HTTP request to OMDb for episode rating.
 
-        Returns float rating on success, None on API error (Response=False)
-        or missing rating. Raises _RetryableError on network/timeout failures.
+        Returns (rating, votes) tuple on success, None on API error
+        (Response=False) or missing rating.
+        Raises _RetryableError on network/timeout failures.
         """
         params = {
             "apikey": self._api_key,
@@ -430,11 +431,19 @@ class OmdbClient:
                     f"'{imdb_rating}' for {imdb_id} S{season:02d}E{episode:02d}"
                 )
                 return None
+            # Parse votes
+            raw_votes = data.get("imdbVotes", "0") or "0"
+            if raw_votes == "N/A":
+                raw_votes = "0"
+            try:
+                votes = int(raw_votes.replace(",", ""))
+            except (ValueError, TypeError):
+                votes = 0
             self._log_info(
                 f"OmdbClient.get_episode_rating: success for "
-                f"{imdb_id} S{season:02d}E{episode:02d} -- rating={rating}"
+                f"{imdb_id} S{season:02d}E{episode:02d} -- rating={rating}, votes={votes}"
             )
-            return rating
+            return (rating, votes)
 
         self._log_info(
             f"OmdbClient.get_episode_rating: no valid rating for "

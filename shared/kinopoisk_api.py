@@ -76,6 +76,54 @@ _GENRE_RU_TO_EN: dict[str, str] = {
     "игра": "Game-Show",
 }
 
+_COUNTRY_TO_LANGUAGE: dict[str, str] = {
+    "Россия": "ru",
+    "СССР": "ru",
+    "Беларусь": "be",
+    "Украина": "uk",
+    "США": "en",
+    "Великобритания": "en",
+    "Австралия": "en",
+    "Канада": "en",
+    "Новая Зеландия": "en",
+    "Ирландия": "en",
+    "Франция": "fr",
+    "Германия": "de",
+    "ФРГ": "de",
+    "Италия": "it",
+    "Испания": "es",
+    "Португалия": "pt",
+    "Нидерланды": "nl",
+    "Бельгия": "fr",
+    "Швеция": "sv",
+    "Норвегия": "no",
+    "Дания": "da",
+    "Финляндия": "fi",
+    "Польша": "pl",
+    "Чехия": "cs",
+    "Румыния": "ro",
+    "Венгрия": "hu",
+    "Греция": "el",
+    "Австрия": "de",
+    "Швейцария": "de",
+    "Япония": "ja",
+    "Южная Корея": "ko",
+    "Корея Южная": "ko",
+    "Китай": "zh",
+    "Гонконг": "zh",
+    "Тайвань": "zh",
+    "Индия": "hi",
+    "Таиланд": "th",
+    "Турция": "tr",
+    "Иран": "fa",
+    "Израиль": "he",
+    "Мексика": "es",
+    "Аргентина": "es",
+    "Бразилия": "pt",
+    "Колумбия": "es",
+    "Чили": "es",
+}
+
 
 def normalize_genres(genres_ru: list[str], language: str, logger) -> list[str]:
     if language != "en":
@@ -102,6 +150,19 @@ def normalize_genres(genres_ru: list[str], language: str, logger) -> list[str]:
         logger.warning(f"normalize_genres: unmapped genres: {unmapped}")
 
     return result
+
+
+def country_to_language(countries: list[str], logger) -> str:
+    if not countries:
+        logger.debug("country_to_language: empty countries list")
+        return ""
+    country = countries[0]
+    lang = _COUNTRY_TO_LANGUAGE.get(country, "")
+    if lang:
+        logger.debug(f"country_to_language: '{country}' -> '{lang}'")
+    else:
+        logger.debug(f"country_to_language: no mapping for country '{country}'")
+    return lang
 
 
 _kp_global_limiter = RateLimiter(18.0)
@@ -303,6 +364,7 @@ class KinopoiskClient:
             ),
             countries=[c["country"] for c in data.get("countries", []) if c.get("country")],
         )
+        details.original_language = country_to_language(details.countries, self._logger)
 
         kp_rating = self._safe_float(data.get("ratingKinopoisk", 0))
         kp_votes = self._safe_int(data.get("ratingKinopoiskVoteCount", 0))
@@ -673,6 +735,7 @@ class KinopoiskClient:
                     title_en=(ep_data.get("nameEn", "") or ""),
                     synopsis=(ep_data.get("synopsis", "") or ""),
                     release_date=(ep_data.get("releaseDate", "") or ""),
+                    rating=self._safe_float(ep_data.get("rating") or 0),
                 )
                 season.episodes.append(episode)
             seasons.append(season)

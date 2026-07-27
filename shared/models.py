@@ -104,6 +104,7 @@ class MovieDetails:
     trailer_url: str = ""
     premiere_date: str = ""
     plot_outline: str = ""
+    original_language: str = ""
 
 
 class ContentType(Enum):
@@ -123,6 +124,9 @@ class Episode:
     title_en: str = ""
     synopsis: str = ""
     release_date: str = ""
+    rating: float = 0.0
+    directors: list[str] = field(default_factory=list)
+    writers: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -176,3 +180,4 @@ class TVShowDetails:
     trailer_url: str = ""
     premiere_date: str = ""
     plot_outline: str = ""
+    original_language: str = ""

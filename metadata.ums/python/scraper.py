@@ -748,6 +748,16 @@ def _apply_movie_details_to_listitem(
     infotag.setDuration(details.runtime * 60)
     infotag.setMpaa(details.mpaa)
 
+    if details.original_language:
+        try:
+            infotag.setOriginalLanguage(details.original_language)
+            logger.info(f"_apply_movie_details: setOriginalLanguage('{details.original_language}')")
+        except AttributeError:
+            logger.debug(
+                f"setOriginalLanguage not available (Kodi < v22), "
+                f"original_language='{details.original_language}' skipped"
+            )
+
     infotag.setGenres(details.genres)
     infotag.setCountries(details.countries)
     infotag.setStudios(details.studios)

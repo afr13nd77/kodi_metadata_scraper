@@ -17,6 +17,8 @@ _TVMAZE_CACHE_MAX_SHOWS = 20
 _TVMAZE_CACHE_MAX_EPISODES = 10
 _seasons_cache: dict[int, list[SeasonArtInfo]] = {}
 _TVMAZE_CACHE_MAX_SEASONS = 10
+_crew_cache: dict[int, list[dict]] = {}
+_TVMAZE_CACHE_MAX_CREW = 50
 
 
 class TvmazeClient:
@@ -350,6 +352,125 @@ class TvmazeClient:
             f"{len(result)} seasons"
         )
         return result
+
+    def get_episode_crew(
+        self,
+        imdb_id: str,
+        season: int,
+        episode: int,
+        title_original: str = "",
+    ) -> tuple[list[str], list[str]]:
+        if not imdb_id and not title_original:
+            self._log_debug(
+                "TvmazeClient.get_episode_crew: no imdb_id or title_original, skipping"
+            )
+            return ([], [])
+
+        self._log_info(
+            f"TvmazeClient.get_episode_crew: "
+            f"imdb_id={imdb_id}, S{season:02d}E{episode:02d}, "
+            f"title_original='{title_original}'"
+        )
+
+        show_id = None
+        if imdb_id:
+            show_id = self.lookup_show(imdb_id)
+        if show_id is None and title_original:
+            show_id = self.search_show(title_original)
+        if show_id is None:
+            return ([], [])
+
+        episodes = self.get_episodes(show_id)
+        if episodes is None:
+            return ([], [])
+
+        episode_id = None
+        for ep in episodes:
+            if ep.get("season") == season and ep.get("number") == episode:
+                episode_id = ep.get("id")
+                break
+
+        if episode_id is None:
+            self._log_debug(
+                f"TvmazeClient.get_episode_crew: episode not found for "
+                f"S{season:02d}E{episode:02d}"
+            )
+            return ([], [])
+
+        with _tvmaze_cache_lock:
+            if episode_id in _crew_cache:
+                self._log_debug(
+                    f"TvmazeClient.get_episode_crew: cache hit for episode_id={episode_id}"
+                )
+                crew_data = _crew_cache[episode_id]
+                return self._parse_crew(crew_data, season, episode)
+
+        try:
+            crew_data = self._http.get_json(f"/episodes/{episode_id}/crew")
+        except HttpError as exc:
+            if exc.status_code == 404:
+                self._log_debug(
+                    f"TvmazeClient.get_episode_crew: no crew for episode_id={episode_id}"
+                )
+            else:
+                self._log_warning(
+                    f"TvmazeClient.get_episode_crew: HTTP error for "
+                    f"episode_id={episode_id}: {exc}"
+                )
+            return ([], [])
+        except Exception as exc:
+            self._log_warning(
+                f"TvmazeClient.get_episode_crew: unexpected error for "
+                f"episode_id={episode_id}: {exc}"
+            )
+            return ([], [])
+
+        if not isinstance(crew_data, list):
+            self._log_warning(
+                f"TvmazeClient.get_episode_crew: unexpected response type "
+                f"for episode_id={episode_id}: {type(crew_data).__name__}"
+            )
+            return ([], [])
+
+        with _tvmaze_cache_lock:
+            if len(_crew_cache) >= _TVMAZE_CACHE_MAX_CREW:
+                oldest_key = next(iter(_crew_cache))
+                del _crew_cache[oldest_key]
+            _crew_cache[episode_id] = crew_data
+
+        return self._parse_crew(crew_data, season, episode)
+
+    def _parse_crew(
+        self, crew_data: list[dict], season: int, episode: int
+    ) -> tuple[list[str], list[str]]:
+        directors: list[str] = []
+        writers: list[str] = []
+        for entry in crew_data:
+            crew_type = entry.get("type", "")
+            person = entry.get("person") or {}
+            name = person.get("name", "")
+            if not name:
+                self._log_warning(
+                    f"TvmazeClient.get_episode_crew: crew entry without person.name "
+                    f"for S{season:02d}E{episode:02d}, type={crew_type}"
+                )
+                continue
+            if crew_type == "Director":
+                directors.append(name)
+            elif crew_type == "Writer":
+                writers.append(name)
+
+        if not directors and not writers:
+            self._log_info(
+                f"TvmazeClient.get_episode_crew: no crew data for "
+                f"S{season:02d}E{episode:02d}"
+            )
+        else:
+            self._log_info(
+                f"TvmazeClient.get_episode_crew: S{season:02d}E{episode:02d} "
+                f"directors={len(directors)}, writers={len(writers)}"
+            )
+        return (directors, writers)
 
     def _strip_html(self, html: str) -> str:
         if not html:

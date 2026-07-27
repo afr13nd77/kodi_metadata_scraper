@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import patch, MagicMock
 from tvmaze_client import (
-    TvmazeClient, _show_cache, _episodes_cache, _TVMAZE_CACHE_MAX_SHOWS,
+    TvmazeClient, _show_cache, _episodes_cache, _crew_cache, _TVMAZE_CACHE_MAX_SHOWS,
 )
 from http_client import HttpError
 
@@ -13,9 +13,11 @@ def clear_tvmaze_cache():
     """Clear module-level TVMaze caches between tests."""
     _show_cache.clear()
     _episodes_cache.clear()
+    _crew_cache.clear()
     yield
     _show_cache.clear()
     _episodes_cache.clear()
+    _crew_cache.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -100,6 +102,208 @@ class TestGetEpisodePlot:
         result = client.get_episode_plot("tt1234567", 1, 1)
 
         assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Tests for get_episode_crew
+# ---------------------------------------------------------------------------
+
+class TestGetEpisodeCrew:
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_episode_crew_success(self, mock_http_cls):
+        """Directors + Writers возвращаются корректно."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = [
+            {"id": 100},
+            [{"season": 1, "number": 1, "id": 5001, "summary": "ep1"}],
+            [
+                {"type": "Director", "person": {"name": "David Nutter"}},
+                {"type": "Writer", "person": {"name": "David Benioff"}},
+                {"type": "Writer", "person": {"name": "D.B. Weiss"}},
+            ],
+        ]
+        client = TvmazeClient(logger=MagicMock())
+        directors, writers = client.get_episode_crew("tt1234567", 1, 1)
+        assert directors == ["David Nutter"]
+        assert writers == ["David Benioff", "D.B. Weiss"]
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_episode_crew_only_writers(self, mock_http_cls):
+        """Crew без Directors — directors пуст."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = [
+            {"id": 100},
+            [{"season": 1, "number": 1, "id": 5001, "summary": ""}],
+            [{"type": "Writer", "person": {"name": "Jane Goldman"}}],
+        ]
+        client = TvmazeClient(logger=MagicMock())
+        directors, writers = client.get_episode_crew("tt1234567", 1, 1)
+        assert directors == []
+        assert writers == ["Jane Goldman"]
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_episode_crew_only_directors(self, mock_http_cls):
+        """Crew без Writers — writers пуст."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = [
+            {"id": 100},
+            [{"season": 1, "number": 1, "id": 5001, "summary": ""}],
+            [{"type": "Director", "person": {"name": "Tim Van Patten"}}],
+        ]
+        client = TvmazeClient(logger=MagicMock())
+        directors, writers = client.get_episode_crew("tt1234567", 1, 1)
+        assert directors == ["Tim Van Patten"]
+        assert writers == []
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_episode_crew_empty_array(self, mock_http_cls):
+        """Crew = пустой массив — обе списка пусты, info лог."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = [
+            {"id": 100},
+            [{"season": 1, "number": 1, "id": 5001, "summary": ""}],
+            [],
+        ]
+        logger = MagicMock()
+        client = TvmazeClient(logger=logger)
+        directors, writers = client.get_episode_crew("tt1234567", 1, 1)
+        assert directors == []
+        assert writers == []
+        logger.info.assert_called()
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_episode_crew_http_error(self, mock_http_cls):
+        """HttpError на /crew — ([], []) + warning лог."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        responses = [
+            {"id": 100},
+            [{"season": 1, "number": 1, "id": 5001, "summary": ""}],
+        ]
+        call_count = [0]
+        def side_effect(*args, **kwargs):
+            idx = call_count[0]
+            call_count[0] += 1
+            if idx < 2:
+                return responses[idx]
+            raise HttpError(500, "Server Error", "url")
+        mock_http.get_json.side_effect = side_effect
+
+        logger = MagicMock()
+        client = TvmazeClient(logger=logger)
+        directors, writers = client.get_episode_crew("tt1234567", 1, 1)
+        assert directors == []
+        assert writers == []
+        logger.warning.assert_called()
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_episode_crew_no_ids(self, mock_http_cls):
+        """Пустой imdb_id и title_original — ([], []) без HTTP."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        client = TvmazeClient(logger=MagicMock())
+        directors, writers = client.get_episode_crew("", 1, 1)
+        assert directors == []
+        assert writers == []
+        mock_http.get_json.assert_not_called()
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_episode_crew_episode_not_found(self, mock_http_cls):
+        """Season/number не найден — ([], [])."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = [
+            {"id": 100},
+            [{"season": 1, "number": 5, "id": 5005, "summary": "other ep"}],
+        ]
+        client = TvmazeClient(logger=MagicMock())
+        directors, writers = client.get_episode_crew("tt1234567", 1, 1)
+        assert directors == []
+        assert writers == []
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_episode_crew_cache_hit(self, mock_http_cls):
+        """Второй вызов с тем же episode — кэш hit, нет HTTP."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = [
+            {"id": 100},
+            [{"season": 1, "number": 1, "id": 5001, "summary": ""}],
+            [{"type": "Director", "person": {"name": "Alan Taylor"}}],
+        ]
+        client = TvmazeClient(logger=MagicMock())
+        d1, w1 = client.get_episode_crew("tt1234567", 1, 1)
+        assert d1 == ["Alan Taylor"]
+        assert mock_http.get_json.call_count == 3
+
+        d2, w2 = client.get_episode_crew("tt1234567", 1, 1)
+        assert d2 == ["Alan Taylor"]
+        assert mock_http.get_json.call_count == 3
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_episode_crew_multiple_directors(self, mock_http_cls):
+        """3 Directors — все 3 в списке, порядок API."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = [
+            {"id": 100},
+            [{"season": 2, "number": 3, "id": 5023, "summary": ""}],
+            [
+                {"type": "Director", "person": {"name": "Director A"}},
+                {"type": "Director", "person": {"name": "Director B"}},
+                {"type": "Director", "person": {"name": "Director C"}},
+            ],
+        ]
+        client = TvmazeClient(logger=MagicMock())
+        directors, writers = client.get_episode_crew("tt1234567", 2, 3)
+        assert directors == ["Director A", "Director B", "Director C"]
+        assert writers == []
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_episode_crew_filters_other_types(self, mock_http_cls):
+        """Crew с Director, Writer, Producer, Creator — только Director и Writer."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = [
+            {"id": 100},
+            [{"season": 1, "number": 1, "id": 5001, "summary": ""}],
+            [
+                {"type": "Director", "person": {"name": "Dir1"}},
+                {"type": "Writer", "person": {"name": "Wr1"}},
+                {"type": "Producer", "person": {"name": "Prod1"}},
+                {"type": "Creator", "person": {"name": "Cr1"}},
+            ],
+        ]
+        client = TvmazeClient(logger=MagicMock())
+        directors, writers = client.get_episode_crew("tt1234567", 1, 1)
+        assert directors == ["Dir1"]
+        assert writers == ["Wr1"]
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_episode_crew_missing_person_name(self, mock_http_cls):
+        """Crew entry без person.name — пропускается с warning."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = [
+            {"id": 100},
+            [{"season": 1, "number": 1, "id": 5001, "summary": ""}],
+            [
+                {"type": "Director", "person": {"name": ""}},
+                {"type": "Director", "person": {"name": "Good Director"}},
+                {"type": "Writer", "person": {}},
+            ],
+        ]
+        logger = MagicMock()
+        client = TvmazeClient(logger=logger)
+        directors, writers = client.get_episode_crew("tt1234567", 1, 1)
+        assert directors == ["Good Director"]
+        assert writers == []
+        assert logger.warning.call_count >= 2
 
 
 # ---------------------------------------------------------------------------

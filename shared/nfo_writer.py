@@ -226,6 +226,9 @@ def _build_common_elements(
     if details.trailer_url:
         ET.SubElement(parent, "trailer").text = details.trailer_url
 
+    if details.original_language:
+        ET.SubElement(parent, "language").text = details.original_language
+
 
 def _prettify_xml(element: ET.Element) -> str:
     """Return indented XML string with custom declaration."""

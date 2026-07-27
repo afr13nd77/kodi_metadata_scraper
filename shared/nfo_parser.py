@@ -270,6 +270,11 @@ class NfoParser:
             details.trailer_url = trailer_text
             self._logger.debug(f"NfoParser.parse_full_movie: trailer_url='{trailer_text}'")
 
+        original_language = self._text(root, "language")
+        if original_language:
+            details.original_language = original_language
+            self._logger.info(f"NfoParser.parse_full_movie: found <language>={original_language}")
+
         self._logger.info(
             f"NfoParser.parse_full_movie: success title='{details.title_ru}', "
             f"kp_id={details.kinopoisk_id}, year={details.year}, "
@@ -325,6 +330,11 @@ class NfoParser:
         if trailer_text:
             details.trailer_url = trailer_text
             self._logger.debug(f"NfoParser.parse_full_tvshow: trailer_url='{trailer_text}'")
+
+        original_language = self._text(root, "language")
+        if original_language:
+            details.original_language = original_language
+            self._logger.info(f"NfoParser.parse_full_tvshow: found <language>={original_language}")
 
         self._logger.info(
             f"NfoParser.parse_full_tvshow: success title='{details.title_ru}', "
