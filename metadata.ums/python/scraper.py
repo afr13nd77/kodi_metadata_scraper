@@ -625,7 +625,11 @@ def _handle_getdetails(
             fc = FanartClient(settings.fanart_api_key, logger)
             fanart_art = fc.get_movie_art(details.imdb_id)
             if fanart_art:
-                logger.info(f"_handle_getdetails: FanArt.tv returned {len(fanart_art)} art types for imdb_id={details.imdb_id}")
+                art_count = len(fanart_art)
+                logger.info(
+                    f"_handle_getdetails: FanArt.tv returned {art_count} art types"
+                    f" for imdb_id={details.imdb_id}"
+                )
         except Exception as exc:
             logger.warning(f"_handle_getdetails: FanArt.tv error: {exc}")
     elif settings.use_fanart and not settings.fanart_api_key:

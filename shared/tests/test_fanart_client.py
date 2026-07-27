@@ -36,21 +36,21 @@ class TestGetMovieArt:
         client = _make_client()
         api_response = {
             "hdmovielogo": [
-                {"id": "50927", "url": "https://assets.fanart.tv/fanart/movies/120/hdmovielogo/lotr.png", "lang": "en", "likes": "7"},
+                {"id": "50927", "url": "https://assets.fanart.tv/movies/120/logo.png", "lang": "en", "likes": "7"},
             ],
             "moviebanner": [
-                {"id": "50928", "url": "https://assets.fanart.tv/fanart/movies/120/moviebanner/lotr.jpg", "lang": "en", "likes": "3"},
+                {"id": "50928", "url": "https://assets.fanart.tv/movies/120/banner.jpg", "lang": "en", "likes": "3"},
             ],
             "moviethumb": [
-                {"id": "50929", "url": "https://assets.fanart.tv/fanart/movies/120/moviethumb/lotr_thumb.jpg", "lang": "en", "likes": "5"},
+                {"id": "50929", "url": "https://assets.fanart.tv/movies/120/thumb.jpg", "lang": "en", "likes": "5"},
             ],
         }
         with patch.object(client._http, "get_json", return_value=api_response):
             result = client.get_movie_art("tt0120737")
 
-        assert result["clearlogo"] == "https://assets.fanart.tv/fanart/movies/120/hdmovielogo/lotr.png"
-        assert result["banner"] == "https://assets.fanart.tv/fanart/movies/120/moviebanner/lotr.jpg"
-        assert result["landscape"] == "https://assets.fanart.tv/fanart/movies/120/moviethumb/lotr_thumb.jpg"
+        assert result["clearlogo"] == "https://assets.fanart.tv/movies/120/logo.png"
+        assert result["banner"] == "https://assets.fanart.tv/movies/120/banner.jpg"
+        assert result["landscape"] == "https://assets.fanart.tv/movies/120/thumb.jpg"
 
     def test_get_movie_art_best_by_likes(self):
         client = _make_client()
