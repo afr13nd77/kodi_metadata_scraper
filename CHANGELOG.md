@@ -1,5 +1,10 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
+## v3.21.3 — 27.07.2026
+
+### Исправлено
+- Настройка «Wikidata fallback для IMDB ID» не отображалась в Kodi (пустая строка). Исправлено: inline-текст заменён на числовые ID из strings.po в обоих аддонах.
+
 ## v3.21.2 — 27.07.2026
 
 ### Исправлено
