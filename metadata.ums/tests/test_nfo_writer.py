@@ -35,12 +35,20 @@ def mock_settings():
     s = MagicMock()
     s.enable_nfo_export = True
     s.nfo_overwrite = False
+    s.actor_name_language = "ru"
     return s
 
 
 @pytest.fixture
 def mock_logger():
     return MagicMock()
+
+
+def _make_settings(lang: str = "ru"):
+    """Create a mock settings with actor_name_language for unit tests."""
+    s = MagicMock()
+    s.actor_name_language = lang
+    return s
 
 
 @pytest.fixture
@@ -122,7 +130,7 @@ def test_build_movie_xml_full():
         tags=["Оскар"],
     )
 
-    xml_content = _build_movie_xml(details)
+    xml_content = _build_movie_xml(details, _make_settings())
     root = ET.fromstring(xml_content.strip())
 
     assert root.tag == "movie"
@@ -217,7 +225,7 @@ def test_build_movie_xml_full():
 def test_build_movie_xml_minimal():
     details = MovieDetails(kinopoisk_id=12345, title_ru="Тест")
 
-    xml_content = _build_movie_xml(details)
+    xml_content = _build_movie_xml(details, _make_settings())
     root = ET.fromstring(xml_content.strip())
 
     assert root.tag == "movie"
@@ -274,7 +282,7 @@ def test_build_tvshow_xml_full():
         tags=["Эмми"],
     )
 
-    xml_content = _build_tvshow_xml(details)
+    xml_content = _build_tvshow_xml(details, _make_settings())
     root = ET.fromstring(xml_content.strip())
 
     assert root.tag == "tvshow"
@@ -315,7 +323,7 @@ def test_ratings_max_values():
         ],
     )
 
-    xml_content = _build_movie_xml(details)
+    xml_content = _build_movie_xml(details, _make_settings())
     root = ET.fromstring(xml_content.strip())
 
     ratings_elem = root.find("ratings")
@@ -349,7 +357,7 @@ def test_writers_use_credits_tag():
         ],
     )
 
-    xml_content = _build_movie_xml(details)
+    xml_content = _build_movie_xml(details, _make_settings())
     root = ET.fromstring(xml_content.strip())
 
     credits_elems = root.findall("credits")
@@ -378,7 +386,7 @@ def test_artwork_poster_fanart_only():
         ],
     )
 
-    xml_content = _build_movie_xml(details)
+    xml_content = _build_movie_xml(details, _make_settings())
     root = ET.fromstring(xml_content.strip())
 
     # Only direct <thumb> children (not nested inside <actor>)
@@ -401,7 +409,7 @@ def test_xml_special_characters():
         plot='<script>alert("xss")</script>',
     )
 
-    xml_content = _build_movie_xml(details)
+    xml_content = _build_movie_xml(details, _make_settings())
 
     # Must parse without raising
     root = ET.fromstring(xml_content.strip())
@@ -431,7 +439,7 @@ def test_prettify_xml_declaration():
 
 def test_set_element_movie_only():
     movie = MovieDetails(kinopoisk_id=1, title_ru="Тест", set_name="Saga")
-    xml_content = _build_movie_xml(movie)
+    xml_content = _build_movie_xml(movie, _make_settings())
     root = ET.fromstring(xml_content.strip())
 
     set_elem = root.find("set")
@@ -439,7 +447,7 @@ def test_set_element_movie_only():
     assert set_elem.findtext("name") == "Saga"
 
     tvshow = TVShowDetails(kinopoisk_id=2, title_ru="Шоу")
-    xml_content_tv = _build_tvshow_xml(tvshow)
+    xml_content_tv = _build_tvshow_xml(tvshow, _make_settings())
     root_tv = ET.fromstring(xml_content_tv.strip())
 
     assert root_tv.find("set") is None
@@ -539,7 +547,7 @@ def test_nfo_parseable_by_nfo_parser():
         title_ru="Матрица",
     )
 
-    xml_content = _build_movie_xml(details)
+    xml_content = _build_movie_xml(details, _make_settings())
 
     parser = NfoParser(logger=MagicMock())
     result = parser.parse(xml_content)
@@ -592,3 +600,42 @@ def test_write_movie_nfo_directory_path_skips(sample_movie, mock_settings, mock_
     mock_logger.info.assert_called()
     logged_messages = " ".join(str(call) for call in mock_logger.info.call_args_list)
     assert "directory path detected" in logged_messages
+
+
+# ---------------------------------------------------------------------------
+# 23-24. TestActorNameLanguageNfo  (BL-62 / T-04)
+# ---------------------------------------------------------------------------
+
+class TestActorNameLanguageNfo:
+    """Verify that actor_name_language setting controls director/writer/cast names in NFO."""
+
+    def test_nfo_writer_actor_lang_en(self):
+        details = MovieDetails(
+            kinopoisk_id=123,
+            title_ru="Тест",
+            directors=[Person(name_ru="Иван Иванов", name_en="Ivan Ivanov", profession=ProfessionType.DIRECTOR)],
+            writers=[Person(name_ru="Пётр Петров", name_en="Peter Petrov", profession=ProfessionType.WRITER)],
+            cast=[Person(name_ru="Сидор Сидоров", name_en="Sidor Sidorov", role="Герой", order=0)],
+        )
+        settings = _make_settings("en")
+        xml = _build_movie_xml(details, settings, None)
+        assert "Ivan Ivanov" in xml
+        assert "Peter Petrov" in xml
+        assert "Sidor Sidorov" in xml
+        assert "Иван Иванов" not in xml
+        assert "Пётр Петров" not in xml
+        assert "Сидор Сидоров" not in xml
+
+    def test_nfo_writer_actor_lang_ru(self):
+        details = MovieDetails(
+            kinopoisk_id=123,
+            title_ru="Тест",
+            directors=[Person(name_ru="Иван Иванов", name_en="Ivan Ivanov", profession=ProfessionType.DIRECTOR)],
+            cast=[Person(name_ru="Сидор Сидоров", name_en="Sidor Sidorov", role="Герой", order=0)],
+        )
+        settings = _make_settings("ru")
+        xml = _build_movie_xml(details, settings, None)
+        assert "Иван Иванов" in xml
+        assert "Сидор Сидоров" in xml
+        assert "Ivan Ivanov" not in xml
+        assert "Sidor Sidorov" not in xml

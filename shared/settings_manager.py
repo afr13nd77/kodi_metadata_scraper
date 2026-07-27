@@ -74,6 +74,11 @@ class SettingsManager:
         return self._GENRE_LANGUAGE_MAP.get(value, "ru")
 
     @property
+    def actor_name_language(self) -> str:
+        value = self._addon.getSettingInt("actor_name_language")
+        return self._GENRE_LANGUAGE_MAP.get(value, "ru")
+
+    @property
     def clear_cache(self) -> bool:
         return self._addon.getSettingBool("clear_cache")
 

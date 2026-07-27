@@ -1,8 +1,8 @@
 # Kodi Metadata Scraper — Индекс проекта
 
-**Версия**: 3.18.1 / 3.18.0 (movie / TV)
+**Версия**: 3.19.0 / 3.19.0 (movie / TV)
 **Статус**: Полностью реализован — Movies + TV Shows (независимые аддоны)
-**Обновлён**: 26.07.2026
+**Обновлён**: 27.07.2026
 
 ---
 
@@ -391,6 +391,14 @@ Kodi требует **отдельные addon ID** для movie и TV scrapers:
 | 2. Технический дизайн | `docs/graceful-degradation/design.md` | ✅ done |
 | 3. Разбивка на задачи | `docs/graceful-degradation/tasks.md` | ✅ done |
 
+### Язык имён актёров (BL-70_actor-name-language) — BL-70
+
+| Фаза | Документ | Статус |
+|---|---|---|
+| 1. Требования | `docs/BL-70_actor-name-language/requirements.md` | ✅ approved |
+| 2. Технический дизайн | `docs/BL-70_actor-name-language/design.md` | ✅ approved |
+| 3. Разбивка на задачи | `docs/BL-70_actor-name-language/tasks.md` | ✅ done (8/8) |
+
 ### Wikidata Fallback (wikidata-fallback) — BL-56
 
 | Фаза | Документ | Статус |
@@ -403,7 +411,7 @@ Kodi требует **отдельные addon ID** для movie и TV scrapers:
 
 ## Текущая версия
 
-**Movie 3.17.2 / TV 3.18.0** — BL-40/63: сезонные постеры и названия из TVMaze (`get_seasons()`, `SeasonArtInfo`, `_apply_season_art()`). BUG-008 fix: getepisodelist резолвит KP ID из IMDB при миграции с чужого скрапера (TMDb/TVDB). Также: BUG-007 fix (IMDB→KP lookup для Elementum/strm), Wikidata fallback для IMDB ID (BL-56), BL-57 fix (NFO directory guard), YouTube-трейлеры (BL-09), Graceful degradation (BL-24), CI/CD (BL-35), детекция дублей (BL-26), NFO-экспорт (BL-25), умный парсинг (BL-15), теги наград (BL-10), нормализация жанров (BL-11), персистентный кэш (BL-20). 715 тестов (564 movie + 145 TV + 6 shared).
+**Movie 3.19.0 / TV 3.19.0** — BL-70: настройка языка имён актёров (ru/en) с fallback, NFO-экспорт. BL-40/63: сезонные постеры и названия из TVMaze (`get_seasons()`, `SeasonArtInfo`, `_apply_season_art()`). BUG-008 fix: getepisodelist резолвит KP ID из IMDB при миграции с чужого скрапера (TMDb/TVDB). Также: BUG-007 fix (IMDB→KP lookup для Elementum/strm), Wikidata fallback для IMDB ID (BL-56), BL-57 fix (NFO directory guard), YouTube-трейлеры (BL-09), Graceful degradation (BL-24), CI/CD (BL-35), детекция дублей (BL-26), NFO-экспорт (BL-25), умный парсинг (BL-15), теги наград (BL-10), нормализация жанров (BL-11), персистентный кэш (BL-20). 715 тестов (564 movie + 145 TV + 6 shared).
 
 ---
 
@@ -469,7 +477,7 @@ API keys санитизируются перед логированием чер
 - Wikidata SPARQL клиент (`wikidata_client.py`, fallback IMDB ID по KP ID)
 - CI/CD pipeline (GitHub Actions: ruff lint + pytest + build ZIP + авто-релиз)
 
-**Всего тестов: 702** (564 movie (558 unit + 6 live) + 138 TV)
+**Всего тестов: 736** (588 movie (582 unit + 6 live) + 148 TV)
 
 ---
 

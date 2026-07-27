@@ -245,3 +245,25 @@ class TestTVShowDetails:
         d2 = TVShowDetails()
         d1.genres.append("Драма")
         assert d2.genres == []
+
+
+class TestPersonDisplayName:
+    def test_display_name_ru_default(self):
+        p = Person("Иван Иванов", "Ivan Ivanov")
+        assert p.display_name() == "Иван Иванов"
+
+    def test_display_name_ru_explicit(self):
+        p = Person("Иван Иванов", "Ivan Ivanov")
+        assert p.display_name("ru") == "Иван Иванов"
+
+    def test_display_name_en(self):
+        p = Person("Иван Иванов", "Ivan Ivanov")
+        assert p.display_name("en") == "Ivan Ivanov"
+
+    def test_display_name_en_fallback_empty(self):
+        p = Person("Иван Иванов", "")
+        assert p.display_name("en") == "Иван Иванов"
+
+    def test_display_name_unknown_lang(self):
+        p = Person("Иван Иванов", "Ivan Ivanov")
+        assert p.display_name("de") == "Иван Иванов"

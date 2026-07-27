@@ -184,3 +184,19 @@ msgstr ""
 msgctxt "#32161"
 msgid "Загружать постеры и названия сезонов из TVMaze (1 дополнительный API-запрос на сериал)"
 msgstr ""
+
+msgctxt "#32260"
+msgid "Person name language"
+msgstr "Язык имён (актёры, режиссёры)"
+
+msgctxt "#32261"
+msgid "Language for actor, director, and writer names. English improves compatibility with other scrapers (TMDb, TVDB)"
+msgstr "Язык отображения имён актёров, режиссёров и сценаристов. Английский улучшает совместимость с другими скраперами (TMDb, TVDB)"
+
+msgctxt "#32262"
+msgid "Russian"
+msgstr "Русский"
+
+msgctxt "#32263"
+msgid "English"
+msgstr "English"

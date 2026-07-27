@@ -51,6 +51,11 @@ class Person:
     order: int = 0
     source_id: int = 0
 
+    def display_name(self, lang: str = "ru") -> str:
+        if lang == "en" and self.name_en:
+            return self.name_en
+        return self.name_ru
+
 
 @dataclass
 class Artwork:

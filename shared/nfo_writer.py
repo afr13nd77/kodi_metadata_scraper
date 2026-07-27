@@ -43,7 +43,7 @@ def write_movie_nfo(
             )
             return
 
-        xml_content = _build_movie_xml(details, logger)
+        xml_content = _build_movie_xml(details, settings, logger)
         success = _write_nfo_file(xml_content, nfo_path, logger)
 
         if success:
@@ -85,7 +85,7 @@ def write_tvshow_nfo(
             )
             return
 
-        xml_content = _build_tvshow_xml(details, logger)
+        xml_content = _build_tvshow_xml(details, settings, logger)
         success = _write_nfo_file(xml_content, nfo_path, logger)
 
         if success:
@@ -102,26 +102,27 @@ def write_tvshow_nfo(
         )
 
 
-def _build_movie_xml(details: MovieDetails, logger: Logger | None = None) -> str:
+def _build_movie_xml(details: MovieDetails, settings=None, logger: Logger | None = None) -> str:
     """Build XML string for a movie NFO."""
     root = ET.Element("movie")
-    _build_common_elements(root, details, logger)
+    _build_common_elements(root, details, settings, logger)
     if details.set_name:
         set_elem = ET.SubElement(root, "set")
         ET.SubElement(set_elem, "name").text = details.set_name
     return _prettify_xml(root)
 
 
-def _build_tvshow_xml(details: TVShowDetails, logger: Logger | None = None) -> str:
+def _build_tvshow_xml(details: TVShowDetails, settings=None, logger: Logger | None = None) -> str:
     """Build XML string for a tvshow NFO."""
     root = ET.Element("tvshow")
-    _build_common_elements(root, details, logger)
+    _build_common_elements(root, details, settings, logger)
     return _prettify_xml(root)
 
 
 def _build_common_elements(
     parent: ET.Element,
     details: "MovieDetails | TVShowDetails",
+    settings=None,
     logger: Logger | None = None,
 ) -> None:
     """Populate shared NFO elements onto parent from details."""
@@ -195,15 +196,17 @@ def _build_common_elements(
     for tag in details.tags:
         ET.SubElement(parent, "tag").text = tag
 
+    actor_lang = settings.actor_name_language if settings else "ru"
+
     for person in details.directors:
-        ET.SubElement(parent, "director").text = person.name_ru
+        ET.SubElement(parent, "director").text = person.display_name(actor_lang)
 
     for person in details.writers:
-        ET.SubElement(parent, "credits").text = person.name_ru
+        ET.SubElement(parent, "credits").text = person.display_name(actor_lang)
 
     for person in details.cast:
         actor_elem = ET.SubElement(parent, "actor")
-        ET.SubElement(actor_elem, "name").text = person.name_ru
+        ET.SubElement(actor_elem, "name").text = person.display_name(actor_lang)
         if person.role:
             ET.SubElement(actor_elem, "role").text = person.role
         if person.photo_url:

@@ -1880,3 +1880,96 @@ class TestWikidataFallback:
 
         assert details.imdb_id == "tt9999999"
         MockWikidata.assert_not_called()
+
+
+class TestActorNameLanguage:
+    """Tests for actor_name_language setting in _handle_getdetails (T-07)."""
+
+    def _setup_getdetails(self, mock_client, mock_cache, directors, writers, cast,
+                          actor_name_language="ru"):
+        """Common setup for _handle_getdetails with staff and actor_name_language."""
+        cache = mock_cache.return_value
+        cache.get.return_value = None
+
+        client = mock_client.return_value
+        client.fetch_details_raw.return_value = {"kinopoiskId": 301}
+        client.parse_details.return_value = MovieDetails(
+            kinopoisk_id=301,
+            title_ru="Матрица",
+            title_original="The Matrix",
+            year=1999,
+            plot="Описание фильма",
+            ratings=[Rating(DataSource.KINOPOISK, 8.5, 10000)],
+        )
+        client.fetch_staff_raw.return_value = []
+        client.parse_staff.return_value = (directors, writers, cast)
+
+        settings = _mock_settings()
+        settings.actor_name_language = actor_name_language
+        logger = _mock_logger()
+        params = {"uniqueids": {"kinopoisk": "301"}}
+        return settings, logger, params
+
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_directors_use_english_names(self, MockClient, MockCache):
+        """actor_name_language='en' + name_en present -> setDirectors uses English names."""
+        directors = [Person(name_ru="Иван", name_en="Ivan", profession=ProfessionType.DIRECTOR)]
+        settings, logger, params = self._setup_getdetails(
+            MockClient, MockCache,
+            directors=directors, writers=[], cast=[],
+            actor_name_language="en",
+        )
+
+        _handle_getdetails(params, 1, settings, logger)
+
+        infotag = xbmcplugin.setResolvedUrl.call_args[0][2].getVideoInfoTag.return_value
+        infotag.setDirectors.assert_called_once_with(["Ivan"])
+
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_directors_fallback_to_russian(self, MockClient, MockCache):
+        """actor_name_language='en' + name_en empty -> setDirectors falls back to Russian."""
+        directors = [Person(name_ru="Иван", name_en="", profession=ProfessionType.DIRECTOR)]
+        settings, logger, params = self._setup_getdetails(
+            MockClient, MockCache,
+            directors=directors, writers=[], cast=[],
+            actor_name_language="en",
+        )
+
+        _handle_getdetails(params, 1, settings, logger)
+
+        infotag = xbmcplugin.setResolvedUrl.call_args[0][2].getVideoInfoTag.return_value
+        infotag.setDirectors.assert_called_once_with(["Иван"])
+
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_actors_use_english_names(self, MockClient, MockCache):
+        """actor_name_language='en' + name_en present -> xbmc.Actor called with English name."""
+        cast = [Person(name_ru="Сидор", name_en="Sidor", role="Hero",
+                       profession=ProfessionType.ACTOR)]
+        settings, logger, params = self._setup_getdetails(
+            MockClient, MockCache,
+            directors=[], writers=[], cast=cast,
+            actor_name_language="en",
+        )
+
+        _handle_getdetails(params, 1, settings, logger)
+
+        xbmc.Actor.assert_called_once_with("Sidor", "Hero", 0, "")
+
+    @patch("scraper.FileCache")
+    @patch("scraper.KinopoiskClient")
+    def test_default_russian_names(self, MockClient, MockCache):
+        """actor_name_language='ru' -> xbmc.Actor called with Russian name regardless of name_en."""
+        cast = [Person(name_ru="Сидор", name_en="Sidor", role="Hero",
+                       profession=ProfessionType.ACTOR)]
+        settings, logger, params = self._setup_getdetails(
+            MockClient, MockCache,
+            directors=[], writers=[], cast=cast,
+            actor_name_language="ru",
+        )
+
+        _handle_getdetails(params, 1, settings, logger)
+
+        xbmc.Actor.assert_called_once_with("Сидор", "Hero", 0, "")

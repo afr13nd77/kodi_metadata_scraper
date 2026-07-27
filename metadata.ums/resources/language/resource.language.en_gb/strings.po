@@ -176,3 +176,19 @@ msgstr ""
 msgctxt "#32251"
 msgid "Fetch YouTube trailer links from Kinopoisk (uses 1 extra API request per movie)"
 msgstr ""
+
+msgctxt "#32260"
+msgid "Person name language"
+msgstr ""
+
+msgctxt "#32261"
+msgid "Language for actor, director, and writer names. English improves compatibility with other scrapers (TMDb, TVDB)"
+msgstr ""
+
+msgctxt "#32262"
+msgid "Russian"
+msgstr ""
+
+msgctxt "#32263"
+msgid "English"
+msgstr ""

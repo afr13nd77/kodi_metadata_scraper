@@ -184,3 +184,19 @@ msgstr ""
 msgctxt "#32161"
 msgid "Fetch season posters and names from TVMaze (1 extra API request per TV show)"
 msgstr ""
+
+msgctxt "#32260"
+msgid "Person name language"
+msgstr ""
+
+msgctxt "#32261"
+msgid "Language for actor, director, and writer names. English improves compatibility with other scrapers (TMDb, TVDB)"
+msgstr ""
+
+msgctxt "#32262"
+msgid "Russian"
+msgstr ""
+
+msgctxt "#32263"
+msgid "English"
+msgstr ""

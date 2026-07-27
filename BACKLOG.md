@@ -39,8 +39,10 @@
 | BL-47 | Биографии актёров | `kinopoisk_api.py`, `models.py` | KP API `/v1/staff/{id}` отдаёт краткое `description`. Kodi показывает его в карточке актёра при клике. |
 | BL-48 | Язык оригинала | `kinopoisk_api.py`, `models.py`, `scraper.py`, `tv_scraper.py` | На основе `countries` / `productionCountries` из KP API проставлять тег языка оригинала. Полезно для фильтрации иностранного контента. |
 | BL-49 | Теги тематики (keywords) | `kinopoisk_api.py`, `scraper.py`, `tv_scraper.py` | KP возвращает `keywords` для части фильмов. Добавлять как дополнительные `setTags()` рядом с тегами наград. |
+| BL-66 | `setOriginalLanguage()` — Kodi v22 | `kinopoisk_api.py`, `models.py`, `scraper.py`, `tv_scraper.py` | **Источник: KP API** — поле `countries[0]` (первая страна производства). Маппинг страна → ISO 639-1: Россия/СССР→`ru`, США→`en`, Франция→`fr`, Япония→`ja` и т.д. (~20 пар). Передавать через нативный `setOriginalLanguage()` (добавлен в Kodi v22, апрель 2026). Отличается от BL-48 (тег): это родное поле библиотеки, используется для фильтрации по языку в скинах. |
 | BL-64 | Режиссёры и сценаристы эпизодов | `tv_scraper.py`, `tvmaze_client.py` | TVMaze отдаёт crew для каждого эпизода. Передавать через `setDirectors()` и `setWriters()` на уровне эпизода. Сейчас эти поля заполняются только на уровне сериала. |
 | BL-65 | Сортировка по оригинальному названию (setSortTitle) | `scraper.py`, `tv_scraper.py` | Передавать `title_original` через `setSortTitle()`, чтобы фильмы сортировались по оригинальному названию (латиницей), а отображались по-русски. |
+
 
 ### 2.2 Закрыто
 
@@ -64,6 +66,7 @@
 | BL-09 | ✅ Трейлеры YouTube | `kinopoisk_api.py`, `scraper.py`, `tv_scraper.py`, `nfo_writer.py`, `nfo_parser.py` | YouTube-трейлеры из KP API `/v2.2/films/{id}/videos` → `setTrailer()`. Кэш, graceful degradation, NFO roundtrip. Спецификация: `docs/youtube-trailers/`. |
 | BL-61 | ✅ Краткое описание (setPlotOutline) | `kinopoisk_api.py`, `models.py`, `scraper.py`, `tv_scraper.py`, `nfo_writer.py`, `nfo_parser.py` | Поле `shortDescription` из KP API → `setPlotOutline()`. NFO roundtrip через `<outline>`. Спецификация: `docs/native-kodi-fields/`. |
 | BL-60 | ✅ Дата премьеры (setPremiered) | `kinopoisk_api.py`, `models.py`, `scraper.py`, `tv_scraper.py`, `nfo_writer.py`, `nfo_parser.py` | Дата из `/v2.2/films/{id}/distributions` → `setPremiered()`. Приоритет: WORLD_PREMIER > Россия > PREMIERE. Кэш, graceful degradation. NFO roundtrip через `<premiered>`. Спецификация: `docs/native-kodi-fields/`. |
+| BL-70 | ✅ Язык имён актёров (ru / en) | `settings.xml`, `settings_manager.py`, `models.py`, `scraper.py`, `tv_scraper.py`, `nfo_writer.py` | Настройка `actor_name_language` (ru/en) в settings.xml. При `en` используется `name_en or name_ru` — приоритет английского, русское как fallback. Применяется во всех вызовах `xbmc.Actor()`, `setDirectors()`, `setWriters()`, NFO-экспорт. Спецификация: `docs/BL-70_actor-name-language/`. |
 
 ---
 
@@ -77,6 +80,7 @@
 | BL-41 | Превью эпизодов из TVMaze (addAvailableArtwork) | `tvmaze_client.py`, `tv_scraper.py` | TVMaze возвращает `image.medium` для каждого эпизода. Передавать через нативный `addAvailableArtwork()` на уровне эпизода. Работает при включённом `use_tvmaze`. |
 | BL-52 | Сортировка по absolute order (аниме) | `tv_scraper.py`, `settings_manager.py` | Для аниме нумерация KP и TVMaze часто расходится. Настройка `episode_order: absolute / aired` по аналогии с TheTVDB. |
 | BL-53 | Специальные эпизоды (Season 0) | `tv_scraper.py`, `kinopoisk_api.py`, `tvmaze_client.py` | KP и TVMaze отдают specials отдельно. Сейчас они теряются. Kodi поддерживает Season 0 для спешлов. |
+| BL-67 | Рейтинг эпизода | `kinopoisk_api.py`, `tv_scraper.py`, `models.py` | **Источник: KP API** — поле `rating` в объекте эпизода внутри ответа `/v2.2/films/{id}/seasons`. Уже загружается для построения путеводителя, но не парсится в `Episode`. Добавить `Episode.rating: float`, передавать через `setRating()` на уровне эпизода. Позволяет ранжировать эпизоды по рейтингу в скинах Kodi. |
 
 ### 3.2 Реализовано
 
@@ -151,6 +155,8 @@
 |---|:---|:---|:---|
 | BL-30 | Letterboxd / TMDB ID | `models.py`, `scraper.py` | Дополнительные внешние ID для совместимости с другими Kodi-аддонами. Перекрыто BL-42 (TMDB ID lookup). |
 | BL-31 | Кинопоиск watchlist | — (новый модуль) | Импорт «Буду смотреть» в Kodi-плейлист. Требует OAuth/cookies. |
+| BL-68 | FanArt.tv клиент + артворк фильмов | `shared/fanart_client.py` (новый), `scraper.py`, `models.py` | **Источник: FanArt.tv API** — использует IMDB ID (уже есть из KP API). Типы артворка: clearlogo, clearart, banner, discart, keyart, landscape. Новый `fanart_client.py` по образцу `omdb_client.py`: `fetch_raw()` / `parse()` + кэш. Передавать через `addAvailableArtwork()`. ⚠️ **Graceful degradation обязательна:** FanArt.tv может быть заблокирован в РФ (аналогично OMDb) — недоступность сервиса не должна прерывать сканирование; все ошибки логировать и пропускать без исключений. |
+| BL-69 | FanArt.tv артворк сериалов и сезонов | `shared/fanart_client.py`, `tv_scraper.py`, `models.py` | **Источник: FanArt.tv API** — зависит от BL-68 (переиспользует клиент). Уровень шоу: clearlogo, clearart, banner. Уровень сезона: banner, landscape. Передавать через `addAvailableArtwork()` с параметром `season`. ⚠️ **Graceful degradation обязательна:** см. BL-68. |
 
 ### 6.2 Закрыто
 
@@ -182,7 +188,7 @@
 
 | Статус | Кол-во | Пункты |
 |:---|:---|:---|
-| ✅ Реализовано | 31 | BL-01..BL-11, BL-13..BL-20, BL-22..BL-26, BL-35, BL-36, BL-40, BL-56, BL-57, BL-60, BL-61 |
-| 💡 Идея | 27 | BL-27..BL-34, BL-37..BL-39, BL-41, BL-42, BL-44..BL-55, BL-58, BL-64, BL-65 |
+| ✅ Реализовано | 32 | BL-01..BL-11, BL-13..BL-20, BL-22..BL-26, BL-35, BL-36, BL-40, BL-56, BL-57, BL-60, BL-61, BL-70 |
+| 💡 Идея | 31 | BL-27..BL-34, BL-37..BL-39, BL-41, BL-42, BL-44..BL-55, BL-58, BL-64..BL-69 |
 | ❌ Закрыто | 6 | BL-12, BL-21, BL-43, BL-59, BL-62, BL-63 |
-| **Итого** | **64** | |
+| **Итого** | **69** | |

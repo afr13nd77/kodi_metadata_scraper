@@ -53,7 +53,8 @@ def _mock_settings(api_key="test-key", omdb_key="omdb-key",
                    genre_language="ru",
                    clear_cache=False,
                    enable_trailers=True,
-                   use_wikidata_fallback=False):
+                   use_wikidata_fallback=False,
+                   actor_name_language="ru"):
     settings = MagicMock(spec=SettingsManager)
     settings.kinopoisk_api_key = api_key
     settings.omdb_api_key = omdb_key
@@ -69,6 +70,7 @@ def _mock_settings(api_key="test-key", omdb_key="omdb-key",
     settings.clear_cache = clear_cache
     settings.enable_trailers = enable_trailers
     settings.use_wikidata_fallback = use_wikidata_fallback
+    settings.actor_name_language = actor_name_language
     return settings
 
 
@@ -2811,3 +2813,73 @@ class TestBL61PlotOutlineAndPremiered:
 
         infotag.setPlotOutline.assert_called_once_with("Краткое описание")
         infotag.setPremiered.assert_called_once_with("2008-01-20")
+
+
+# ---------------------------------------------------------------------------
+# BL-62: Actor name language in _apply_tvshow_details_to_listitem
+# ---------------------------------------------------------------------------
+
+class TestActorNameLanguage:
+    """Tests for actor_name_language setting in TV scraper."""
+
+    def test_directors_use_english_names(self):
+        """actor_name_language='en' -> setDirectors uses English names."""
+        details = _make_tvshow_details()
+        details.directors = [
+            Person(name_ru="Иван", name_en="Ivan", profession=ProfessionType.DIRECTOR),
+        ]
+        details.writers = []
+        details.cast = []
+
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+
+        settings = _mock_settings(actor_name_language="en", show_ratings_in_plot=False)
+        logger = _mock_logger()
+
+        _apply_tvshow_details_to_listitem(details, listitem, settings, logger)
+
+        infotag.setDirectors.assert_called_once_with(["Ivan"])
+
+    def test_actors_use_english_names(self):
+        """actor_name_language='en' -> xbmc.Actor called with English name."""
+        details = _make_tvshow_details()
+        details.directors = []
+        details.writers = []
+        details.cast = [
+            Person(name_ru="Сидор", name_en="Sidor", role="Hero",
+                   order=0, photo_url="", profession=ProfessionType.ACTOR),
+        ]
+
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+
+        settings = _mock_settings(actor_name_language="en", show_ratings_in_plot=False)
+        logger = _mock_logger()
+
+        _apply_tvshow_details_to_listitem(details, listitem, settings, logger)
+
+        xbmc.Actor.assert_called_once_with("Sidor", "Hero", 0, "")
+
+    def test_default_russian_names(self):
+        """actor_name_language='ru' (default) -> xbmc.Actor called with Russian name."""
+        details = _make_tvshow_details()
+        details.directors = []
+        details.writers = []
+        details.cast = [
+            Person(name_ru="Сидор", name_en="Sidor", role="Hero",
+                   order=0, photo_url="", profession=ProfessionType.ACTOR),
+        ]
+
+        listitem = MagicMock()
+        infotag = MagicMock()
+        listitem.getVideoInfoTag.return_value = infotag
+
+        settings = _mock_settings(actor_name_language="ru", show_ratings_in_plot=False)
+        logger = _mock_logger()
+
+        _apply_tvshow_details_to_listitem(details, listitem, settings, logger)
+
+        xbmc.Actor.assert_called_once_with("Сидор", "Hero", 0, "")

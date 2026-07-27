@@ -779,18 +779,28 @@ def _apply_movie_details_to_listitem(
         kodi_ratings[r.source.value] = (r.value, r.votes)
     infotag.setRatings(kodi_ratings, preferred_source.value)
 
-    infotag.setDirectors([p.name_ru for p in details.directors])
-    infotag.setWriters([p.name_ru for p in details.writers])
+    actor_lang = settings.actor_name_language
+
+    infotag.setDirectors([p.display_name(actor_lang) for p in details.directors])
+    infotag.setWriters([p.display_name(actor_lang) for p in details.writers])
 
     kodi_cast = []
     for person in details.cast:
         kodi_cast.append(xbmc.Actor(
-            person.name_ru,
+            person.display_name(actor_lang),
             person.role,
             person.order,
             person.photo_url
         ))
     infotag.setCast(kodi_cast)
+
+    if actor_lang == "en":
+        no_en = [p for p in details.cast if not p.name_en]
+        if no_en:
+            logger.debug(
+                f"_handle_getdetails: {len(no_en)} actors without English name, "
+                f"fallback to Russian"
+            )
 
     for art in details.artwork:
         if art.artwork_type == ArtworkType.POSTER:
