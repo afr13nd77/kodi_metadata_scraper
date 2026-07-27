@@ -192,3 +192,11 @@ msgstr "Русский"
 msgctxt "#32263"
 msgid "English"
 msgstr "English"
+
+msgctxt "#32270"
+msgid "Wikidata fallback для IMDB ID"
+msgstr ""
+
+msgctxt "#32271"
+msgid "Получать IMDB ID из Wikidata, когда Кинопоиск не знает его. Без API-ключа"
+msgstr ""

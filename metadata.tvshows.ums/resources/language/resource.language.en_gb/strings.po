@@ -200,3 +200,11 @@ msgstr ""
 msgctxt "#32263"
 msgid "English"
 msgstr ""
+
+msgctxt "#32270"
+msgid "Wikidata fallback for IMDB ID"
+msgstr ""
+
+msgctxt "#32271"
+msgid "Fetch IMDB ID from Wikidata when Kinopoisk doesn't have it. No API key required"
+msgstr ""
