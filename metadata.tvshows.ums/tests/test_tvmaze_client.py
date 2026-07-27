@@ -119,9 +119,9 @@ class TestGetEpisodeCrew:
             {"id": 100},
             [{"season": 1, "number": 1, "id": 5001, "summary": "ep1"}],
             [
-                {"type": "Director", "person": {"name": "David Nutter"}},
-                {"type": "Writer", "person": {"name": "David Benioff"}},
-                {"type": "Writer", "person": {"name": "D.B. Weiss"}},
+                {"guestCrewType": "Director", "person": {"name": "David Nutter"}},
+                {"guestCrewType": "Writer", "person": {"name": "David Benioff"}},
+                {"guestCrewType": "Writer", "person": {"name": "D.B. Weiss"}},
             ],
         ]
         client = TvmazeClient(logger=MagicMock())
@@ -137,7 +137,7 @@ class TestGetEpisodeCrew:
         mock_http.get_json.side_effect = [
             {"id": 100},
             [{"season": 1, "number": 1, "id": 5001, "summary": ""}],
-            [{"type": "Writer", "person": {"name": "Jane Goldman"}}],
+            [{"guestCrewType": "Writer", "person": {"name": "Jane Goldman"}}],
         ]
         client = TvmazeClient(logger=MagicMock())
         directors, writers = client.get_episode_crew("tt1234567", 1, 1)
@@ -152,7 +152,7 @@ class TestGetEpisodeCrew:
         mock_http.get_json.side_effect = [
             {"id": 100},
             [{"season": 1, "number": 1, "id": 5001, "summary": ""}],
-            [{"type": "Director", "person": {"name": "Tim Van Patten"}}],
+            [{"guestCrewType": "Director", "person": {"name": "Tim Van Patten"}}],
         ]
         client = TvmazeClient(logger=MagicMock())
         directors, writers = client.get_episode_crew("tt1234567", 1, 1)
@@ -234,7 +234,7 @@ class TestGetEpisodeCrew:
         mock_http.get_json.side_effect = [
             {"id": 100},
             [{"season": 1, "number": 1, "id": 5001, "summary": ""}],
-            [{"type": "Director", "person": {"name": "Alan Taylor"}}],
+            [{"guestCrewType": "Director", "person": {"name": "Alan Taylor"}}],
         ]
         client = TvmazeClient(logger=MagicMock())
         d1, w1 = client.get_episode_crew("tt1234567", 1, 1)
@@ -254,9 +254,9 @@ class TestGetEpisodeCrew:
             {"id": 100},
             [{"season": 2, "number": 3, "id": 5023, "summary": ""}],
             [
-                {"type": "Director", "person": {"name": "Director A"}},
-                {"type": "Director", "person": {"name": "Director B"}},
-                {"type": "Director", "person": {"name": "Director C"}},
+                {"guestCrewType": "Director", "person": {"name": "Director A"}},
+                {"guestCrewType": "Director", "person": {"name": "Director B"}},
+                {"guestCrewType": "Director", "person": {"name": "Director C"}},
             ],
         ]
         client = TvmazeClient(logger=MagicMock())
@@ -273,10 +273,10 @@ class TestGetEpisodeCrew:
             {"id": 100},
             [{"season": 1, "number": 1, "id": 5001, "summary": ""}],
             [
-                {"type": "Director", "person": {"name": "Dir1"}},
-                {"type": "Writer", "person": {"name": "Wr1"}},
-                {"type": "Producer", "person": {"name": "Prod1"}},
-                {"type": "Creator", "person": {"name": "Cr1"}},
+                {"guestCrewType": "Director", "person": {"name": "Dir1"}},
+                {"guestCrewType": "Writer", "person": {"name": "Wr1"}},
+                {"guestCrewType": "Producer", "person": {"name": "Prod1"}},
+                {"guestCrewType": "Creator", "person": {"name": "Cr1"}},
             ],
         ]
         client = TvmazeClient(logger=MagicMock())
@@ -293,9 +293,9 @@ class TestGetEpisodeCrew:
             {"id": 100},
             [{"season": 1, "number": 1, "id": 5001, "summary": ""}],
             [
-                {"type": "Director", "person": {"name": ""}},
-                {"type": "Director", "person": {"name": "Good Director"}},
-                {"type": "Writer", "person": {}},
+                {"guestCrewType": "Director", "person": {"name": ""}},
+                {"guestCrewType": "Director", "person": {"name": "Good Director"}},
+                {"guestCrewType": "Writer", "person": {}},
             ],
         ]
         logger = MagicMock()

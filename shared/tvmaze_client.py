@@ -446,7 +446,7 @@ class TvmazeClient:
         directors: list[str] = []
         writers: list[str] = []
         for entry in crew_data:
-            crew_type = entry.get("type", "")
+            crew_type = entry.get("guestCrewType") or entry.get("type", "")
             person = entry.get("person") or {}
             name = person.get("name", "")
             if not name:

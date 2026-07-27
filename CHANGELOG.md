@@ -1,5 +1,10 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
+## v3.21.2 — 27.07.2026
+
+### Исправлено
+- **BL-64**: Исправлено имя поля TVMaze API: `guestCrewType` вместо `type` в ответе `/episodes/{id}/guestcrew`. Режиссёры и сценаристы теперь корректно парсятся.
+
 ## v3.20.0 — 27.07.2026
 
 ### Новое (BL-67)
