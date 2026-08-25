@@ -884,3 +884,60 @@ class TestCleanTitleReleaseTags:
         )
         assert candidates == ["Amelie"]
         assert year == "2001"
+
+
+# ---------------------------------------------------------------------------
+# Tests for clean_title: release group name removal (BUG-010)
+# ---------------------------------------------------------------------------
+
+class TestCleanTitleReleaseGroup:
+    """BUG-010: release group name cleanup."""
+
+    def test_dash_release_group_after_year(self):
+        """- GroupName after year should be stripped."""
+        logger = _mock_logger()
+        candidates, year = clean_title(
+            "Captain America: Brave New World (2025) - EniaHD", logger
+        )
+        assert year == "2025"
+        assert candidates == ["Captain America: Brave New World"]
+
+    def test_spaces_release_group_after_year(self):
+        """GroupName after multiple spaces (no dash) should be stripped."""
+        logger = _mock_logger()
+        candidates, year = clean_title(
+            "Captain America: Brave New World (2025)   EniaHD", logger
+        )
+        assert year == "2025"
+        assert candidates == ["Captain America: Brave New World"]
+
+    def test_common_release_groups(self):
+        """Common scene group names should be stripped."""
+        logger = _mock_logger()
+        for group in ["SPARKS", "YTS", "RARBG", "FGT", "NTb", "YIFY"]:
+            candidates, year = clean_title(
+                f"Some Movie (2023) - {group}", logger
+            )
+            assert year == "2023"
+            assert candidates == ["Some Movie"], f"Failed for group {group}"
+
+    def test_single_space_dash_not_stripped(self):
+        """Single space + dash + word = legitimate subtitle, not release group."""
+        logger = _mock_logger()
+        candidates, year = clean_title(
+            "Die Hard - Awakening (2025)", logger
+        )
+        assert year == "2025"
+        # "Awakening" should NOT be stripped -- it's a subtitle
+        assert any("Awakening" in c for c in candidates)
+
+    def test_release_group_with_slash_title(self):
+        """Release group on title with / separator."""
+        logger = _mock_logger()
+        candidates, year = clean_title(
+            "Первый мститель / Captain America (2011) - GROUP", logger
+        )
+        assert year == "2011"
+        # Neither candidate should contain "GROUP"
+        for c in candidates:
+            assert "GROUP" not in c

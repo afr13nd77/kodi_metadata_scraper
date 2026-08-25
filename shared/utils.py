@@ -183,6 +183,11 @@ _RELEASE_TAG_PATTERN = re.compile(
 # BUG-009: Russian releaser marker "от <name>"
 _RELEASER_PATTERN = re.compile(r'\bот\s+\S+', re.IGNORECASE)
 
+# BUG-010: Release group name after year removal (e.g. "- EniaHD")
+_RELEASE_GROUP_PATTERN = re.compile(
+    r'(?:\s{2,}-\s+|\s{2,})([A-Za-z0-9]{2,20})\s*$'
+)
+
 
 def _strip_season_episode(cleaned: str, extracted_year: str, logger: Logger) -> tuple[str, str]:
     for pattern in _SEASON_EPISODE_PATTERNS:
@@ -343,6 +348,13 @@ def clean_title(raw_title: str, logger: Logger) -> tuple[list[str], str]:
         removed_rel = cleaned[releaser_match.start():]
         cleaned = cleaned[:releaser_match.start()].strip(' -,')
         logger.info(f"clean_title: removed releaser marker: '{removed_rel}', result='{cleaned}'")
+
+    # Step 3.0c: Strip release group name "- GroupName" or trailing junk (BUG-010)
+    group_match = _RELEASE_GROUP_PATTERN.search(cleaned)
+    if group_match:
+        removed_group = cleaned[group_match.start():]
+        cleaned = cleaned[:group_match.start()].strip(' -,')
+        logger.info(f"clean_title: removed release group: '{removed_group}', result='{cleaned}'")
 
     # Step 3.1: Remove season/episode patterns (BL-15)
     cleaned, extracted_year = _strip_season_episode(cleaned, extracted_year, logger)
