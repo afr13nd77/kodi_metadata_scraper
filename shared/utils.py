@@ -188,6 +188,9 @@ _RELEASE_GROUP_PATTERN = re.compile(
     r'(?:\s{2,}-\s+|\s{2,})([A-Za-z0-9]{2,20})\s*$'
 )
 
+# BL-71: Collection prefix pattern (e.g., "MCU150-", "SW03-", "DC021-")
+_COLLECTION_PREFIX_PATTERN = re.compile(r'^[A-Z]{2,5}\d{1,3}-')
+
 
 def _strip_season_episode(cleaned: str, extracted_year: str, logger: Logger) -> tuple[str, str]:
     for pattern in _SEASON_EPISODE_PATTERNS:
@@ -355,6 +358,14 @@ def clean_title(raw_title: str, logger: Logger) -> tuple[list[str], str]:
         removed_group = cleaned[group_match.start():]
         cleaned = cleaned[:group_match.start()].strip(' -,')
         logger.info(f"clean_title: removed release group: '{removed_group}', result='{cleaned}'")
+
+    # Step 3.0d: Strip collection prefix (BL-71)
+    if extracted_year:
+        prefix_match = _COLLECTION_PREFIX_PATTERN.match(cleaned)
+        if prefix_match:
+            removed_prefix = prefix_match.group(0)
+            cleaned = cleaned[prefix_match.end():].strip()
+            logger.info(f"clean_title: removed collection prefix '{removed_prefix}', result='{cleaned}'")
 
     # Step 3.1: Remove season/episode patterns (BL-15)
     cleaned, extracted_year = _strip_season_episode(cleaned, extracted_year, logger)

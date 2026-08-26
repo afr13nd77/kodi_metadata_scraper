@@ -941,3 +941,92 @@ class TestCleanTitleReleaseGroup:
         # Neither candidate should contain "GROUP"
         for c in candidates:
             assert "GROUP" not in c
+
+
+class TestCleanTitleCollectionPrefix:
+    """BL-71: Strip collection prefix (MCU150-, SW03-, DC021-, etc.)."""
+
+    def _logger(self):
+        return MagicMock()
+
+    def test_mcu_prefix_stripped(self):
+        candidates, year = clean_title("MCU150-Captain America Civil War (2016)", self._logger())
+        assert candidates == ["Captain America Civil War"]
+        assert year == "2016"
+
+    def test_sw_prefix_stripped(self):
+        candidates, year = clean_title("SW03-Star Wars A New Hope (1977)", self._logger())
+        assert candidates == ["Star Wars A New Hope"]
+        assert year == "1977"
+
+    def test_dc_prefix_stripped(self):
+        candidates, year = clean_title("DC021-Batman Begins (2005)", self._logger())
+        assert candidates == ["Batman Begins"]
+        assert year == "2005"
+
+    def test_hp_short_number_stripped(self):
+        candidates, year = clean_title("HP8-Harry Potter Deathly Hallows Part 2 (2011)", self._logger())
+        assert "Harry Potter Deathly Hallows Part 2" in candidates
+        assert year == "2011"
+
+    def test_lotr_prefix_stripped(self):
+        candidates, year = clean_title("LOTR01-Fellowship of the Ring (2001)", self._logger())
+        assert candidates == ["Fellowship of the Ring"]
+        assert year == "2001"
+
+    def test_min_prefix_stripped(self):
+        """Minimum: 2 letters + 1 digit."""
+        candidates, year = clean_title("DC1-Batman (1989)", self._logger())
+        assert candidates == ["Batman"]
+        assert year == "1989"
+
+    def test_max_prefix_stripped(self):
+        """Maximum: 5 letters + 3 digits."""
+        candidates, year = clean_title("PIXAR999-Up (2009)", self._logger())
+        assert candidates == ["Up"]
+        assert year == "2009"
+
+    def test_fbi_not_stripped(self):
+        candidates, year = clean_title("FBI (2018)", self._logger())
+        assert candidates == ["FBI"]
+        assert year == "2018"
+
+    def test_rec_not_stripped(self):
+        candidates, year = clean_title("REC (2007)", self._logger())
+        assert candidates == ["REC"]
+        assert year == "2007"
+
+    def test_m3gan_not_stripped(self):
+        candidates, year = clean_title("M3GAN (2023)", self._logger())
+        assert candidates == ["M3GAN"]
+        assert year == "2023"
+
+    def test_t2_not_stripped(self):
+        candidates, year = clean_title("T2 Trainspotting (2017)", self._logger())
+        assert candidates == ["T2 Trainspotting"]
+        assert year == "2017"
+
+    def test_no_year_guard(self):
+        """Without year in parens, prefix is NOT stripped."""
+        candidates, year = clean_title("MCU150-Captain America Civil War", self._logger())
+        assert candidates[0].startswith("MCU150")
+
+    def test_lowercase_not_stripped(self):
+        candidates, year = clean_title("mcu150-some title (2020)", self._logger())
+        assert candidates[0].startswith("mcu150")
+
+    def test_no_digits_not_stripped(self):
+        candidates, year = clean_title("MCU-Title (2020)", self._logger())
+        assert candidates[0].startswith("MCU")
+
+    def test_single_letter_not_stripped(self):
+        candidates, year = clean_title("A1-Title (2020)", self._logger())
+        assert candidates[0].startswith("A1")
+
+    def test_six_letters_not_stripped(self):
+        candidates, year = clean_title("ABCDEF1-Title (2020)", self._logger())
+        assert candidates[0].startswith("ABCDEF1")
+
+    def test_four_digits_not_stripped(self):
+        candidates, year = clean_title("MCU1234-Title (2020)", self._logger())
+        assert candidates[0].startswith("MCU1234")
