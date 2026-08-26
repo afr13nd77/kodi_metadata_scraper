@@ -1,5 +1,14 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
+## v3.24.0 — 26.08.2026
+
+### Добавлено
+- **BL-71: Strip коллекционного prefix-а из имени файла** — пользовательские схемы именования `MCU150-Title (Year).mkv`, `SW03-Title.mkv`, `DC021-Title.mkv` теперь корректно обрабатываются. Новый паттерн `_COLLECTION_PREFIX_PATTERN` + Step 3.0d в `clean_title()` удаляет prefix формата `[A-Z]{2,5}\d{1,3}-` в начале строки. Guard: prefix удаляется только при наличии года в скобках — защита от ложных срабатываний на легитимных названиях (FBI, REC, M3GAN).
+
+### Тесты
+- 917 тестов (659 movie + 224 TV + 34 shared). 0 new failures.
+- Добавлены тестовые наборы: abbreviation titles (14 фильмов с аббревиатурами — false positive protection) и XMU collection (13 фильмов X-Men Universe — positive cases).
+
 ## v3.23.1 — 25.08.2026
 
 ### Исправлено
