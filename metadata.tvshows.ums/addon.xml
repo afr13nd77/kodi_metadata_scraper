@@ -5,7 +5,7 @@
        provider-name="kodi_metadata_scraper">
   <requires>
     <import addon="xbmc.metadata" version="2.1.0"/>
-    <import addon="xbmc.python" version="3.0.0"/>
+    <import addon="xbmc.python" version="3.0.1"/>
   </requires>
   <extension point="xbmc.metadata.scraper.tvshows"
              library="python/tv_scraper.py"/>
@@ -19,5 +19,11 @@
       <icon>icon.png</icon>
       <fanart>fanart.jpg</fanart>
     </assets>
+    <platform>all</platform>
+    <license>MIT</license>
+    <source>https://github.com/afr13nd77/kodi_metadata_scraper</source>
+    <website>https://github.com/afr13nd77/kodi_metadata_scraper</website>
+    <forum></forum>
+    <news>v3.24.0: Collection prefix stripping from filenames (MCU150-, SW03-, DC021-). FanArt.tv artwork. Original language detection. Configurable cast name language (ru/en). TV show status, episode thumbnails, episode crew from TVMaze. Episode ratings from Kinopoisk + IMDB. 917 tests.</news>
   </extension>
 </addon>

@@ -14,6 +14,7 @@ ADDONS = [
 
 EXCLUDE_DIRS = {"tests", "__pycache__", ".pytest_cache", ".claude"}
 EXCLUDE_EXTENSIONS = {".pyc"}
+EXCLUDE_FILES = {".gitkeep"}
 
 
 def get_addon_version(addon_dir_path: str) -> str:
@@ -48,6 +49,8 @@ def build_addon_zip(cfg: dict) -> None:
             for filename in sorted(files):
                 _, ext = os.path.splitext(filename)
                 if ext in EXCLUDE_EXTENSIONS:
+                    continue
+                if filename in EXCLUDE_FILES:
                     continue
 
                 filepath = os.path.join(root, filename)
