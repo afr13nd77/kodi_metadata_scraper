@@ -23,7 +23,7 @@
     <license>MIT</license>
     <source>https://github.com/afr13nd77/kodi_metadata_scraper</source>
     <website>https://github.com/afr13nd77/kodi_metadata_scraper</website>
-    <forum></forum>
+    <forum>https://forum.kodi.tv/showthread.php?tid=388459</forum>
     <news>v3.24.0: Collection prefix stripping from filenames (MCU150-, SW03-, DC021-). FanArt.tv artwork. Original language detection. Configurable cast name language (ru/en). TV show status, episode thumbnails, episode crew from TVMaze. Episode ratings from Kinopoisk + IMDB. 917 tests.</news>
   </extension>
 </addon>
