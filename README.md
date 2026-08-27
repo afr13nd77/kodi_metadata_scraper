@@ -4,7 +4,7 @@
 
 # Ultimate Movie Scraper (UMS) для Kodi
 
-**Версия:** 3.18.1  
+**Версия:** 3.24.0  
 **Платформа:** Kodi v20 Nexus / v21 Omega  
 **Язык:** Python 3.8  
 
@@ -40,6 +40,10 @@
 - YouTube-трейлеры из Kinopoisk API с кэшированием и graceful degradation
 - Wikidata fallback: автоматическое получение IMDB ID через Wikidata SPARQL, когда Кинопоиск не знает его (без API-ключа)
 - Автоочистка технических тегов из имён файлов (BDRip, x265, 1080p, HDR, DTS, IMAX и др.)
+- Оригинальный язык фильма (setOriginalLanguage, маппинг стран → ISO 639-1)
+- FanArt.tv артворк: clearlogo, clearart, banner, landscape, discart (опционально, требуется API-ключ)
+- Язык имён актёров и съёмочной группы (русский / английский)
+- Автоочистка коллекционных префиксов из имён файлов (MCU150-, SW03-, DC021-)
 
 ### metadata.tvshows.ums -- TV Show Scraper
 
@@ -49,7 +53,7 @@
 - Описания серий из TVMaze (опционально, на английском, требуется VPN)
 - Сезонные постеры и названия сезонов из TVMaze
 - Автоматическое получение IMDB ID через TVMaze при отсутствии в Кинопоиске
-- Рейтинги эпизодов (IMDB)
+- Рейтинги эпизодов: Кинопоиск + IMDB votes из OMDb
 - Режиссёры и сценаристы эпизодов из TVMaze (опционально, при use_tvmaze=true)
 - Рейтинги сериала: Кинопоиск, IMDB, Rotten Tomatoes, Metacritic (в рейтинговой базе Kodi)
 - Артворки: постеры и кадры
@@ -65,6 +69,11 @@
 - Graceful degradation: работа при недоступном API через stale-кэш и NFO-файлы
 - YouTube-трейлеры из Kinopoisk API
 - Wikidata fallback для IMDB ID (аналогично movie scraper)
+- Статус сериала (Returning Series / Ended / и др.) из TVMaze и KP API
+- Превью эпизодов из TVMaze (thumbnails)
+- Оригинальный язык сериала (setOriginalLanguage)
+- FanArt.tv артворк сериалов и сезонов: clearlogo, clearart, banner, landscape, characterart (опционально)
+- Язык имён актёров и съёмочной группы (русский / английский)
 - Совместимость с TMDb/TVDB: автоматический резолв KP ID при миграции с другого скрапера
 
 ### Общее
@@ -89,8 +98,8 @@
 1. Скачайте ZIP-архивы из раздела релизов
 2. В Kodi: **Settings** -> **Add-ons** -> **Install from zip file**
 3. Установите нужные аддоны:
-   - `metadata.ums-3.17.2.zip` -- scraper фильмов
-   - `metadata.tvshows.ums-3.18.0.zip` -- scraper сериалов
+   - `metadata.ums-3.24.0.zip` -- scraper фильмов
+   - `metadata.tvshows.ums-3.24.0.zip` -- scraper сериалов
    - Можно установить оба или только один
 4. Откройте настройки установленного аддона и укажите API-ключ Кинопоиска
 
@@ -107,19 +116,26 @@
 |---|---|
 | `kinopoisk_api_key` | API-ключ с kinopoiskapiunofficial.tech (обязательно) |
 | `omdb_api_key` | API-ключ OMDb для рейтингов IMDB/RT (опционально) |
+| `fanart_api_key` | API-ключ FanArt.tv для дополнительного артворка (опционально) |
 | `preferred_rating` | Источник рейтинга по умолчанию: Кинопоиск или IMDB |
 | `fetch_actor_photos` | Загружать фотографии актёров с Кинопоиска |
 | `show_ratings_in_plot` | Добавлять рейтинги в описание фильма/сериала |
 | `use_tvmaze` | Загружать описания серий из TVMaze (только TV scraper, по умолчанию выкл) |
 | `use_season_art` | Загружать постеры и названия сезонов из TVMaze (при включённом TVMaze, по умолчанию вкл) |
+| `use_fanart` | Загружать артворк из FanArt.tv (по умолчанию выкл) |
 | `genre_language` | Язык жанров: русский или английский (по умолчанию: русский) |
+| `actor_name_language` | Язык имён актёров: русский или английский (по умолчанию: русский) |
 | `auto_select_exact_match` | Автовыбор при точном совпадении по названию и году |
+| `enable_collections` | Определять коллекции и саги (по умолчанию вкл) |
+| `enable_dual_search` | Двойной поиск по русскому и оригинальному названию (по умолчанию вкл) |
+| `enable_award_tags` | Теги наград (Оскар, Эмми, BAFTA и др.) (по умолчанию вкл) |
 | `enable_nfo_export` | Экспорт .nfo-файлов рядом с видео после скрапинга (по умолчанию выкл) |
-| `overwrite_nfo` | Перезаписывать существующие .nfo-файлы (видно только при включённом экспорте) |
+| `nfo_overwrite` | Перезаписывать существующие .nfo-файлы (видно только при включённом экспорте) |
 | `enable_duplicate_detection` | Предупреждать при назначении одного Kinopoisk ID разным файлам (по умолчанию вкл) |
 | `enable_trailers` | Загружать YouTube-трейлеры из Кинопоиска (по умолчанию вкл) |
 | `use_wikidata_fallback` | Получать IMDB ID из Wikidata, когда Кинопоиск не знает его (по умолчанию вкл) |
 | `debug_logging` | Включить подробное логирование |
+| `clear_cache` | Очистить файловый кэш (в разделе "Расширенные") |
 
 Каждый аддон (movie и TV) имеет свой независимый набор настроек.
 
@@ -156,9 +172,12 @@ cd metadata.ums && python -m pytest tests/ -v
 
 # Тесты TV scraper
 cd metadata.tvshows.ums && python -m pytest tests/ -v
+
+# Тесты shared-модулей
+cd shared && python -m pytest tests/ -v
 ```
 
-Всего: **722 теста** (577 movie + 145 TV).
+Всего: **917 тестов** (659 movie + 224 TV + 34 shared).
 
 ### Линтинг
 
@@ -172,7 +191,7 @@ ruff check .
 python build_zip.py
 ```
 
-Результат: `metadata.ums-3.17.2.zip` и `metadata.tvshows.ums-3.18.0.zip` в корне проекта.
+Результат: `metadata.ums-3.24.0.zip` и `metadata.tvshows.ums-3.24.0.zip` в корне проекта.
 
 ---
 
@@ -184,6 +203,7 @@ python build_zip.py
 | OMDb API (`omdbapi.com`) | Рейтинги IMDB, Rotten Tomatoes, Metacritic (в рейтинговой базе Kodi) | Дополнительный, опциональный |
 | TVMaze API (`api.tvmaze.com`) | Описания эпизодов, сезонные постеры, разрешение IMDB ID (TV scraper) | Дополнительный, опциональный |
 | Wikidata SPARQL (`query.wikidata.org`) | Fallback для IMDB ID по Kinopoisk ID | Дополнительный, без API-ключа |
+| FanArt.tv (`fanart.tv`) | Дополнительный артворк: clearlogo, clearart, banner, landscape, discart | Дополнительный, опциональный |
 
 TMDb **не используется**.
 

@@ -4,7 +4,7 @@
 
 # Ultimate Movie Scraper (UMS) for Kodi
 
-**Version:** 3.18.1 | **Platform:** Kodi v20 Nexus / v21 Omega | **Language:** Python 3.8 | **License:** MIT
+**Version:** 3.24.0 | **Platform:** Kodi v20 Nexus / v21 Omega | **Language:** Python 3.8 | **License:** MIT
 
 UMS is a metadata scraper for Kodi that fetches rich movie and TV show information from Kinopoisk, OMDb, and TVMaze. It is designed for users who prefer Russian-language metadata while also supporting English titles, international ratings, and full cast and crew data. The project ships as two fully independent addons — install either or both with no cross-dependencies.
 
@@ -33,6 +33,10 @@ UMS is a metadata scraper for Kodi that fetches rich movie and TV show informati
 - YouTube trailers from Kinopoisk API with caching and graceful degradation
 - Wikidata fallback: automatic IMDB ID resolution via Wikidata SPARQL when Kinopoisk doesn't have it (no API key needed)
 - Auto-cleanup of release tags from filenames (BDRip, x265, 1080p, HDR, DTS, IMAX, etc.)
+- Original language detection (setOriginalLanguage, country-to-ISO-639-1 mapping)
+- FanArt.tv artwork: clearlogo, clearart, banner, landscape, discart (optional, requires API key)
+- Configurable cast name language (Russian / English)
+- Auto-cleanup of collection prefixes from filenames (MCU150-, SW03-, DC021-)
 
 ### TV Show Scraper (`metadata.tvshows.ums`)
 
@@ -42,7 +46,10 @@ UMS is a metadata scraper for Kodi that fetches rich movie and TV show informati
 - Episode descriptions from TVMaze (optional, English, may require VPN)
 - Season posters and names from TVMaze
 - Auto-resolve IMDB ID via TVMaze when missing from Kinopoisk
-- Per-episode IMDB ratings
+- TV show status (Returning Series / Ended / etc.) from TVMaze and KP API
+- Per-episode ratings from Kinopoisk + IMDB votes from OMDb
+- Episode thumbnails from TVMaze
+- Episode directors and writers from TVMaze (optional, when use_tvmaze=true)
 - Series ratings from Kinopoisk, IMDB, Rotten Tomatoes, and Metacritic
 - Artwork: posters, stills
 - NFO file support (read and write/export)
@@ -55,6 +62,9 @@ UMS is a metadata scraper for Kodi that fetches rich movie and TV show informati
 - Duplicate Kinopoisk ID detection
 - Graceful degradation: offline operation via stale cache and NFO file fallback
 - YouTube trailers from Kinopoisk API
+- Original language detection (setOriginalLanguage)
+- FanArt.tv artwork for shows and seasons: clearlogo, clearart, banner, landscape, characterart (optional)
+- Configurable cast name language (Russian / English)
 - Wikidata fallback for IMDB ID (same as movie scraper)
 - TMDb/TVDB compatibility: auto-resolve KP ID when migrating from another scraper
 
@@ -77,6 +87,7 @@ UMS is a metadata scraper for Kodi that fetches rich movie and TV show informati
 | OMDb API (`omdbapi.com`) | IMDB, Rotten Tomatoes, Metacritic ratings | Supplementary, optional |
 | TVMaze API (`api.tvmaze.com`) | Episode descriptions, season posters, IMDB ID resolution (TV only) | Supplementary, optional |
 | Wikidata SPARQL (`query.wikidata.org`) | IMDB ID fallback via Kinopoisk ID | Supplementary, no API key |
+| FanArt.tv (`fanart.tv`) | Additional artwork: clearlogo, clearart, banner, landscape, discart | Supplementary, optional |
 
 TMDb is **not** used.
 
@@ -93,8 +104,8 @@ TMDb is **not** used.
 1. Download the ZIP archives from the [Releases](https://github.com/afr13nd77/kodi_metadata_scraper/releases) section.
 2. In Kodi, go to **Settings > Add-ons > Install from zip file**.
 3. Install the desired addon(s):
-   - `metadata.ums-3.17.2.zip` — movie scraper
-   - `metadata.tvshows.ums-3.18.0.zip` — TV show scraper
+   - `metadata.ums-3.24.0.zip` — movie scraper
+   - `metadata.tvshows.ums-3.24.0.zip` — TV show scraper
 4. Open addon settings and enter your Kinopoisk API key.
 
 ### API Keys
@@ -112,6 +123,7 @@ Each addon (movie and TV) has its own independent settings panel.
 |---|---|
 | `kinopoisk_api_key` | API key from kinopoiskapiunofficial.tech (required) |
 | `omdb_api_key` | OMDb API key for IMDB/RT ratings (optional) |
+| `fanart_api_key` | FanArt.tv API key for additional artwork (optional) |
 | `preferred_rating` | Default rating source: Kinopoisk or IMDB |
 | `fetch_actor_photos` | Fetch actor photos from Kinopoisk |
 | `show_ratings_in_plot` | Append ratings to the plot text |
@@ -120,10 +132,16 @@ Each addon (movie and TV) has its own independent settings panel.
 | `genre_language` | Genre language: Russian or English (default: Russian) |
 | `auto_select_exact_match` | Auto-select when title + year match exactly |
 | `enable_nfo_export` | Write .nfo files next to video files after scraping (off by default) |
-| `overwrite_nfo` | Overwrite existing .nfo files (visible only when export is enabled) |
+| `nfo_overwrite` | Overwrite existing .nfo files (visible only when export is enabled) |
 | `enable_duplicate_detection` | Warn when the same Kinopoisk ID is assigned to different files (on by default) |
 | `enable_trailers` | Fetch YouTube trailers from Kinopoisk (on by default) |
+| `use_fanart` | Fetch artwork from FanArt.tv (off by default) |
+| `actor_name_language` | Cast name language: Russian or English (default: Russian) |
+| `enable_collections` | Detect movie collections and franchises (on by default) |
+| `enable_dual_search` | Dual search by Russian and original title (on by default) |
+| `enable_award_tags` | Award tags (Oscar, Emmy, BAFTA, etc.) (on by default) |
 | `use_wikidata_fallback` | Resolve IMDB ID from Wikidata when Kinopoisk doesn't have it (on by default) |
+| `clear_cache` | Clear file cache (in Advanced section) |
 | `debug_logging` | Enable verbose logging |
 
 ---
@@ -154,14 +172,17 @@ pip install pytest
 
 ### Running Tests
 
-722 tests total (577 movie + 145 TV).
+917 tests total (659 movie + 224 TV + 34 shared).
 
 ```bash
-# Movie scraper tests (577 tests)
+# Movie scraper tests (659 tests)
 cd metadata.ums && python -m pytest tests/ -v
 
-# TV scraper tests (145 tests)
+# TV scraper tests (224 tests)
 cd metadata.tvshows.ums && python -m pytest tests/ -v
+
+# Shared module tests (34 tests)
+cd shared && python -m pytest tests/ -v
 ```
 
 ### Linting
@@ -176,7 +197,7 @@ ruff check .
 python build_zip.py
 ```
 
-Output: `metadata.ums-3.17.2.zip` and `metadata.tvshows.ums-3.18.0.zip` in the project root.
+Output: `metadata.ums-3.24.0.zip` and `metadata.tvshows.ums-3.24.0.zip` in the project root.
 
 ---
 
