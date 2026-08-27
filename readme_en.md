@@ -1,4 +1,7 @@
 [![CI](https://github.com/afr13nd77/kodi_metadata_scraper/actions/workflows/ci.yml/badge.svg)](https://github.com/afr13nd77/kodi_metadata_scraper/actions/workflows/ci.yml)
+[![Kodi version](https://img.shields.io/badge/kodi%20versions-20--21-blue)](https://kodi.tv/)
+[![GitHub release](https://img.shields.io/github/release/afr13nd77/kodi_metadata_scraper.svg)](https://github.com/afr13nd77/kodi_metadata_scraper/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 [Русская версия](README.md)
 
