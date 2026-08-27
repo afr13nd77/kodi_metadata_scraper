@@ -3,20 +3,19 @@ Thread title: [RELEASE] Ultimate Movie Scraper (UMS) — Kinopoisk metadata for 
 --- Post body (BBCode) ---
 
 [B][SIZE=5]Ultimate Movie Scraper (UMS) v3.24.0[/SIZE][/B]
-[I]Kinopoisk-based metadata scraper for movies and TV shows[/I]
+[i]Kinopoisk-based metadata scraper for movies and TV shows[/i]
 
-UMS is a pair of fully independent Python scrapers for Kodi that provide Russian-language metadata from the Kinopoisk database. If your media library is primarily Russian-language content — or you simply prefer Russian titles, cast names, and descriptions — this scraper is built for you. It also pulls ratings from IMDB, Rotten Tomatoes, and Metacritic via OMDb, episode data from TVMaze, and additional artwork from FanArt.tv. TMDb is [B]not[/B] used.
+UMS is a pair of fully independent Python scrapers for Kodi that provide Russian-language metadata from the Kinopoisk database. If your media library is primarily Russian-language content — or you simply prefer Russian titles, cast names, and descriptions — this scraper is built for you. It also pulls ratings from IMDB, Rotten Tomatoes, and Metacritic via OMDb, episode data from TVMaze, and additional artwork from FanArt.tv. TMDb is [b]not[/b] used.
 
-[B]Platform:[/B] Kodi v20 Nexus / v21 Omega
-[B]Language:[/B] Python 3.8
-[B]License:[/B] MIT
-
-[HR]
+[b]Platform:[/b] Kodi v20 Nexus / v21 Omega
+[b]Language:[/b] Python 3.8
+[b]License:[/b] MIT
+[hr]
 
 [B][SIZE=4]Features[/SIZE][/B]
 
-[B]Movie Scraper ([FONT=Courier New]metadata.ums[/FONT])[/B]
-[LIST]
+[b]Movie Scraper ([font=Courier New]metadata.ums[/font])[/b]
+[list]
 [*]Search by Russian and English title with fuzzy matching and 3-level sorting (year, match score, rating)
 [*]Full metadata: title, year, plot, genres, countries, studios, duration, MPAA rating
 [*]Cast and crew with Russian names and photos (configurable: Russian or English names)
@@ -31,10 +30,10 @@ UMS is a pair of fully independent Python scrapers for Kodi that provide Russian
 [*]Wikidata fallback for IMDB ID when Kinopoisk doesn't have it
 [*]Duplicate Kinopoisk ID detection with toast notification
 [*]Smart filename cleanup: release tags (BDRip, x265, 1080p, HDR, etc.) and collection prefixes (MCU150-, SW03-)
-[/LIST]
+[/list]
 
-[B]TV Show Scraper ([FONT=Courier New]metadata.tvshows.ums[/FONT])[/B]
-[LIST]
+[b]TV Show Scraper ([font=Courier New]metadata.tvshows.ums[/font])[/b]
+[list]
 [*]Search TV series (TV_SERIES, MINI_SERIES, TV_SHOW) with dual search (Russian + original title)
 [*]Full series metadata with season and episode information
 [*]Episode descriptions, directors, and writers from TVMaze (optional)
@@ -45,11 +44,10 @@ UMS is a pair of fully independent Python scrapers for Kodi that provide Russian
 [*]Smart filename parsing: S01E02, 1x02, Cyrillic patterns, anime absolute numbering
 [*]TMDb/TVDB compatibility: auto-resolve Kinopoisk ID when migrating from another scraper
 [*]Same caching, graceful degradation, NFO support, and Wikidata fallback as the movie scraper
-[/LIST]
+[/list]
 
-[B]Both addons are fully independent[/B] — install either or both, no cross-dependencies. Each has its own settings panel and API key configuration.
-
-[HR]
+[b]Both addons are fully independent[/b] — install either or both, no cross-dependencies. Each has its own settings panel and API key configuration.
+[hr]
 
 [B][SIZE=4]Data Sources[/SIZE][/B]
 
@@ -62,50 +60,67 @@ UMS is a pair of fully independent Python scrapers for Kodi that provide Russian
 [TR][TD]FanArt.tv[/TD][TD]Additional artwork: clearlogo, clearart, banner, landscape, discart[/TD][TD]Optional (free key)[/TD][/TR]
 [/TABLE]
 
-[B]Note:[/B] TMDb is not used by this scraper.
-
-[HR]
+[b]Note:[/b] TMDb is not used by this scraper.
+[hr]
 
 [B][SIZE=4]Screenshots[/SIZE][/B]
 
-[I](TODO: add screenshots from Kodi showing movie details, TV show details, and settings screens)[/I]
+[SPOILER="Movie scraper"]
+[b]Movie details — full metadata with Russian cast, plot, and multi-source ratings[/b]
+[img]https://github.com/user-attachments/assets/bef11dfb-1c99-4106-99e9-78b1f3e25588[/img]
 
-[SPOILER="Movie details"]
-[IMG]screenshot_url_movie_details[/IMG]
+[b]Extended info — plot with Kinopoisk, IMDB, Rotten Tomatoes, and Metacritic ratings[/b]
+[img]https://github.com/user-attachments/assets/18777732-dc71-4a64-bd28-aa0d6ccb2e9a[/img]
+
+[b]Search results — fuzzy matching with Russian titles and year[/b]
+[img]https://github.com/user-attachments/assets/0266bb90-dc7c-4b45-9246-1e58f109ab4d[/img]
+
+[b]Another movie — cast photos, genres, countries, director, writer[/b]
+[img]https://github.com/user-attachments/assets/76f3976e-b562-4aee-902c-04c41ddb6a9a[/img]
 [/SPOILER]
 
-[SPOILER="TV show details"]
-[IMG]screenshot_url_tv_details[/IMG]
+[SPOILER="TV show scraper"]
+[b]TV library — series posters with Kinopoisk ratings[/b]
+[img]https://github.com/user-attachments/assets/e4a70a5a-4268-4342-b4c7-1c6573377190[/img]
+
+[b]TV show search — results with Russian titles[/b]
+[img]https://github.com/user-attachments/assets/81c1c115-03ae-49fb-ac1e-981e6d76103d[/img]
+
+[b]TV show details — cast, plot, status, award tags[/b]
+[img]https://github.com/user-attachments/assets/c6314f3f-4333-49fb-819e-9b64be934284[/img]
+
+[b]Episode details — thumbnail, description, director, writer, rating[/b]
+[img]https://github.com/user-attachments/assets/db1e4044-e164-426d-b667-1ab72ba5cccd[/img]
 [/SPOILER]
 
 [SPOILER="Settings"]
-[IMG]screenshot_url_settings[/IMG]
+[b]Settings panel — Metadata tab with key configuration options[/b]
+[img]https://github.com/user-attachments/assets/b3f23dd4-d07d-4163-a4d8-dd6f3246b0b3[/img]
 [/SPOILER]
-
-[HR]
+[hr]
 
 [B][SIZE=4]Installation[/SIZE][/B]
 
-[B]Requirements:[/B] Kodi v20 Nexus or v21 Omega.
-
-[LIST=1]
-[*]Download the ZIP archive(s) from the [URL=https://github.com/afr13nd77/kodi_metadata_scraper/releases]GitHub Releases[/URL] page.
-[*]In Kodi, go to [B]Settings > Add-ons > Install from zip file[/B].
+[b]Requirements:[/b] Kodi v20 Nexus or v21 Omega.
+ 
+[list=1]
+[*]Download the ZIP archive(s) from the [url=https://github.com/afr13nd77/kodi_metadata_scraper/releases]GitHub Releases[/url] page.
+[*]In Kodi, go to [b]Settings > Add-ons > Install from zip file[/b].
 [*]Select the ZIP you downloaded:
-  - [FONT=Courier New]metadata.ums-3.24.0.zip[/FONT] — movie scraper
-  - [FONT=Courier New]metadata.tvshows.ums-3.24.0.zip[/FONT] — TV show scraper
+  - [font=Courier New]metadata.ums-3.24.0.zip[/font] — movie scraper
+  - [font=Courier New]metadata.tvshows.ums-3.24.0.zip[/font] — TV show scraper
 [*]Open the addon settings and enter your Kinopoisk API key.
-[*]Set the scraper as your metadata provider: [B]Settings > Media > Movies (or TV Shows) > Information > Change content[/B], then select "Ultimate Movie Scraper" (or "Universal TV Show Scraper").
-[/LIST]
+[*]Set the scraper as your metadata provider: [b]Settings > Media > Movies (or TV Shows) > Information > Change content[/b], then select "Ultimate Movie Scraper" (or "Universal TV Show Scraper").
+[/list]
 
-[B]Getting API Keys[/B]
-[LIST]
-[*][B]Kinopoisk Unofficial API[/B] (required): Register at [URL=https://kinopoiskapiunofficial.tech]kinopoiskapiunofficial.tech[/URL] for a free key. Rate limit: 500 requests/day on the free tier.
-[*][B]OMDb API[/B] (optional): Register at [URL=https://www.omdbapi.com]omdbapi.com[/URL] for IMDB, Rotten Tomatoes, and Metacritic ratings. May require VPN in some regions.
-[*][B]FanArt.tv[/B] (optional): Register at [URL=https://fanart.tv]fanart.tv[/URL] for additional artwork (clearlogo, banner, etc.).
-[/LIST]
-
-[HR]
+[b]Getting API Keys[/b]
+[list]
+[*][b]Kinopoisk Unofficial API[/b] (required): Register at [url=https://kinopoiskapiunofficial.tech]kinopoiskapiunofficial.tech[/url] for a free key. Rate limit: 500 requests/day on the free tier.
+[*][b]OMDb API[/b] (optional): Register at [url=https://www.omdbapi.com]omdbapi.com[/url] for IMDB, Rotten Tomatoes, and Metacritic ratings. May require VPN in some regions.
+[*][b]FanArt.tv[/b] (optional): Register at [url=https://fanart.tv]fanart.tv[/url] for additional artwork (clearlogo, banner, etc.).
+[/list]
+ 
+[hr]
 
 [B][SIZE=4]Key Settings[/SIZE][/B]
 
@@ -126,59 +141,55 @@ Each addon has its own independent settings panel.
 [TR][TD]Wikidata fallback[/TD][TD]Resolve IMDB ID via Wikidata when Kinopoisk doesn't have it.[/TD][/TR]
 [TR][TD]Debug logging[/TD][TD]Verbose logging for troubleshooting.[/TD][/TR]
 [/TABLE]
-
-[HR]
+[hr]
 
 [B][SIZE=4]Downloads[/SIZE][/B]
 
-[URL=https://github.com/afr13nd77/kodi_metadata_scraper/releases]GitHub Releases[/URL] — always the latest stable ZIPs.
-
-[HR]
+[url=https://github.com/afr13nd77/kodi_metadata_scraper/releases]GitHub Releases[/url] — always the latest stable ZIPs.
+[hr]
 
 [B][SIZE=4]Source Code[/SIZE][/B]
 
-[URL=https://github.com/afr13nd77/kodi_metadata_scraper]github.com/afr13nd77/kodi_metadata_scraper[/URL]
+[url=https://github.com/afr13nd77/kodi_metadata_scraper]github.com/afr13nd77/kodi_metadata_scraper[/url]
 
-The project has 917 unit tests and a CI/CD pipeline (GitHub Actions: ruff lint + pytest + build + auto-release).
-
-[HR]
+The project has 924 unit tests and a CI/CD pipeline (GitHub Actions: ruff lint + pytest + build + auto-release).
+[hr]
 
 [B][SIZE=4]Known Limitations[/SIZE][/B]
-
-[LIST]
+ 
+[list]
 [*]Kinopoisk Unofficial API requires a free API key (register at kinopoiskapiunofficial.tech). The free tier has a 500 requests/day limit — enough for most personal libraries, but very large initial scans may hit it.
 [*]OMDb API may require a VPN in some regions.
 [*]TVMaze episode descriptions are in English only.
 [*]The scraper is primarily designed for Russian-language metadata. English metadata is available as a secondary option (cast names, genres).
-[/LIST]
-
-[HR]
+[/list]
+ 
+[hr]
 
 [B][SIZE=4]Changelog[/SIZE][/B]
 
-[B]v3.24.0[/B] (2026-08-26)
-[LIST]
+[b]v3.24.0[/b] (2026-08-26)
+[list]
 [*]Collection prefix stripping from filenames (MCU150-, SW03-, DC021-)
-[*]917 tests (659 movie + 224 TV + 34 shared)
-[/LIST]
+[*]924 tests (659 movie + 231 TV + 34 shared)
+[/list]
 
-[B]v3.23.1[/B] (2026-08-25)
-[LIST]
+[b]v3.23.1[/b] (2026-08-25)
+[list]
 [*]Fix: clean_title() now strips release group names from scene-format filenames
-[/LIST]
+[/list]
 
-[B]v3.23.0[/B] (2026-07-28)
-[LIST]
+[b]v3.23.0[/b] (2026-07-28)
+[list]
 [*]TV show status (setTvShowStatus) — 3-level resolve: TVMaze > KP > completed
 [*]Episode thumbnails from TVMaze (zero extra HTTP requests)
-[/LIST]
+[/list]
 
-Full changelog: [URL=https://github.com/afr13nd77/kodi_metadata_scraper/blob/master/CHANGELOG.md]CHANGELOG.md[/URL]
-
-[HR]
+Full changelog: [url=https://github.com/afr13nd77/kodi_metadata_scraper/blob/master/CHANGELOG.md]CHANGELOG.md[/url]
+[hr]
 
 [B][SIZE=4]Feedback & Support[/SIZE][/B]
 
-Bug reports and feature requests are welcome on [URL=https://github.com/afr13nd77/kodi_metadata_scraper/issues]GitHub Issues[/URL] or in this thread. Pull requests are appreciated too.
+Bug reports and feature requests are welcome on [url=https://github.com/afr13nd77/kodi_metadata_scraper/issues]GitHub Issues[/url] or in this thread. Pull requests are appreciated too.
 
 If you use this scraper and find it useful, I'd love to hear about your experience — especially any edge cases with unusual filenames, anime series, or large libraries.

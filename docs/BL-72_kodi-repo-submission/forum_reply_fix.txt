@@ -1,0 +1,42 @@
+--- Reply to post in thread (BBCode) ---
+
+[B]Updated screenshots and formatting[/B]
+
+Apologies for the formatting issues in the first post — the SIZE tags and image URLs got corrupted during posting. Here are the corrected screenshots:
+
+[B][SIZE=4]Screenshots[/SIZE][/B]
+
+[SPOILER="Movie scraper"]
+[B]Movie details — full metadata with Russian cast, plot, and multi-source ratings[/B]
+[IMG]https://github.com/user-attachments/assets/bef11dfb-1c99-4106-99e9-78b1f3e25588[/IMG]
+
+[B]Extended info — plot with Kinopoisk, IMDB, Rotten Tomatoes, and Metacritic ratings[/B]
+[IMG]https://github.com/user-attachments/assets/18777732-dc71-4a64-bd28-aa0d6ccb2e9a[/IMG]
+
+[B]Search results — fuzzy matching with Russian titles and year[/B]
+[IMG]https://github.com/user-attachments/assets/0266bb90-dc7c-4b45-9246-1e58f109ab4d[/IMG]
+
+[B]Another movie — cast photos, genres, countries, director, writer[/B]
+[IMG]https://github.com/user-attachments/assets/76f3976e-b562-4aee-902c-04c41ddb6a9a[/IMG]
+[/SPOILER]
+
+[SPOILER="TV show scraper"]
+[B]TV library — series posters with Kinopoisk ratings[/B]
+[IMG]https://github.com/user-attachments/assets/e4a70a5a-4268-4342-b4c7-1c6573377190[/IMG]
+
+[B]TV show search — results with Russian titles[/B]
+[IMG]https://github.com/user-attachments/assets/81c1c115-03ae-49fb-ac1e-981e6d76103d[/IMG]
+
+[B]TV show details — cast, plot, status, award tags[/B]
+[IMG]https://github.com/user-attachments/assets/c6314f3f-4333-49fb-819e-9b64be934284[/IMG]
+
+[B]Episode details — thumbnail, description, director, writer, rating[/B]
+[IMG]https://github.com/user-attachments/assets/db1e4044-e164-426d-b667-1ab72ba5cccd[/IMG]
+[/SPOILER]
+
+[SPOILER="Settings"]
+[B]Settings panel — Metadata tab with key configuration options[/B]
+[IMG]https://github.com/user-attachments/assets/b3f23dd4-d07d-4163-a4d8-dd6f3246b0b3[/IMG]
+[/SPOILER]
+
+[I]@Moderators: Could you please replace the first post with the corrected version? The full corrected BBCode is available here: [URL=https://github.com/afr13nd77/kodi_metadata_scraper/blob/master/docs/BL-72_kodi-repo-submission/forum_post.txt]forum_post.txt on GitHub[/URL][/I]
