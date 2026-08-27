@@ -4,10 +4,12 @@
 
 ### Добавлено
 - **BL-71: Strip коллекционного prefix-а из имени файла** — пользовательские схемы именования `MCU150-Title (Year).mkv`, `SW03-Title.mkv`, `DC021-Title.mkv` теперь корректно обрабатываются. Новый паттерн `_COLLECTION_PREFIX_PATTERN` + Step 3.0d в `clean_title()` удаляет prefix формата `[A-Z]{2,5}\d{1,3}-` в начале строки. Guard: prefix удаляется только при наличии года в скобках — защита от ложных срабатываний на легитимных названиях (FBI, REC, M3GAN).
+- **BL-73: Circuit breaker и кэширование lookup для TVMaze** — при недоступности api.tvmaze.com circuit breaker отключает все TVMaze-вызовы после 2 последовательных провалов (вместо ~108 сек ожидания на эпизод). Кэш полных response (`_show_data_cache`) устраняет дублирование HTTP между `get_show_status`/`get_tvdb_id`/`lookup_show`. 404 не считается ошибкой (API работает). Рефакторинг `get_show_status` и `get_tvdb_id` — теперь идут через `lookup_show`/`search_show`.
 
 ### Тесты
-- 917 тестов (659 movie + 224 TV + 34 shared). 0 new failures.
+- 924 теста (659 movie + 231 TV + 34 shared). 0 new failures.
 - Добавлены тестовые наборы: abbreviation titles (14 фильмов с аббревиатурами — false positive protection) и XMU collection (13 фильмов X-Men Universe — positive cases).
+- 7 новых тестов для circuit breaker и кэширования TVMaze response.
 
 ## v3.23.1 — 25.08.2026
 

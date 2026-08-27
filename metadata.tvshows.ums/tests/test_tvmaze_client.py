@@ -3,25 +3,34 @@ from __future__ import annotations
 import pytest
 from unittest.mock import patch, MagicMock
 from tvmaze_client import (
-    TvmazeClient, _show_cache, _episodes_cache, _crew_cache, _tvdb_cache, _status_cache, _TVMAZE_CACHE_MAX_SHOWS,
+    TvmazeClient, _show_cache, _episodes_cache, _crew_cache,
+    _tvdb_cache, _status_cache, _show_data_cache,
+    _TVMAZE_CACHE_MAX_SHOWS,
 )
+import tvmaze_client
 from http_client import HttpError
 
 
 @pytest.fixture(autouse=True)
 def clear_tvmaze_cache():
-    """Clear module-level TVMaze caches between tests."""
+    """Clear module-level TVMaze caches and circuit breaker between tests."""
     _show_cache.clear()
     _episodes_cache.clear()
     _crew_cache.clear()
     _tvdb_cache.clear()
     _status_cache.clear()
+    _show_data_cache.clear()
+    tvmaze_client._circuit_failures = 0
+    tvmaze_client._circuit_open = False
     yield
     _show_cache.clear()
     _episodes_cache.clear()
     _crew_cache.clear()
     _tvdb_cache.clear()
     _status_cache.clear()
+    _show_data_cache.clear()
+    tvmaze_client._circuit_failures = 0
+    tvmaze_client._circuit_open = False
 
 
 # ---------------------------------------------------------------------------
@@ -483,7 +492,7 @@ class TestGetTvdbId:
         """Second call with same IMDB ID -> served from cache, no extra HTTP."""
         mock_http = MagicMock()
         mock_http_cls.return_value = mock_http
-        mock_http.get_json.return_value = {"externals": {"thetvdb": 121361}}
+        mock_http.get_json.return_value = {"id": 82, "externals": {"thetvdb": 121361}}
 
         client = TvmazeClient(logger=MagicMock())
         r1 = client.get_tvdb_id("tt0944947")
@@ -588,7 +597,7 @@ class TestGetShowStatus:
         client = TvmazeClient(logger=MagicMock())
         result = client.get_show_status("", title_original="Breaking Bad")
         assert result == "Ended"
-        mock_http.get_json.assert_called_once_with("/singlesearch/shows?q=Breaking Bad")
+        mock_http.get_json.assert_called_once_with("/singlesearch/shows", {"q": "Breaking Bad"})
 
     @patch('tvmaze_client.HttpClient')
     def test_status_no_ids(self, mock_http_cls):
@@ -757,3 +766,161 @@ class TestGetEpisodeImage:
         assert r1 == r2
         # lookup + episodes = 2 calls for first invocation, 0 for second (cached)
         assert mock_http.get_json.call_count == 2
+
+
+# ---------------------------------------------------------------------------
+# Tests for circuit breaker
+# ---------------------------------------------------------------------------
+
+class TestCircuitBreaker:
+
+    @patch('tvmaze_client.HttpClient')
+    def test_circuit_breaker_trips_after_threshold(self, mock_http_cls):
+        """2 consecutive failures -> circuit open -> subsequent calls return fallback."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = Exception("Connection timed out")
+
+        client = TvmazeClient(logger=MagicMock())
+
+        # First failure
+        r1 = client.lookup_show("tt1111111")
+        assert r1 is None
+        assert tvmaze_client._circuit_open is False
+
+        # Second failure -> circuit trips
+        r2 = client.lookup_show("tt2222222")
+        assert r2 is None
+        assert tvmaze_client._circuit_open is True
+
+        # Third call -> circuit open, no HTTP
+        mock_http.get_json.reset_mock()
+        r3 = client.lookup_show("tt3333333")
+        assert r3 is None
+        mock_http.get_json.assert_not_called()
+
+    @patch('tvmaze_client.HttpClient')
+    def test_circuit_breaker_resets_on_success(self, mock_http_cls):
+        """Success after failure -> circuit stays closed."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+
+        # First call fails
+        mock_http.get_json.side_effect = Exception("timeout")
+        client = TvmazeClient(logger=MagicMock())
+        client.lookup_show("tt1111111")
+        assert tvmaze_client._circuit_failures == 1
+        assert tvmaze_client._circuit_open is False
+
+        # Second call succeeds -> reset
+        mock_http.get_json.side_effect = None
+        mock_http.get_json.return_value = {"id": 100}
+        client.lookup_show("tt2222222")
+        assert tvmaze_client._circuit_failures == 0
+        assert tvmaze_client._circuit_open is False
+
+    @patch('tvmaze_client.HttpClient')
+    def test_circuit_breaker_404_is_not_failure(self, mock_http_cls):
+        """404 means API is healthy -> records success, not failure."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = HttpError(404, "Not Found", "url")
+
+        client = TvmazeClient(logger=MagicMock())
+        client.lookup_show("tt1111111")
+        client.lookup_show("tt2222222")
+        assert tvmaze_client._circuit_failures == 0
+        assert tvmaze_client._circuit_open is False
+
+    @patch('tvmaze_client.HttpClient')
+    def test_circuit_breaker_all_methods_return_fallback(self, mock_http_cls):
+        """When circuit is open, all methods return their fallback values."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+
+        # Force circuit open
+        tvmaze_client._circuit_open = True
+        tvmaze_client._circuit_failures = 2
+
+        client = TvmazeClient(logger=MagicMock())
+
+        assert client.lookup_show("tt1234567") is None
+        assert client.search_show("Test") is None
+        assert client.search_imdb_id("Test") is None
+        assert client.get_episodes(100) is None
+        assert client.get_seasons(100) is None
+        assert client.get_show_status("tt1234567") == ""
+        assert client.get_tvdb_id("tt1234567") is None
+        assert client.get_episode_plot("tt1234567", 1, 1) is None
+        assert client.get_episode_crew("tt1234567", 1, 1) == ([], [])
+        assert client.get_episode_image("tt1234567", 1, 1) == ("", "")
+
+        # No HTTP calls should have been made
+        mock_http.get_json.assert_not_called()
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_show_status_uses_lookup_cache(self, mock_http_cls):
+        """lookup_show populates _show_data_cache, get_show_status uses it -> 0 extra HTTP."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.return_value = {"id": 169, "status": "Ended"}
+
+        client = TvmazeClient(logger=MagicMock())
+
+        # lookup_show first
+        show_id = client.lookup_show("tt0903747")
+        assert show_id == 169
+        assert mock_http.get_json.call_count == 1
+
+        # get_show_status uses _show_data_cache -> no extra HTTP
+        status = client.get_show_status("tt0903747")
+        assert status == "Ended"
+        assert mock_http.get_json.call_count == 1  # still 1
+
+    @patch('tvmaze_client.HttpClient')
+    def test_get_tvdb_id_uses_lookup_cache(self, mock_http_cls):
+        """lookup_show populates _show_data_cache, get_tvdb_id uses it -> 0 extra HTTP."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.return_value = {"id": 82, "externals": {"thetvdb": 121361}}
+
+        client = TvmazeClient(logger=MagicMock())
+
+        # lookup_show first
+        show_id = client.lookup_show("tt0944947")
+        assert show_id == 82
+        assert mock_http.get_json.call_count == 1
+
+        # get_tvdb_id uses _show_data_cache -> no extra HTTP
+        tvdb_id = client.get_tvdb_id("tt0944947")
+        assert tvdb_id == 121361
+        assert mock_http.get_json.call_count == 1  # still 1
+
+    @patch('tvmaze_client.HttpClient')
+    def test_circuit_breaker_logs_warning_once(self, mock_http_cls):
+        """Circuit breaker logs WARNING only on transition, not on every skipped call."""
+        mock_http = MagicMock()
+        mock_http_cls.return_value = mock_http
+        mock_http.get_json.side_effect = Exception("timeout")
+
+        logger = MagicMock()
+        client = TvmazeClient(logger=logger)
+
+        client.lookup_show("tt1111111")  # failure 1
+        client.lookup_show("tt2222222")  # failure 2 -> trips
+
+        # Count warning calls that contain "circuit breaker tripped"
+        trip_warnings = [
+            call for call in logger.warning.call_args_list
+            if "circuit breaker tripped" in str(call)
+        ]
+        assert len(trip_warnings) == 1
+
+        # More calls -> no additional trip warnings
+        client.lookup_show("tt3333333")
+        client.search_show("Test")
+        trip_warnings = [
+            call for call in logger.warning.call_args_list
+            if "circuit breaker tripped" in str(call)
+        ]
+        assert len(trip_warnings) == 1  # still 1

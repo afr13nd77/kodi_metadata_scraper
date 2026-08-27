@@ -125,6 +125,7 @@
 | BL-24 | ✅ Graceful degradation | `scraper.py`, `tv_scraper.py`, `cache.py`, `nfo_parser.py`, `http_client.py`, `kinopoisk_api.py` | Fallback-цепочка: свежий кэш → API → stale кэш → NFO → hard fail. Degraded mode (5с, 0 retries). Уведомления. Спецификация: `docs/graceful-degradation/`. |
 | BL-56 | ✅ Wikidata fallback для IMDB ID | `shared/wikidata_client.py`, `scraper.py`, `tv_scraper.py`, `settings_manager.py` | При пустом `imdbId` от KP API → SPARQL-запрос к Wikidata (P2603→P345). Кэширование результатов (включая пустые), degraded mode после 3 ошибок, stale cache fallback. Настройка `use_wikidata_fallback` (по умолч. вкл.). Спецификация: `docs/wikidata-fallback/`. |
 | BL-57 | ✅ NFO guard для директорий | `shared/nfo_writer.py`, `scraper.py` | Guard в `_get_movie_nfo_path` — если путь без расширения (директория при автосканировании), NFO не создаётся. Предотвращает скрытые `.nfo` файлы. |
+| BL-73 | ✅ Circuit breaker и кэширование lookup для TVMaze | `shared/tvmaze_client.py` | Circuit breaker (threshold=2) отключает TVMaze после 2 последовательных провалов. Кэш полных response `_show_data_cache` устраняет дублирование HTTP между `get_show_status`/`get_tvdb_id`/`lookup_show`. 7 новых тестов. Спецификация: `docs/BL-73_tvmaze-circuit-breaker/`. |
 
 ---
 
@@ -196,7 +197,7 @@
 
 | Статус | Кол-во | Пункты |
 |:---|:---|:---|
-| ✅ Реализовано | 40 | BL-01..BL-11, BL-13..BL-20, BL-22..BL-26, BL-35, BL-36, BL-38, BL-40, BL-41, BL-56, BL-57, BL-60, BL-61, BL-64, BL-66..BL-71 |
+| ✅ Реализовано | 41 | BL-01..BL-11, BL-13..BL-20, BL-22..BL-26, BL-35, BL-36, BL-38, BL-40, BL-41, BL-56, BL-57, BL-60, BL-61, BL-64, BL-66..BL-71, BL-73 |
 | 💡 Идея | 25 | BL-27..BL-34, BL-37, BL-39, BL-42, BL-44..BL-55, BL-58, BL-65, BL-72 |
 | ❌ Закрыто | 6 | BL-12, BL-21, BL-43, BL-59, BL-62, BL-63 |
-| **Итого** | **71** | |
+| **Итого** | **72** | |
