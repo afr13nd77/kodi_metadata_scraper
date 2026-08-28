@@ -1103,6 +1103,23 @@ def _fallback_seasons_search(
 ) -> tuple:
     logger.info(f"_fallback_seasons_search: starting for kp_id={kp_id}")
 
+    imdb_id = guide.get("imdb_id", "")
+    if imdb_id:
+        new_kp_id = search_kp_by_imdb(imdb_id, settings, logger)
+        if new_kp_id and new_kp_id != kp_id:
+            raw = kp_client.fetch_seasons_raw(new_kp_id)
+            if raw is not None:
+                if cache:
+                    cache.put(f"kp_seasons_{new_kp_id}", raw)
+                new_seasons = kp_client.parse_seasons(raw)
+                if new_seasons:
+                    _cache_put(new_kp_id, new_seasons, logger)
+                    logger.info(
+                        f"_fallback_seasons_search: strategy=imdb_lookup, "
+                        f"imdb_id='{imdb_id}', found kp_id={new_kp_id}"
+                    )
+                    return new_kp_id, new_seasons
+
     title = guide.get("title_original", "")
     if title:
         tv_type_filter = ["TV_SERIES", "MINI_SERIES", "TV_SHOW"]
@@ -1119,23 +1136,6 @@ def _fallback_seasons_search(
                     logger.info(
                         f"_fallback_seasons_search: strategy=title_search, "
                         f"title='{title}', found kp_id={new_kp_id}"
-                    )
-                    return new_kp_id, new_seasons
-
-    imdb_id = guide.get("imdb_id", "")
-    if imdb_id:
-        new_kp_id = search_kp_by_imdb(imdb_id, settings, logger)
-        if new_kp_id and new_kp_id != kp_id:
-            raw = kp_client.fetch_seasons_raw(new_kp_id)
-            if raw is not None:
-                if cache:
-                    cache.put(f"kp_seasons_{new_kp_id}", raw)
-                new_seasons = kp_client.parse_seasons(raw)
-                if new_seasons:
-                    _cache_put(new_kp_id, new_seasons, logger)
-                    logger.info(
-                        f"_fallback_seasons_search: strategy=imdb_lookup, "
-                        f"imdb_id='{imdb_id}', found kp_id={new_kp_id}"
                     )
                     return new_kp_id, new_seasons
 

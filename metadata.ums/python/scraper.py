@@ -216,6 +216,9 @@ def run() -> None:
             enddir = not _handle_getdetails(params, handle, settings, logger)
         elif action == "NfoUrl":
             _handle_nfo(params, handle, logger)
+        elif action == "getartwork":
+            _handle_getartwork(params, handle, settings, logger)
+            enddir = False
         else:
             logger.warning(f"scraper.run: unknown action '{action}'")
     except Exception as e:
@@ -378,12 +381,10 @@ def _handle_getdetails(
 
     if not kp_id:
         logger.error("_handle_getdetails: no Kinopoisk ID available")
-        xbmcplugin.setResolvedUrl(handle, False, xbmcgui.ListItem(offscreen=True))
         return False
 
     if not settings.kinopoisk_api_key:
         logger.error("_handle_getdetails: Kinopoisk API key not configured")
-        xbmcplugin.setResolvedUrl(handle, False, xbmcgui.ListItem(offscreen=True))
         return False
 
     video_file_path = xbmc.getInfoLabel("ListItem.FileNameAndPath") or ""

@@ -490,11 +490,12 @@ class TestHandleGetdetails:
         settings = _mock_settings()
         logger = _mock_logger()
 
-        _handle_getdetails({}, 1, settings, logger)
+        result = _handle_getdetails({}, 1, settings, logger)
 
-        xbmcplugin.setResolvedUrl.assert_called_once()
-        args = xbmcplugin.setResolvedUrl.call_args
-        assert args[0][1] is False
+        # Error path: no double-finalize. _handle_getdetails only returns False;
+        # run() is responsible for calling endOfDirectory(handle) on the same handle.
+        xbmcplugin.setResolvedUrl.assert_not_called()
+        assert result is False
 
     @patch("scraper._try_nfo_fallback_movie", return_value=None)
     @patch("scraper.FileCache")
