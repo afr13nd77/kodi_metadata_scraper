@@ -332,7 +332,7 @@ class KinopoiskClient:
             rate_limiter=_kp_staff_limiter,
             logger=self._logger,
         )
-        self._logger.info(f"KinopoiskClient._rebuild_http_clients: rebuilt with new API key")
+        self._logger.info("KinopoiskClient._rebuild_http_clients: rebuilt with new API key")
 
     def _request_with_rotation(self, use_staff: bool, method: str, *args, **kwargs):
         """Execute HTTP request with automatic key rotation on 402/403.

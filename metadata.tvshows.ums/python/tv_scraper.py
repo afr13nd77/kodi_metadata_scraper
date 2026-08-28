@@ -17,7 +17,10 @@ from cache import FileCache
 from duplicate_tracker import DuplicateTracker
 from logger import Logger
 from settings_manager import SettingsManager
-from kinopoisk_api import KinopoiskClient, map_production_status, init_key_pool, get_current_api_key, is_all_keys_exhausted
+from kinopoisk_api import (
+    KinopoiskClient, map_production_status,
+    init_key_pool, get_current_api_key, is_all_keys_exhausted,
+)
 from omdb_client import OmdbClient, parse_rt_rating, parse_mc_rating, parse_award_tags
 from tvmaze_client import TvmazeClient
 from fanart_client import FanartClient
