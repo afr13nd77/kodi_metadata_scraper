@@ -213,8 +213,8 @@ def map_production_status(raw: dict, logger=None) -> str:
     return ""
 
 
-_kp_global_limiter = RateLimiter(18.0)
-_kp_staff_limiter = RateLimiter(9.0)
+_kp_limiter: RateLimiter | None = None
+_KP_DEFAULT_RATE_LIMIT = 20.0
 
 # --- API key pool state ---
 _key_pool: list[str] = []
@@ -224,9 +224,9 @@ _all_keys_exhausted: bool = False
 _exhausted_notified: bool = False
 
 
-def init_key_pool(keys: list[str]) -> None:
-    """Initialize API key pool. No-op on subsequent calls."""
-    global _key_pool, _current_key_index, _exhausted_keys, _all_keys_exhausted, _exhausted_notified
+def init_key_pool(keys: list[str], rate_limit: float = 20.0) -> None:
+    """Initialize API key pool and rate limiter. No-op on subsequent calls."""
+    global _key_pool, _current_key_index, _exhausted_keys, _all_keys_exhausted, _exhausted_notified, _kp_limiter
     if _key_pool:
         return
     _key_pool = [k for k in keys if k]
@@ -234,6 +234,7 @@ def init_key_pool(keys: list[str]) -> None:
     _exhausted_keys = set()
     _all_keys_exhausted = False
     _exhausted_notified = False
+    _kp_limiter = RateLimiter(rate_limit)
 
 
 def get_current_api_key() -> str:
@@ -295,13 +296,13 @@ class KinopoiskClient:
         self._http = HttpClient(
             base_url=self.BASE_URL,
             headers=headers,
-            rate_limiter=_kp_global_limiter,
+            rate_limiter=_kp_limiter or RateLimiter(_KP_DEFAULT_RATE_LIMIT),
             logger=logger,
         )
         self._http_staff = HttpClient(
             base_url=self.BASE_URL,
             headers=headers,
-            rate_limiter=_kp_staff_limiter,
+            rate_limiter=_kp_limiter or RateLimiter(_KP_DEFAULT_RATE_LIMIT),
             logger=logger,
         )
 
@@ -316,13 +317,13 @@ class KinopoiskClient:
         self._http = HttpClient(
             base_url=self.BASE_URL,
             headers=headers,
-            rate_limiter=_kp_global_limiter,
+            rate_limiter=_kp_limiter or RateLimiter(_KP_DEFAULT_RATE_LIMIT),
             logger=self._logger,
         )
         self._http_staff = HttpClient(
             base_url=self.BASE_URL,
             headers=headers,
-            rate_limiter=_kp_staff_limiter,
+            rate_limiter=_kp_limiter or RateLimiter(_KP_DEFAULT_RATE_LIMIT),
             logger=self._logger,
         )
         self._logger.info("KinopoiskClient._rebuild_http_clients: rebuilt with new API key")

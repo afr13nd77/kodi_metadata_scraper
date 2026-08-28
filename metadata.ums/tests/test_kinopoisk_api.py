@@ -18,7 +18,7 @@ def _make_client():
 
 
 class TestSearch:
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_search_returns_results(self, mock_limiter):
         client, logger = _make_client()
         fixture = _load_fixture("kp_search_matrix.json")
@@ -30,7 +30,7 @@ class TestSearch:
             assert results[0].kinopoisk_id == 301
             assert results[0].year == 1999
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_search_sorts_by_year(self, mock_limiter):
         client, logger = _make_client()
         fixture = _load_fixture("kp_search_matrix.json")
@@ -40,7 +40,7 @@ class TestSearch:
             assert results[0].year == 1999
             assert results[1].year == 2003
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_search_empty_response(self, mock_limiter):
         client, logger = _make_client()
 
@@ -48,7 +48,7 @@ class TestSearch:
             results = client.search("NonExistentMovie")
             assert results == []
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_search_http_error(self, mock_limiter):
         from http_client import HttpError
         client, logger = _make_client()
@@ -59,7 +59,7 @@ class TestSearch:
 
 
 class TestGetDetails:
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_get_details_success(self, mock_limiter):
         client, logger = _make_client()
         fixture = _load_fixture("kp_details_301.json")
@@ -77,7 +77,7 @@ class TestGetDetails:
             assert "США" in details.countries
             assert details.imdb_id == "tt0133093"
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_get_details_ratings(self, mock_limiter):
         client, logger = _make_client()
         fixture = _load_fixture("kp_details_301.json")
@@ -91,7 +91,7 @@ class TestGetDetails:
             assert len(imdb_ratings) == 1
             assert imdb_ratings[0].value == 8.7
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_get_details_poster(self, mock_limiter):
         client, logger = _make_client()
         fixture = _load_fixture("kp_details_301.json")
@@ -102,7 +102,7 @@ class TestGetDetails:
             assert len(posters) == 1
             assert "301.jpg" in posters[0].url
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_get_details_null_fields(self, mock_limiter):
         client, logger = _make_client()
         fixture = {
@@ -133,7 +133,7 @@ class TestGetDetails:
             assert details.ratings == []
             assert details.artwork == []
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_get_details_http_error(self, mock_limiter):
         from http_client import HttpError
         client, logger = _make_client()
@@ -168,7 +168,7 @@ class TestGetDetailsMpaaFallback:
             "countries": [],
         }
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_age16_maps_to_r(self, mock_limiter):
         client, logger = _make_client()
         fixture = self._minimal_fixture(rating_mpaa="", rating_age_limits="age16")
@@ -177,7 +177,7 @@ class TestGetDetailsMpaaFallback:
         assert details.mpaa == "R"
         logger.info.assert_called()
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_age12_maps_to_pg13(self, mock_limiter):
         client, logger = _make_client()
         fixture = self._minimal_fixture(rating_mpaa="", rating_age_limits="age12")
@@ -185,7 +185,7 @@ class TestGetDetailsMpaaFallback:
             details = client.get_details(1)
         assert details.mpaa == "PG-13"
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_age6_maps_to_g(self, mock_limiter):
         client, logger = _make_client()
         fixture = self._minimal_fixture(rating_mpaa="", rating_age_limits="age6")
@@ -193,7 +193,7 @@ class TestGetDetailsMpaaFallback:
             details = client.get_details(1)
         assert details.mpaa == "G"
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_age0_maps_to_g(self, mock_limiter):
         client, logger = _make_client()
         fixture = self._minimal_fixture(rating_mpaa="", rating_age_limits="age0")
@@ -201,7 +201,7 @@ class TestGetDetailsMpaaFallback:
             details = client.get_details(1)
         assert details.mpaa == "G"
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_age18_maps_to_nc17(self, mock_limiter):
         client, logger = _make_client()
         fixture = self._minimal_fixture(rating_mpaa="", rating_age_limits="age18")
@@ -209,7 +209,7 @@ class TestGetDetailsMpaaFallback:
             details = client.get_details(1)
         assert details.mpaa == "NC-17"
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_rating_mpaa_takes_priority_over_age_limits(self, mock_limiter):
         client, logger = _make_client()
         fixture = self._minimal_fixture(rating_mpaa="PG", rating_age_limits="age12")
@@ -217,7 +217,7 @@ class TestGetDetailsMpaaFallback:
             details = client.get_details(1)
         assert details.mpaa == "PG"
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_both_empty_yields_empty_mpaa(self, mock_limiter):
         client, logger = _make_client()
         fixture = self._minimal_fixture(rating_mpaa="", rating_age_limits="")
@@ -225,7 +225,7 @@ class TestGetDetailsMpaaFallback:
             details = client.get_details(1)
         assert details.mpaa == ""
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_both_none_yields_empty_mpaa(self, mock_limiter):
         client, logger = _make_client()
         fixture = self._minimal_fixture(rating_mpaa=None, rating_age_limits=None)
@@ -233,7 +233,7 @@ class TestGetDetailsMpaaFallback:
             details = client.get_details(1)
         assert details.mpaa == ""
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_fallback_logs_mapping(self, mock_limiter):
         client, logger = _make_client()
         fixture = self._minimal_fixture(rating_mpaa=None, rating_age_limits="age16")
@@ -245,7 +245,7 @@ class TestGetDetailsMpaaFallback:
 
 
 class TestGetStaff:
-    @patch("kinopoisk_api._kp_staff_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_get_staff_success(self, mock_limiter):
         client, logger = _make_client()
         fixture = _load_fixture("kp_staff_301.json")
@@ -260,7 +260,7 @@ class TestGetStaff:
             assert cast[0].name_ru == "Киану Ривз"
             assert cast[0].role == "Neo"
 
-    @patch("kinopoisk_api._kp_staff_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_get_staff_http_error(self, mock_limiter):
         from http_client import HttpError
         client, logger = _make_client()
@@ -273,7 +273,7 @@ class TestGetStaff:
 
 
 class TestGetImages:
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_get_images_success(self, mock_limiter):
         client, logger = _make_client()
         fixture = _load_fixture("kp_images_301.json")
@@ -284,7 +284,7 @@ class TestGetImages:
             assert artworks[0].artwork_type == ArtworkType.FANART
             assert "301_1.jpg" in artworks[0].url
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_get_images_empty(self, mock_limiter):
         client, logger = _make_client()
 
@@ -296,7 +296,7 @@ class TestGetImages:
 class TestSearchWithTypeFilter:
     """Tests for search() with the type_filter parameter."""
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_film_filter_excludes_tv_series(self, mock_limiter):
         """With type_filter=["FILM"], TV_SERIES items should be filtered out."""
         client, logger = _make_client()
@@ -317,7 +317,7 @@ class TestSearchWithTypeFilter:
             assert results[0].title_ru == "Film Item"
             assert results[0].kinopoisk_id == 1
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_tv_filter_excludes_film(self, mock_limiter):
         """With type_filter=["TV_SERIES","MINI_SERIES","TV_SHOW"], FILM filtered out."""
         client, logger = _make_client()
@@ -344,7 +344,7 @@ class TestSearchWithTypeFilter:
             assert "Mini Series Item" in titles
             assert "TV Show Item" in titles
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_no_type_filter_returns_all(self, mock_limiter):
         """With type_filter=None, all results should be returned (backward compat)."""
         client, logger = _make_client()
@@ -361,7 +361,7 @@ class TestSearchWithTypeFilter:
             results = client.search("Test", type_filter=None)
             assert len(results) == 2
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_type_filter_logs_filtered_count(self, mock_limiter):
         """When items are filtered, the count should be logged."""
         client, logger = _make_client()
@@ -384,7 +384,7 @@ class TestSearchWithTypeFilter:
 class TestGetSeasons:
     """Tests for get_seasons() method."""
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_get_seasons_success(self, mock_limiter):
         """Parsed Season/Episode objects from a typical API response."""
         client, logger = _make_client()
@@ -445,7 +445,7 @@ class TestGetSeasons:
         assert len(seasons[1].episodes) == 1
         assert seasons[1].episodes[0].title_en == "Seven Thirty-Seven"
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_get_seasons_empty_items(self, mock_limiter):
         """Empty items list should return []."""
         client, logger = _make_client()
@@ -456,7 +456,7 @@ class TestGetSeasons:
         assert seasons == []
         logger.warning.assert_called()
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_get_seasons_http_error(self, mock_limiter):
         """HttpError should return [] and log error."""
         from http_client import HttpError
@@ -471,7 +471,7 @@ class TestGetSeasons:
         assert seasons == []
         logger.error.assert_called()
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_get_seasons_missing_episode_fields(self, mock_limiter):
         """Missing fields in episode data should use defaults."""
         client, logger = _make_client()
@@ -515,7 +515,7 @@ class TestGetSeasons:
         assert ep2.synopsis == ""  # None -> ""
         assert ep2.release_date == ""  # None -> ""
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_get_seasons_no_items_key(self, mock_limiter):
         """Response without items key should return []."""
         client, logger = _make_client()
@@ -529,7 +529,7 @@ class TestGetSeasons:
 class TestSearchFuzzyRanking:
     """Tests for fuzzy-ranking in search() (BL-01 / KOD-7)."""
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_typo_ranks_correct_first(self, mock_limiter):
         client, logger = _make_client()
         fixture = _load_fixture("kp_search_fuzzy.json")
@@ -538,7 +538,7 @@ class TestSearchFuzzyRanking:
         assert results[0].kinopoisk_id == 258687
         assert results[0].title_ru == "Интерстеллар"
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_cyrillic_typo_ranking(self, mock_limiter):
         client, logger = _make_client()
         fixture = {
@@ -553,7 +553,7 @@ class TestSearchFuzzyRanking:
             results = client.search("Бригата")
         assert results[0].title_ru == "Бригада"
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_exact_match_no_regression(self, mock_limiter):
         client, logger = _make_client()
         fixture = _load_fixture("kp_search_matrix.json")
@@ -563,7 +563,7 @@ class TestSearchFuzzyRanking:
         assert results[0].year == 1999
         assert results[1].year == 2003
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_year_match_priority_over_score(self, mock_limiter):
         client, logger = _make_client()
         fixture = {
@@ -578,7 +578,7 @@ class TestSearchFuzzyRanking:
             results = client.search("Interstellar", "2014")
         assert results[0].year == 2014
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_same_score_same_year_sort_by_rating(self, mock_limiter):
         client, logger = _make_client()
         fixture = {
@@ -593,14 +593,14 @@ class TestSearchFuzzyRanking:
             results = client.search("The Matrix", "1999")
         assert results[0].rating >= results[1].rating
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_empty_films_returns_empty(self, mock_limiter):
         client, logger = _make_client()
         with patch.object(client._http, "get_json", return_value={"films": []}):
             results = client.search("NonExistent")
         assert results == []
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_all_below_threshold_logs_warning(self, mock_limiter):
         client, logger = _make_client()
         fixture = {
@@ -614,7 +614,7 @@ class TestSearchFuzzyRanking:
         warning_calls = [str(c) for c in logger.warning.call_args_list]
         assert any("similarity threshold" in c for c in warning_calls)
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_empty_names_score_zero_not_removed(self, mock_limiter):
         client, logger = _make_client()
         fixture = _load_fixture("kp_search_fuzzy.json")
@@ -623,7 +623,7 @@ class TestSearchFuzzyRanking:
         assert len(results) == 4
         assert results[-1].kinopoisk_id == 300
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_no_year_sorts_by_score_then_rating(self, mock_limiter):
         client, logger = _make_client()
         fixture = _load_fixture("kp_search_fuzzy.json")

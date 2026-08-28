@@ -30,6 +30,7 @@ def _reset_key_pool():
     kinopoisk_api._exhausted_keys = set()
     kinopoisk_api._all_keys_exhausted = False
     kinopoisk_api._exhausted_notified = False
+    kinopoisk_api._kp_limiter = None
 
 
 def _mock_logger():
@@ -60,6 +61,12 @@ class TestInitKeyPool:
         """init_key_pool(['', '']) -> empty pool."""
         init_key_pool(["", ""])
         assert kinopoisk_api._key_pool == []
+
+    def test_creates_rate_limiter(self):
+        """init_key_pool creates _kp_limiter with given rate."""
+        init_key_pool(["k1"], rate_limit=15.0)
+        assert kinopoisk_api._kp_limiter is not None
+        assert kinopoisk_api._kp_limiter._max_rate == 15.0
 
 
 class TestGetCurrentApiKey:

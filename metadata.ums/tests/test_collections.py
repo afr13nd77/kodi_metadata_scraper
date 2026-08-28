@@ -60,7 +60,7 @@ def _mock_logger():
 # ---------------------------------------------------------------------------
 
 class TestGetSequels:
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_returns_list_of_dicts(self, _limiter):
         client, _ = _make_kp_client()
         payload = [
@@ -71,7 +71,7 @@ class TestGetSequels:
             result = client.get_sequels(301)
         assert result == payload
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_404_returns_empty_list(self, _limiter):
         client, logger = _make_kp_client()
         with patch.object(
@@ -84,7 +84,7 @@ class TestGetSequels:
         logger.info.assert_called()
         logger.error.assert_not_called()
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_http_error_non_404_returns_empty_and_logs_error(self, _limiter):
         client, logger = _make_kp_client()
         with patch.object(
@@ -95,7 +95,7 @@ class TestGetSequels:
         assert result == []
         logger.error.assert_called()
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_unexpected_response_type_returns_empty(self, _limiter):
         client, logger = _make_kp_client()
         with patch.object(client._http, "get_json", return_value={"message": "unexpected"}):
@@ -103,7 +103,7 @@ class TestGetSequels:
         assert result == []
         logger.warning.assert_called()
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_uses_v21_endpoint(self, _limiter):
         client, _ = _make_kp_client()
         with patch.object(client._http, "get_json", return_value=[]) as mock_get:
@@ -112,7 +112,7 @@ class TestGetSequels:
         assert "v2.1" in call_path
         assert "sequels_and_prequels" in call_path
 
-    @patch("kinopoisk_api._kp_global_limiter")
+    @patch("kinopoisk_api._kp_limiter")
     def test_empty_list_response(self, _limiter):
         client, _ = _make_kp_client()
         with patch.object(client._http, "get_json", return_value=[]):

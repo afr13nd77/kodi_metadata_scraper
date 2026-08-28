@@ -250,7 +250,7 @@ def _handle_find(
         )
         return
 
-    init_key_pool(settings.kinopoisk_api_keys)
+    init_key_pool(settings.kinopoisk_api_keys, settings.kinopoisk_rate_limit)
 
     if is_all_keys_exhausted():
         logger.warning("_handle_find: all KP API keys exhausted, skipping find")
@@ -416,7 +416,7 @@ def _handle_getdetails(
         else:
             logger.info("_handle_getdetails: duplicate tracking skipped: empty path")
 
-    init_key_pool(settings.kinopoisk_api_keys)
+    init_key_pool(settings.kinopoisk_api_keys, settings.kinopoisk_rate_limit)
     kp_client = KinopoiskClient(get_current_api_key(), logger)
     addon_id = xbmcaddon.Addon().getAddonInfo('id')
     cache = FileCache(addon_id, logger)
@@ -923,7 +923,7 @@ def _handle_getartwork(
         xbmcplugin.setResolvedUrl(handle, False, xbmcgui.ListItem(offscreen=True))
         return
 
-    init_key_pool(settings.kinopoisk_api_keys)
+    init_key_pool(settings.kinopoisk_api_keys, settings.kinopoisk_rate_limit)
     kp_client = KinopoiskClient(get_current_api_key(), logger)
     artworks = kp_client.get_images(kp_id, ["POSTER", "STILL"])
 

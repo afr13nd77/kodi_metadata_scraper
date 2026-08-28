@@ -36,6 +36,10 @@ class SettingsManager:
         return keys
 
     @property
+    def kinopoisk_rate_limit(self) -> int:
+        return self._addon.getSettingInt("kinopoisk_rate_limit") or 20
+
+    @property
     def omdb_api_key(self) -> str:
         return self._addon.getSetting("omdb_api_key").strip()
 

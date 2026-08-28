@@ -216,6 +216,19 @@
       </group>
     </category>
     <category id="advanced" label="32200" help="">
+      <group id="4a">
+        <setting id="kinopoisk_rate_limit" type="integer" label="32022" help="32023">
+          <level>0</level>
+          <default>20</default>
+          <constraints>
+            <minimum>1</minimum>
+            <maximum>50</maximum>
+          </constraints>
+          <control type="edit" format="integer">
+            <heading>32022</heading>
+          </control>
+        </setting>
+      </group>
       <group id="4">
         <setting id="debug_logging" type="boolean" label="32211" help="32212">
           <level>0</level>

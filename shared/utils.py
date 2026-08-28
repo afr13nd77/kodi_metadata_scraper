@@ -523,7 +523,8 @@ def search_kp_by_imdb(imdb_id: str, settings: SettingsManager, logger: Logger) -
         return 0
 
     # Step 1: KP API — direct IMDB→KP resolution
-    kp_client = KinopoiskClient(settings.kinopoisk_api_key, logger)
+    from kinopoisk_api import get_current_api_key
+    kp_client = KinopoiskClient(get_current_api_key() or settings.kinopoisk_api_key, logger)
     kp_id = kp_client.get_kp_id_by_imdb_id(imdb_id)
     if kp_id:
         logger.info(f"search_kp_by_imdb: KP API resolved kp_id={kp_id} for imdb_id={imdb_id}")

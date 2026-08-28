@@ -236,3 +236,11 @@ msgstr ""
 msgctxt "#32021"
 msgid "Kinopoisk API Key #5"
 msgstr ""
+
+msgctxt "#32022"
+msgid "KP API rate limit (req/sec)"
+msgstr ""
+
+msgctxt "#32023"
+msgid "Max requests per second to Kinopoisk API. Decrease if multiple devices share one IP"
+msgstr ""
