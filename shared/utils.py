@@ -380,12 +380,16 @@ def clean_title(raw_title: str, logger: Logger) -> tuple[list[str], str]:
         if bare_year_match:
             extracted_year = bare_year_match.group(1)
             # Truncate at the year position (everything after is junk)
-            cleaned = cleaned[:bare_year_match.start()].strip(' -,')
+            truncated = cleaned[:bare_year_match.start()].strip(' -,')
+            if truncated:
+                cleaned = truncated
     else:
         # Even with a paren year, try to remove junk after a bare year
         bare_year_match = re.search(r'(?<!\d)((?:19|20)\d{2})(?!\d)', cleaned)
         if bare_year_match:
-            cleaned = cleaned[:bare_year_match.start()].strip(' -,')
+            truncated = cleaned[:bare_year_match.start()].strip(' -,')
+            if truncated:
+                cleaned = truncated
 
     # Step 5: Split on '/' for multiple title candidates
     candidates = []

@@ -107,16 +107,14 @@ class TestRotateKey:
         rotate_key(logger)
         assert is_all_keys_exhausted() is True
 
-    def test_toast_on_switch(self):
-        """On key switch xbmc.executebuiltin is called with exhaustion message."""
+    def test_no_toast_on_key_switch(self):
+        """On key switch xbmc.executebuiltin is NOT called (toast removed)."""
         init_key_pool(["k1", "k2"])
         logger = _mock_logger()
         xbmc_mock = sys.modules["xbmc"]
         xbmc_mock.executebuiltin = MagicMock()
         rotate_key(logger)
-        xbmc_mock.executebuiltin.assert_called_once()
-        call_arg = xbmc_mock.executebuiltin.call_args[0][0]
-        assert "исчерпан" in call_arg
+        xbmc_mock.executebuiltin.assert_not_called()
 
     def test_all_exhausted_toast_once(self):
         """Toast 'all keys exhausted' is shown only once."""

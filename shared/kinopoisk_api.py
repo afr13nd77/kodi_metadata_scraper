@@ -258,13 +258,6 @@ def rotate_key(logger) -> bool:
         if i not in _exhausted_keys:
             _current_key_index = i
             logger.info(f"rotate_key: switched from key #{old_index + 1} to key #{i + 1}")
-            try:
-                import xbmc
-                xbmc.executebuiltin(
-                    f'Notification("UMS Scraper", "Ключ KP #{old_index + 1} исчерпан, переключён на #{i + 1}", 5000)'
-                )
-            except Exception:
-                pass
             return True
 
     _all_keys_exhausted = True

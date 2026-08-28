@@ -56,6 +56,38 @@ class TestCleanTitleYearExtraction:
         assert year == ""
 
 
+class TestCleanTitleNumericTitle:
+    """Films with numeric titles that look like years (1917, 2001, 1984, 2012)."""
+
+    def test_numeric_title_with_year_in_parens(self):
+        """'1917 (2019)' -> title='1917', year='2019'."""
+        logger = _mock_logger()
+        candidates, year = clean_title("1917 (2019)", logger)
+        assert candidates == ["1917"]
+        assert year == "2019"
+
+    def test_numeric_title_bare(self):
+        """'1917' without year in parens -> title='1917', year='1917' (best guess)."""
+        logger = _mock_logger()
+        candidates, year = clean_title("1917", logger)
+        assert candidates == ["1917"]
+        assert year == "1917"
+
+    def test_2001_space_odyssey(self):
+        """'2001 A Space Odyssey (1968)' -> title keeps '2001 A Space Odyssey'."""
+        logger = _mock_logger()
+        candidates, year = clean_title("2001 A Space Odyssey (1968)", logger)
+        assert "2001" in candidates[0]
+        assert year == "1968"
+
+    def test_numeric_title_with_junk(self):
+        """'1984.BDRip.1080p' -> title='1984', year='1984'."""
+        logger = _mock_logger()
+        candidates, year = clean_title("1984.BDRip.1080p", logger)
+        assert candidates == ["1984"]
+        assert year == "1984"
+
+
 class TestCleanTitleDotReplacement:
     def test_dots_replaced_with_spaces(self):
         logger = _mock_logger()
