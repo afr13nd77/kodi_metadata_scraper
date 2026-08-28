@@ -1,7 +1,7 @@
 # Бэклог — Ultimate Movie Scraper
 
-**Версия проекта:** 3.23.1 / 3.23.1 (movie / TV)
-**Обновлён:** 26.08.2026
+**Версия проекта:** 3.24.1 / 3.24.1 (movie / TV)
+**Обновлён:** 28.08.2026
 
 ---
 
@@ -190,6 +190,7 @@
 | # | Название | Файл / модуль | Описание |
 |---|:---|:---|:---|
 | BL-35 | ✅ CI/CD pipeline | `.github/workflows/ci.yml`, `ruff.toml` | GitHub Actions: ruff lint + pytest (movie + TV) + build ZIP + auto-release по тегу v*. Спецификация: `docs/ci-cd/`. |
+| BL-74 | ✅ Исправления по ревью PR в xbmc/repo-plugins | `scraper.py`, `tv_scraper.py` | 3 бага от Greptile: подключение getartwork к диспатчеру, убрана двойная финализация handle, порядок стратегий fallback (IMDb перед title). Спецификация: `docs/BL-74_pr-review-fixes/`. |
 
 ---
 
@@ -197,7 +198,7 @@
 
 | Статус | Кол-во | Пункты |
 |:---|:---|:---|
-| ✅ Реализовано | 41 | BL-01..BL-11, BL-13..BL-20, BL-22..BL-26, BL-35, BL-36, BL-38, BL-40, BL-41, BL-56, BL-57, BL-60, BL-61, BL-64, BL-66..BL-71, BL-73 |
+| ✅ Реализовано | 42 | BL-01..BL-11, BL-13..BL-20, BL-22..BL-26, BL-35, BL-36, BL-38, BL-40, BL-41, BL-56, BL-57, BL-60, BL-61, BL-64, BL-66..BL-71, BL-73, BL-74 |
 | 💡 Идея | 25 | BL-27..BL-34, BL-37, BL-39, BL-42, BL-44..BL-55, BL-58, BL-65, BL-72 |
 | ❌ Закрыто | 6 | BL-12, BL-21, BL-43, BL-59, BL-62, BL-63 |
-| **Итого** | **72** | |
+| **Итого** | **73** | |

@@ -1,5 +1,16 @@
 # Changelog — Ultimate Movie Scraper (metadata.ums)
 
+## v3.24.1 — 28.08.2026
+
+### Исправлено
+- **BL-74: Исправления по ревью PR в xbmc/repo-plugins** — 3 бага найдены автоматическим ревьюером Greptile:
+  - `getartwork` action подключён к диспатчеру movie scraper (ранее попадал в `else: unknown action`)
+  - Убрана двойная финализация handle в `_handle_getdetails` при ошибках (setResolvedUrl + endOfDirectory → только endOfDirectory)
+  - Порядок стратегий в `_fallback_seasons_search` исправлен: IMDb lookup (точный) теперь выполняется перед title search (fuzzy)
+
+### Тесты
+- 924 теста (659 movie + 231 TV + 34 shared). 0 new failures.
+
 ## v3.24.0 — 26.08.2026
 
 ### Добавлено
