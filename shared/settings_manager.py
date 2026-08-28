@@ -24,6 +24,18 @@ class SettingsManager:
         return self._addon.getSetting("kinopoisk_api_key").strip()
 
     @property
+    def kinopoisk_api_keys(self) -> list[str]:
+        keys = []
+        key1 = self._addon.getSetting("kinopoisk_api_key").strip()
+        if key1:
+            keys.append(key1)
+        for i in range(2, 6):
+            key = self._addon.getSetting(f"kinopoisk_api_key_{i}").strip()
+            if key:
+                keys.append(key)
+        return keys
+
+    @property
     def omdb_api_key(self) -> str:
         return self._addon.getSetting("omdb_api_key").strip()
 

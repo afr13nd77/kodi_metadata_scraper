@@ -216,3 +216,23 @@ msgstr ""
 msgctxt "#32281"
 msgid "Загружать дополнительный артворк (clearlogo, banner и др.) с FanArt.tv"
 msgstr ""
+
+msgctxt "#32017"
+msgid "API-ключ Кинопоиска #2"
+msgstr ""
+
+msgctxt "#32018"
+msgid "Дополнительный API-ключ для увеличения дневной квоты (500 запросов/день на ключ)"
+msgstr ""
+
+msgctxt "#32019"
+msgid "API-ключ Кинопоиска #3"
+msgstr ""
+
+msgctxt "#32020"
+msgid "API-ключ Кинопоиска #4"
+msgstr ""
+
+msgctxt "#32021"
+msgid "API-ключ Кинопоиска #5"
+msgstr ""

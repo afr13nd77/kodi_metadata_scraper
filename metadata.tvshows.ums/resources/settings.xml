@@ -14,6 +14,54 @@
           </control>
         </setting>
       </group>
+      <group id="1a2">
+        <setting id="kinopoisk_api_key_2" type="string" label="32017" help="32018">
+          <level>0</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+          <control type="edit" format="string">
+            <heading>32017</heading>
+          </control>
+        </setting>
+      </group>
+      <group id="1a3">
+        <setting id="kinopoisk_api_key_3" type="string" label="32019" help="32018">
+          <level>0</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+          <control type="edit" format="string">
+            <heading>32019</heading>
+          </control>
+        </setting>
+      </group>
+      <group id="1a4">
+        <setting id="kinopoisk_api_key_4" type="string" label="32020" help="32018">
+          <level>0</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+          <control type="edit" format="string">
+            <heading>32020</heading>
+          </control>
+        </setting>
+      </group>
+      <group id="1a5">
+        <setting id="kinopoisk_api_key_5" type="string" label="32021" help="32018">
+          <level>0</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+          <control type="edit" format="string">
+            <heading>32021</heading>
+          </control>
+        </setting>
+      </group>
       <group id="1b">
         <setting id="omdb_api_key" type="string" label="32013" help="32014">
           <level>0</level>

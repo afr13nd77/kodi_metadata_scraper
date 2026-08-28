@@ -12,7 +12,7 @@ from cache import FileCache
 from duplicate_tracker import DuplicateTracker
 from logger import Logger
 from settings_manager import SettingsManager
-from kinopoisk_api import KinopoiskClient
+from kinopoisk_api import KinopoiskClient, init_key_pool, get_current_api_key, is_all_keys_exhausted
 from omdb_client import OmdbClient, parse_rt_rating, parse_mc_rating, parse_award_tags
 from nfo_parser import NfoParser
 from models import MovieSearchResult, MovieDetails, Rating, ArtworkType, DataSource
@@ -250,7 +250,13 @@ def _handle_find(
         )
         return
 
-    kp_client = KinopoiskClient(settings.kinopoisk_api_key, logger)
+    init_key_pool(settings.kinopoisk_api_keys)
+
+    if is_all_keys_exhausted():
+        logger.warning("_handle_find: all KP API keys exhausted, skipping find")
+        return
+
+    kp_client = KinopoiskClient(get_current_api_key(), logger)
 
     search_year = year if year and year != "0" else None
     candidates, extracted_year = clean_title(title, logger)
@@ -410,7 +416,8 @@ def _handle_getdetails(
         else:
             logger.info("_handle_getdetails: duplicate tracking skipped: empty path")
 
-    kp_client = KinopoiskClient(settings.kinopoisk_api_key, logger)
+    init_key_pool(settings.kinopoisk_api_keys)
+    kp_client = KinopoiskClient(get_current_api_key(), logger)
     addon_id = xbmcaddon.Addon().getAddonInfo('id')
     cache = FileCache(addon_id, logger)
 
@@ -916,7 +923,8 @@ def _handle_getartwork(
         xbmcplugin.setResolvedUrl(handle, False, xbmcgui.ListItem(offscreen=True))
         return
 
-    kp_client = KinopoiskClient(settings.kinopoisk_api_key, logger)
+    init_key_pool(settings.kinopoisk_api_keys)
+    kp_client = KinopoiskClient(get_current_api_key(), logger)
     artworks = kp_client.get_images(kp_id, ["POSTER", "STILL"])
 
     listitem = xbmcgui.ListItem(offscreen=True)

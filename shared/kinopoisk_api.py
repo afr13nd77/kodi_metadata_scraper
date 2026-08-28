@@ -216,6 +216,75 @@ def map_production_status(raw: dict, logger=None) -> str:
 _kp_global_limiter = RateLimiter(18.0)
 _kp_staff_limiter = RateLimiter(9.0)
 
+# --- API key pool state ---
+_key_pool: list[str] = []
+_current_key_index: int = 0
+_exhausted_keys: set[int] = set()
+_all_keys_exhausted: bool = False
+_exhausted_notified: bool = False
+
+
+def init_key_pool(keys: list[str]) -> None:
+    """Initialize API key pool. No-op on subsequent calls."""
+    global _key_pool, _current_key_index, _exhausted_keys, _all_keys_exhausted, _exhausted_notified
+    if _key_pool:
+        return
+    _key_pool = [k for k in keys if k]
+    _current_key_index = 0
+    _exhausted_keys = set()
+    _all_keys_exhausted = False
+    _exhausted_notified = False
+
+
+def get_current_api_key() -> str:
+    """Return the current active API key from the pool."""
+    if not _key_pool:
+        return ""
+    return _key_pool[_current_key_index]
+
+
+def rotate_key(logger) -> bool:
+    """Mark current key as exhausted, switch to the next available key.
+
+    Returns True if a valid key was found, False if all keys are exhausted.
+    """
+    global _current_key_index, _all_keys_exhausted, _exhausted_notified
+
+    old_index = _current_key_index
+    _exhausted_keys.add(_current_key_index)
+    logger.warning(f"rotate_key: key #{old_index + 1} exhausted, searching for next available key")
+
+    for i in range(len(_key_pool)):
+        if i not in _exhausted_keys:
+            _current_key_index = i
+            logger.info(f"rotate_key: switched from key #{old_index + 1} to key #{i + 1}")
+            try:
+                import xbmc
+                xbmc.executebuiltin(
+                    f'Notification("UMS Scraper", "Ключ KP #{old_index + 1} исчерпан, переключён на #{i + 1}", 5000)'
+                )
+            except Exception:
+                pass
+            return True
+
+    _all_keys_exhausted = True
+    logger.error("rotate_key: all API keys exhausted")
+    if not _exhausted_notified:
+        _exhausted_notified = True
+        try:
+            import xbmc
+            xbmc.executebuiltin(
+                'Notification("UMS Scraper", "Все ключи KP API исчерпаны. Сканирование приостановлено.", 7000)'
+            )
+        except Exception:
+            pass
+    return False
+
+
+def is_all_keys_exhausted() -> bool:
+    """Check if all API keys in the pool are exhausted."""
+    return _all_keys_exhausted
+
 
 class KinopoiskClient:
     BASE_URL = "https://kinopoiskapiunofficial.tech/api"
@@ -243,6 +312,50 @@ class KinopoiskClient:
             logger=logger,
         )
 
+    def _rebuild_http_clients(self, new_key: str) -> None:
+        """Rebuild HTTP clients with a new API key, reusing existing rate limiters."""
+        self._api_key = new_key
+        headers = {
+            "X-API-KEY": new_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        self._http = HttpClient(
+            base_url=self.BASE_URL,
+            headers=headers,
+            rate_limiter=_kp_global_limiter,
+            logger=self._logger,
+        )
+        self._http_staff = HttpClient(
+            base_url=self.BASE_URL,
+            headers=headers,
+            rate_limiter=_kp_staff_limiter,
+            logger=self._logger,
+        )
+        self._logger.info(f"KinopoiskClient._rebuild_http_clients: rebuilt with new API key")
+
+    def _request_with_rotation(self, use_staff: bool, method: str, *args, **kwargs):
+        """Execute HTTP request with automatic key rotation on 402/403.
+
+        Args:
+            use_staff: True to use _http_staff, False for _http.
+            method: HTTP client method name ('get_json' or 'get_json_degraded').
+        """
+        client = self._http_staff if use_staff else self._http
+        try:
+            return getattr(client, method)(*args, **kwargs)
+        except HttpError as e:
+            if e.status_code not in (402, 403):
+                raise
+            self._logger.warning(
+                f"KinopoiskClient._request_with_rotation: got HTTP {e.status_code}, attempting key rotation"
+            )
+            if not rotate_key(self._logger):
+                raise
+            self._rebuild_http_clients(get_current_api_key())
+            client = self._http_staff if use_staff else self._http
+            return getattr(client, method)(*args, **kwargs)
+
     def search(
         self, title: str, year: Optional[str] = None, type_filter: Optional[list[str]] = None,
     ) -> list[MovieSearchResult]:
@@ -252,7 +365,7 @@ class KinopoiskClient:
 
         try:
             params = {"keyword": title, "page": "1"}
-            data = self._http.get_json("v2.1/films/search-by-keyword", params)
+            data = self._request_with_rotation(False, "get_json", "v2.1/films/search-by-keyword", params)
         except HttpError as e:
             self._logger.error(f"KinopoiskClient.search failed: {e}")
             return []
@@ -326,7 +439,7 @@ class KinopoiskClient:
         self._logger.info(f"KinopoiskClient.get_kp_id_by_imdb_id: imdb_id='{imdb_id}'")
 
         try:
-            data = self._http.get_json("v2.2/films", {"imdbId": imdb_id})
+            data = self._request_with_rotation(False, "get_json", "v2.2/films", {"imdbId": imdb_id})
         except HttpError as e:
             self._logger.error(f"KinopoiskClient.get_kp_id_by_imdb_id failed: {e}")
             return None
@@ -359,7 +472,7 @@ class KinopoiskClient:
         """HTTP request for film details, returns raw dict."""
         self._logger.info(f"KinopoiskClient.fetch_details_raw: kp_id={kinopoisk_id}")
         try:
-            data = self._http.get_json(f"v2.2/films/{kinopoisk_id}")
+            data = self._request_with_rotation(False, "get_json", f"v2.2/films/{kinopoisk_id}")
         except HttpError as e:
             self._logger.error(f"KinopoiskClient.fetch_details_raw failed: {e}")
             return None
@@ -370,7 +483,7 @@ class KinopoiskClient:
         """HTTP request for film details in degraded mode (5s timeout, 0 retries)."""
         self._logger.info(f"KinopoiskClient.fetch_details_raw_degraded: kp_id={kinopoisk_id}")
         try:
-            result = self._http.get_json_degraded(f"v2.2/films/{kinopoisk_id}")
+            result = self._request_with_rotation(False, "get_json_degraded", f"v2.2/films/{kinopoisk_id}")
             self._logger.info(
                 f"KinopoiskClient.fetch_details_raw_degraded: success for kp_id={kinopoisk_id}"
             )
@@ -456,7 +569,7 @@ class KinopoiskClient:
         """HTTP request for film distributions (premiere dates), returns raw dict."""
         self._logger.info(f"KinopoiskClient.fetch_distributions_raw: kp_id={kinopoisk_id}")
         try:
-            data = self._http.get_json(f"v2.2/films/{kinopoisk_id}/distributions")
+            data = self._request_with_rotation(False, "get_json", f"v2.2/films/{kinopoisk_id}/distributions")
         except HttpError as e:
             self._logger.error(f"KinopoiskClient.fetch_distributions_raw failed: {e}")
             return None
@@ -515,7 +628,7 @@ class KinopoiskClient:
         """HTTP request for film staff, returns raw list."""
         self._logger.info(f"KinopoiskClient.fetch_staff_raw: kp_id={kinopoisk_id}")
         try:
-            data = self._http_staff.get_json("v1/staff", {"filmId": str(kinopoisk_id)})
+            data = self._request_with_rotation(True, "get_json", "v1/staff", {"filmId": str(kinopoisk_id)})
         except HttpError as e:
             self._logger.error(f"KinopoiskClient.fetch_staff_raw failed: {e}")
             return None
@@ -526,8 +639,8 @@ class KinopoiskClient:
         """HTTP request for film staff in degraded mode (5s timeout, 0 retries)."""
         self._logger.info(f"KinopoiskClient.fetch_staff_raw_degraded: kp_id={kinopoisk_id}")
         try:
-            result = self._http_staff.get_json_degraded(
-                "v1/staff", {"filmId": str(kinopoisk_id)}
+            result = self._request_with_rotation(
+                True, "get_json_degraded", "v1/staff", {"filmId": str(kinopoisk_id)}
             )
             self._logger.info(
                 f"KinopoiskClient.fetch_staff_raw_degraded: success for kp_id={kinopoisk_id}"
@@ -546,7 +659,7 @@ class KinopoiskClient:
     def fetch_videos_raw(self, kinopoisk_id):
         self._logger.info(f"KinopoiskClient.fetch_videos_raw: kp_id={kinopoisk_id}")
         try:
-            data = self._http.get_json(f"v2.2/films/{kinopoisk_id}/videos")
+            data = self._request_with_rotation(False, "get_json", f"v2.2/films/{kinopoisk_id}/videos")
         except Exception as e:
             self._logger.error(f"KinopoiskClient.fetch_videos_raw failed: {e}")
             return None
@@ -556,7 +669,7 @@ class KinopoiskClient:
     def fetch_videos_raw_degraded(self, kinopoisk_id):
         self._logger.info(f"KinopoiskClient.fetch_videos_raw_degraded: kp_id={kinopoisk_id}")
         try:
-            result = self._http.get_json_degraded(f"v2.2/films/{kinopoisk_id}/videos")
+            result = self._request_with_rotation(False, "get_json_degraded", f"v2.2/films/{kinopoisk_id}/videos")
             self._logger.info(
                 f"KinopoiskClient.fetch_videos_raw_degraded: success for kp_id={kinopoisk_id}"
             )
@@ -667,7 +780,8 @@ class KinopoiskClient:
         items: list[dict] = []
         for img_type in image_types:
             try:
-                data = self._http.get_json(
+                data = self._request_with_rotation(
+                    False, "get_json",
                     f"v2.2/films/{kinopoisk_id}/images",
                     {"type": img_type, "page": "1"}
                 )
@@ -719,7 +833,7 @@ class KinopoiskClient:
         self._logger.info(f"KinopoiskClient.fetch_sequels_raw: kp_id={kinopoisk_id}")
 
         try:
-            data = self._http.get_json(f"v2.1/films/{kinopoisk_id}/sequels_and_prequels")
+            data = self._request_with_rotation(False, "get_json", f"v2.1/films/{kinopoisk_id}/sequels_and_prequels")
         except HttpError as e:
             if e.status_code == 404:
                 self._logger.info(
@@ -756,7 +870,7 @@ class KinopoiskClient:
         """HTTP request for TV seasons, returns raw dict."""
         self._logger.info(f"KinopoiskClient.fetch_seasons_raw: kp_id={kinopoisk_id}")
         try:
-            data = self._http.get_json(f"v2.2/films/{kinopoisk_id}/seasons")
+            data = self._request_with_rotation(False, "get_json", f"v2.2/films/{kinopoisk_id}/seasons")
         except HttpError as e:
             self._logger.error(f"KinopoiskClient.fetch_seasons_raw failed: {e}")
             return None

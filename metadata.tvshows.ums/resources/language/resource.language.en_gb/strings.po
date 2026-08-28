@@ -224,3 +224,23 @@ msgstr ""
 msgctxt "#32281"
 msgid "Fetch additional artwork (clearlogo, banner, etc.) from FanArt.tv"
 msgstr ""
+
+msgctxt "#32017"
+msgid "Kinopoisk API Key #2"
+msgstr ""
+
+msgctxt "#32018"
+msgid "Additional API key to increase daily quota (500 req/day per key)"
+msgstr ""
+
+msgctxt "#32019"
+msgid "Kinopoisk API Key #3"
+msgstr ""
+
+msgctxt "#32020"
+msgid "Kinopoisk API Key #4"
+msgstr ""
+
+msgctxt "#32021"
+msgid "Kinopoisk API Key #5"
+msgstr ""

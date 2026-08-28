@@ -17,7 +17,7 @@ from cache import FileCache
 from duplicate_tracker import DuplicateTracker
 from logger import Logger
 from settings_manager import SettingsManager
-from kinopoisk_api import KinopoiskClient, map_production_status
+from kinopoisk_api import KinopoiskClient, map_production_status, init_key_pool, get_current_api_key, is_all_keys_exhausted
 from omdb_client import OmdbClient, parse_rt_rating, parse_mc_rating, parse_award_tags
 from tvmaze_client import TvmazeClient
 from fanart_client import FanartClient
@@ -282,7 +282,13 @@ def _handle_find(
         )
         return
 
-    kp_client = KinopoiskClient(settings.kinopoisk_api_key, logger)
+    init_key_pool(settings.kinopoisk_api_keys)
+
+    if is_all_keys_exhausted():
+        logger.warning("_handle_find: all KP API keys exhausted, skipping find")
+        return
+
+    kp_client = KinopoiskClient(get_current_api_key(), logger)
 
     search_year = year if year and year != "0" else None
     candidates, extracted_year = clean_title(title, logger)
@@ -447,7 +453,8 @@ def _handle_getdetails(
         else:
             logger.info("_handle_getdetails: duplicate tracking skipped: empty path")
 
-    kp_client = KinopoiskClient(settings.kinopoisk_api_key, logger)
+    init_key_pool(settings.kinopoisk_api_keys)
+    kp_client = KinopoiskClient(get_current_api_key(), logger)
     addon_id = xbmcaddon.Addon().getAddonInfo('id')
     cache = FileCache(addon_id, logger)
 
@@ -801,7 +808,8 @@ def _handle_getepisodelist(
         file_cache_key = f"kp_seasons_{kp_id}"
         cached_raw = cache.get(file_cache_key)
 
-        kp_client = KinopoiskClient(settings.kinopoisk_api_key, logger)
+        init_key_pool(settings.kinopoisk_api_keys)
+        kp_client = KinopoiskClient(get_current_api_key(), logger)
         if cached_raw is not None:
             seasons = kp_client.parse_seasons(cached_raw)
             if seasons:
@@ -821,7 +829,8 @@ def _handle_getepisodelist(
 
     if not seasons:
         if not kp_client and settings.kinopoisk_api_key:
-            kp_client = KinopoiskClient(settings.kinopoisk_api_key, logger)
+            init_key_pool(settings.kinopoisk_api_keys)
+            kp_client = KinopoiskClient(get_current_api_key(), logger)
         if not cache:
             addon_id = xbmcaddon.Addon().getAddonInfo('id')
             cache = FileCache(addon_id, logger)
@@ -898,7 +907,8 @@ def _handle_getepisodedetails(
     if not title_original and not imdb_id and settings.use_tvmaze and kp_id:
         if settings.kinopoisk_api_key:
             try:
-                kp_client = KinopoiskClient(settings.kinopoisk_api_key, logger)
+                init_key_pool(settings.kinopoisk_api_keys)
+                kp_client = KinopoiskClient(get_current_api_key(), logger)
                 details = kp_client.get_details(kp_id)
                 if details:
                     title_original = details.title_original or ""
@@ -931,7 +941,8 @@ def _handle_getepisodedetails(
         file_cache_key = f"kp_seasons_{kp_id}"
         cached_raw = cache.get(file_cache_key)
 
-        kp_client = KinopoiskClient(settings.kinopoisk_api_key, logger)
+        init_key_pool(settings.kinopoisk_api_keys)
+        kp_client = KinopoiskClient(get_current_api_key(), logger)
         if cached_raw is not None:
             seasons = kp_client.parse_seasons(cached_raw)
             if seasons:
@@ -951,7 +962,8 @@ def _handle_getepisodedetails(
 
     if not seasons:
         if not kp_client and settings.kinopoisk_api_key:
-            kp_client = KinopoiskClient(settings.kinopoisk_api_key, logger)
+            init_key_pool(settings.kinopoisk_api_keys)
+            kp_client = KinopoiskClient(get_current_api_key(), logger)
         if not cache:
             addon_id = xbmcaddon.Addon().getAddonInfo('id')
             cache = FileCache(addon_id, logger)
@@ -1486,7 +1498,8 @@ def _handle_getartwork(
         xbmcplugin.setResolvedUrl(handle, False, xbmcgui.ListItem(offscreen=True))
         return False
 
-    kp_client = KinopoiskClient(settings.kinopoisk_api_key, logger)
+    init_key_pool(settings.kinopoisk_api_keys)
+    kp_client = KinopoiskClient(get_current_api_key(), logger)
     artworks = kp_client.get_images(kp_id, ["POSTER", "STILL"])
 
     listitem = xbmcgui.ListItem(offscreen=True)
