@@ -222,19 +222,23 @@ _current_key_index: int = 0
 _exhausted_keys: set[int] = set()
 _all_keys_exhausted: bool = False
 _exhausted_notified: bool = False
+_configured_rate_limit: float = 0.0
 
 
 def init_key_pool(keys: list[str], rate_limit: float = 20.0) -> None:
-    """Initialize API key pool and rate limiter. No-op on subsequent calls."""
-    global _key_pool, _current_key_index, _exhausted_keys, _all_keys_exhausted, _exhausted_notified, _kp_limiter
-    if _key_pool:
+    """Initialize API key pool and rate limiter. Reinitializes if keys or rate_limit changed."""
+    global _key_pool, _current_key_index, _exhausted_keys
+    global _all_keys_exhausted, _exhausted_notified, _kp_limiter, _configured_rate_limit
+    clean_keys = [k for k in keys if k]
+    if _key_pool == clean_keys and _configured_rate_limit == rate_limit:
         return
-    _key_pool = [k for k in keys if k]
+    _key_pool = clean_keys
     _current_key_index = 0
     _exhausted_keys = set()
     _all_keys_exhausted = False
     _exhausted_notified = False
     _kp_limiter = RateLimiter(rate_limit)
+    _configured_rate_limit = rate_limit
 
 
 def get_current_api_key() -> str:
@@ -344,11 +348,19 @@ class KinopoiskClient:
             self._logger.warning(
                 f"KinopoiskClient._request_with_rotation: got HTTP {e.status_code}, attempting key rotation"
             )
-            if not rotate_key(self._logger):
-                raise
-            self._rebuild_http_clients(get_current_api_key())
-            client = self._http_staff if use_staff else self._http
-            return getattr(client, method)(*args, **kwargs)
+            while rotate_key(self._logger):
+                self._rebuild_http_clients(get_current_api_key())
+                client = self._http_staff if use_staff else self._http
+                try:
+                    return getattr(client, method)(*args, **kwargs)
+                except HttpError as e2:
+                    if e2.status_code not in (402, 403):
+                        raise
+                    self._logger.warning(
+                        f"KinopoiskClient._request_with_rotation: key also returned HTTP {e2.status_code}"
+                    )
+                    continue
+            raise
 
     def search(
         self, title: str, year: Optional[str] = None, type_filter: Optional[list[str]] = None,

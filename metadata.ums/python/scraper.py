@@ -555,10 +555,15 @@ def _handle_getdetails(
             if cached_sequels is not None:
                 sequels = cached_sequels
                 logger.info(f"_handle_getdetails: loaded sequels from cache for kp_id={kp_id}")
-            else:
+            elif not from_fallback and not _kp_unavailable:
                 sequels = kp_client.get_sequels(kp_id)
                 if sequels:
                     cache.put(cache_key_sequels, sequels)
+            elif _kp_unavailable:
+                stale_sequels = cache.get_stale(cache_key_sequels)
+                if stale_sequels is not None:
+                    sequels = stale_sequels
+                    logger.info(f"_handle_getdetails: loaded sequels from stale cache for kp_id={kp_id}")
             sequel_titles = [
                 s.get("nameRu") or s.get("nameOriginal") or ""
                 for s in sequels
@@ -814,9 +819,11 @@ def _apply_movie_details_to_listitem(
     infotag.setUniqueIDs(uniqueids, default_id)
 
     preferred_source = settings.preferred_rating_source
+    _PERCENT_SCALE_SOURCES = {DataSource.ROTTEN_TOMATOES, DataSource.METACRITIC}
     kodi_ratings = {}
     for r in details.ratings:
-        kodi_ratings[r.source.value] = (r.value, r.votes)
+        value = r.value / 10.0 if r.source in _PERCENT_SCALE_SOURCES else r.value
+        kodi_ratings[r.source.value] = (value, r.votes)
     infotag.setRatings(kodi_ratings, preferred_source.value)
 
     actor_lang = settings.actor_name_language
@@ -826,11 +833,12 @@ def _apply_movie_details_to_listitem(
 
     kodi_cast = []
     for person in details.cast:
+        photo = person.photo_url if settings.fetch_actor_photos else ""
         kodi_cast.append(xbmc.Actor(
             person.display_name(actor_lang),
             person.role,
             person.order,
-            person.photo_url
+            photo
         ))
     infotag.setCast(kodi_cast)
 

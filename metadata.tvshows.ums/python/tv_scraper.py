@@ -573,6 +573,7 @@ def _handle_getdetails(
             ratings=details.ratings,
             artwork=details.artwork,
             premiere_date=premiere_date,
+            original_language=details.original_language,
         )
 
     if not from_fallback or not tvshow.directors:
@@ -826,9 +827,9 @@ def _handle_getepisodelist(
                 seasons = kp_client.parse_seasons(raw)
                 if seasons:
                     cache.put(file_cache_key, raw)
+                    _cache_put(kp_id, seasons, logger)
             else:
                 seasons = []
-        _cache_put(kp_id, seasons, logger)
 
     if not seasons:
         if not kp_client and settings.kinopoisk_api_key:
@@ -959,9 +960,9 @@ def _handle_getepisodedetails(
                 seasons = kp_client.parse_seasons(raw)
                 if seasons:
                     cache.put(file_cache_key, raw)
+                    _cache_put(kp_id, seasons, logger)
             else:
                 seasons = []
-        _cache_put(kp_id, seasons, logger)
 
     if not seasons:
         if not kp_client and settings.kinopoisk_api_key:
@@ -1299,9 +1300,11 @@ def _apply_tvshow_details_to_listitem(
     infotag.setUniqueIDs(uniqueids, default_id)
 
     preferred_source = settings.preferred_rating_source
+    _PERCENT_SCALE_SOURCES = {DataSource.ROTTEN_TOMATOES, DataSource.METACRITIC}
     kodi_ratings = {}
     for r in details.ratings:
-        kodi_ratings[r.source.value] = (r.value, r.votes)
+        value = r.value / 10.0 if r.source in _PERCENT_SCALE_SOURCES else r.value
+        kodi_ratings[r.source.value] = (value, r.votes)
     infotag.setRatings(kodi_ratings, preferred_source.value)
 
     actor_lang = settings.actor_name_language
@@ -1311,11 +1314,12 @@ def _apply_tvshow_details_to_listitem(
 
     kodi_cast = []
     for person in details.cast:
+        photo = person.photo_url if settings.fetch_actor_photos else ""
         kodi_cast.append(xbmc.Actor(
             person.display_name(actor_lang),
             person.role,
             person.order,
-            person.photo_url
+            photo
         ))
     infotag.setCast(kodi_cast)
 

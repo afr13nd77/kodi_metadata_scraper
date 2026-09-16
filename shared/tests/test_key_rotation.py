@@ -51,11 +51,21 @@ class TestInitKeyPool:
         init_key_pool(["k1", "", "k3"])
         assert kinopoisk_api._key_pool == ["k1", "k3"]
 
-    def test_noop_on_second_call(self):
-        """Repeat call does not overwrite the pool."""
+    def test_noop_on_same_keys(self):
+        """Repeat call with same keys does not overwrite the pool."""
         init_key_pool(["k1", "k2"])
-        init_key_pool(["k3", "k4"])
+        kinopoisk_api._current_key_index = 1
+        init_key_pool(["k1", "k2"])
         assert kinopoisk_api._key_pool == ["k1", "k2"]
+        assert kinopoisk_api._current_key_index == 1
+
+    def test_reinit_on_different_keys(self):
+        """Calling with different keys reinitializes the pool."""
+        init_key_pool(["k1", "k2"])
+        kinopoisk_api._current_key_index = 1
+        init_key_pool(["k3", "k4"])
+        assert kinopoisk_api._key_pool == ["k3", "k4"]
+        assert kinopoisk_api._current_key_index == 0
 
     def test_empty_keys(self):
         """init_key_pool(['', '']) -> empty pool."""
