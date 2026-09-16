@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Standalone debug script for testing the UMS search pipeline outside Kodi.
+"""Standalone debug script for testing the Kinoscope search pipeline outside Kodi.
 
 Usage:
     python debug_search.py YOUR_API_KEY "Braveheart 1995"

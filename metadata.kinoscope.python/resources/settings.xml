@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings version="1">
-  <section id="metadata.tvshows.ums">
+  <section id="metadata.kinoscope.python">
     <category id="api_keys" label="32001" help="">
       <group id="1">
         <setting id="kinopoisk_api_key" type="string" label="32011" help="32012">
@@ -116,24 +116,14 @@
         </setting>
       </group>
       <group id="3c">
-        <setting id="use_tvmaze" type="boolean" label="32140" help="32141">
-          <level>0</level>
-          <default>false</default>
-          <control type="toggle"/>
-        </setting>
-      </group>
-      <group id="3ca">
-        <setting id="use_season_art" type="boolean" label="32160" help="32161">
+        <setting id="auto_select_exact_match" type="boolean" label="32150" help="32151">
           <level>0</level>
           <default>true</default>
-          <dependencies>
-            <dependency type="visible" setting="use_tvmaze">true</dependency>
-          </dependencies>
           <control type="toggle"/>
         </setting>
       </group>
       <group id="3d">
-        <setting id="auto_select_exact_match" type="boolean" label="32150" help="32151">
+        <setting id="enable_collections" type="boolean" label="32160" help="32161">
           <level>0</level>
           <default>true</default>
           <control type="toggle"/>

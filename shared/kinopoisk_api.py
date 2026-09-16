@@ -272,7 +272,7 @@ def rotate_key(logger) -> bool:
         try:
             import xbmc
             xbmc.executebuiltin(
-                'Notification("UMS Scraper", "Все ключи KP API исчерпаны. Сканирование приостановлено.", 7000)'
+                'Notification("Kinoscope", "Все ключи KP API исчерпаны. Сканирование приостановлено.", 7000)'
             )
         except Exception:
             pass

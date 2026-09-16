@@ -132,7 +132,7 @@ class TestSparqlQueryContents:
 
         call_args = mock_urlopen.call_args
         request_obj = call_args[0][0]
-        assert request_obj.get_header("User-agent") == "UMS-Kodi/3.16 (metadata scraper)"
+        assert request_obj.get_header("User-agent") == "Kinoscope-Kodi/3.25 (metadata scraper)"
 
 
 # --- Tests for get_kp_id_by_imdb_id ---

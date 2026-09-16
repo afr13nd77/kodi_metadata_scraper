@@ -12,5 +12,5 @@ exclude = [
 select = ["E", "F", "W"]
 
 [lint.per-file-ignores]
-"metadata.ums/tests/*" = ["E501"]
-"metadata.tvshows.ums/tests/*" = ["E501"]
+"metadata.kinoscope.python/tests/*" = ["E501"]
+"metadata.tvshows.kinoscope.python/tests/*" = ["E501"]

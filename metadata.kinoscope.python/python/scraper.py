@@ -202,7 +202,7 @@ def run() -> None:
             settings.set_clear_cache(False)
             logger.info("scraper.run: cache cleared by user request")
             xbmc.executebuiltin(
-                'Notification("Ultimate Movie Scraper", '
+                'Notification("Kinoscope", '
                 '"Кэш очищен", 3000)'
             )
         except Exception as e:
@@ -245,7 +245,7 @@ def _handle_find(
     if not settings.kinopoisk_api_key:
         logger.error("_handle_find: Kinopoisk API key not configured")
         xbmc.executebuiltin(
-            'Notification("Ultimate Movie Scraper", '
+            'Notification("Kinoscope", '
             '"Укажите API-ключ Кинопоиска в настройках дополнения", 5000)'
         )
         return
@@ -338,7 +338,7 @@ def _handle_find(
             f"_handle_find: API unavailable during find for title='{title}'"
         )
         xbmc.executebuiltin(
-            'Notification("Ultimate Movie Scraper", '
+            'Notification("Kinoscope", '
             '"Кинопоиск недоступен, поиск невозможен", 5000)'
         )
 
@@ -408,7 +408,7 @@ def _handle_getdetails(
             if existing_path:
                 basename = os.path.basename(existing_path.rstrip("/\\")) or existing_path
                 xbmcgui.Dialog().notification(
-                    "Ultimate Movie Scraper",
+                    "Kinoscope",
                     f"Дубль KP {kp_id}: уже у {basename}",
                     xbmcgui.NOTIFICATION_WARNING,
                     7000,
@@ -453,7 +453,7 @@ def _handle_getdetails(
                 )
                 if not _stale_cache_notified:
                     xbmc.executebuiltin(
-                        'Notification("Ultimate Movie Scraper", '
+                        'Notification("Kinoscope", '
                         '"Данные из кэша (устаревшие)", 5000)'
                     )
                     _stale_cache_notified = True
@@ -469,7 +469,7 @@ def _handle_getdetails(
                     )
                     if not _nfo_fallback_notified:
                         xbmc.executebuiltin(
-                            'Notification("Ultimate Movie Scraper", '
+                            'Notification("Kinoscope", '
                             '"Данные из NFO-файла", 5000)'
                         )
                         _nfo_fallback_notified = True
@@ -479,7 +479,7 @@ def _handle_getdetails(
                     )
                     if not _kp_unavailable_notified:
                         xbmc.executebuiltin(
-                            'Notification("Ultimate Movie Scraper", '
+                            'Notification("Kinoscope", '
                             '"Кинопоиск недоступен", 5000)'
                         )
                         _kp_unavailable_notified = True

@@ -13,7 +13,7 @@ def _sparql_available() -> bool:
     import urllib.error
     req = urllib.request.Request(
         "https://query.wikidata.org/sparql?query=ASK%20%7B%7D&format=json",
-        headers={"User-Agent": "UMS-Kodi/3.16 (test)", "Accept": "application/sparql-results+json"},
+        headers={"User-Agent": "Kinoscope-Kodi/3.25 (test)", "Accept": "application/sparql-results+json"},
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:

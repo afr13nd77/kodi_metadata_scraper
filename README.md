@@ -5,7 +5,7 @@
 
 [English version](readme_en.md)
 
-# Ultimate Movie Scraper (UMS) для Kodi
+# Kinoscope для Kodi
 
 **Версия:** 3.24.0  
 **Платформа:** Kodi v20 Nexus / v21 Omega  
@@ -21,7 +21,7 @@
 
 ## Возможности
 
-### metadata.ums -- Movie Scraper
+### metadata.kinoscope.python -- Movie Scraper
 
 - Поиск фильмов по русскому и английскому названию
 - Полные метаданные: название, год, описание, жанры, страны, студии, продолжительность, MPAA
@@ -48,7 +48,7 @@
 - Язык имён актёров и съёмочной группы (русский / английский)
 - Автоочистка коллекционных префиксов из имён файлов (MCU150-, SW03-, DC021-)
 
-### metadata.tvshows.ums -- TV Show Scraper
+### metadata.tvshows.kinoscope.python -- TV Show Scraper
 
 - Поиск сериалов (типы: TV_SERIES, MINI_SERIES, TV_SHOW)
 - Полные метаданные сериала с episode guide
@@ -101,8 +101,8 @@
 1. Скачайте ZIP-архивы из раздела релизов
 2. В Kodi: **Settings** -> **Add-ons** -> **Install from zip file**
 3. Установите нужные аддоны:
-   - `metadata.ums-3.24.0.zip` -- scraper фильмов
-   - `metadata.tvshows.ums-3.24.0.zip` -- scraper сериалов
+   - `metadata.kinoscope.python-3.24.0.zip` -- scraper фильмов
+   - `metadata.tvshows.kinoscope.python-3.24.0.zip` -- scraper сериалов
    - Можно установить оба или только один
 4. Откройте настройки установленного аддона и укажите API-ключ Кинопоиска
 
@@ -148,8 +148,8 @@
 
 ```
 shared/                  — общие модули (копируются в каждый аддон при сборке)
-metadata.ums/            — movie scraper addon
-metadata.tvshows.ums/    — TV show scraper addon
+metadata.kinoscope.python/            — movie scraper addon
+metadata.tvshows.kinoscope.python/    — TV show scraper addon
 build_zip.py             — сборка обоих ZIP-пакетов
 ```
 
@@ -171,10 +171,10 @@ pip install pytest
 
 ```bash
 # Тесты movie scraper
-cd metadata.ums && python -m pytest tests/ -v
+cd metadata.kinoscope.python && python -m pytest tests/ -v
 
 # Тесты TV scraper
-cd metadata.tvshows.ums && python -m pytest tests/ -v
+cd metadata.tvshows.kinoscope.python && python -m pytest tests/ -v
 
 # Тесты shared-модулей
 cd shared && python -m pytest tests/ -v
@@ -194,7 +194,7 @@ ruff check .
 python build_zip.py
 ```
 
-Результат: `metadata.ums-3.24.0.zip` и `metadata.tvshows.ums-3.24.0.zip` в корне проекта.
+Результат: `metadata.kinoscope.python-3.24.0.zip` и `metadata.tvshows.kinoscope.python-3.24.0.zip` в корне проекта.
 
 ---
 

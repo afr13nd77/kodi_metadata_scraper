@@ -1,4 +1,23 @@
-# Changelog — Ultimate Movie Scraper (metadata.ums)
+# Changelog — Kinoscope (metadata.kinoscope.python)
+
+## v3.25.2 — 17.09.2026
+
+### Переименование
+- **BL-76: UMS → Kinoscope** — оба аддона переименованы для устранения конфликта с `metadata.universal` (Universal Movie Scraper). Новые ID: `metadata.kinoscope.python`, `metadata.tvshows.kinoscope.python`. По замечанию мейнтейнера @olympia в xbmc/repo-scrapers PR #633/#634.
+
+### Исправлено
+- **BL-75: 8 исправлений по ревью Greptile (repo-scrapers PR #633, #634):**
+  - Key pool refresh при изменении настроек — `init_key_pool()` теперь сравнивает ключи и rate_limit, переинициализирует при изменении
+  - Ротация через все ключи — `_request_with_rotation()` перебирает все ключи в пуле, не только следующий
+  - Нормализация рейтингов RT/MC — шкала 0-100 конвертируется в 0-10 при передаче в `setRatings()`
+  - `original_language` передаётся в TVShowDetails (ранее терялся при конвертации)
+  - Photo gate — `photo_url` учитывает настройку `fetch_actor_photos`
+  - Skip `get_sequels()` в degraded mode — не вызывает KP API при `_kp_unavailable`
+  - Movie addon.xml — убраны упоминания TV shows из summary/description
+  - Не кэшировать пустые сезоны при API failure — `_cache_put` только при непустом результате
+
+### Тесты
+- 947 тестов (663 movie + 231 TV + 53 shared). 0 new failures. 6 pre-existing failures (test_wikidata_live.py — Wikidata SPARQL issues).
 
 ## v3.25.0 — 28.08.2026
 
@@ -104,7 +123,7 @@
 
 ### Новое (BL-70)
 
-- **Язык имён актёров, режиссёров и сценаристов (ru / en)**: новая настройка `actor_name_language` в обоих аддонах. При выборе English используются английские имена из KP API (`nameEn`) с fallback на русские при отсутствии. Решает проблему фрагментации фильмографии в смешанных библиотеках (UMS + TMDb): «Brad Pitt» и «Брэд Питт» больше не считаются разными людьми.
+- **Язык имён актёров, режиссёров и сценаристов (ru / en)**: новая настройка `actor_name_language` в обоих аддонах. При выборе English используются английские имена из KP API (`nameEn`) с fallback на русские при отсутствии. Решает проблему фрагментации фильмографии в смешанных библиотеках (Kinoscope + TMDb): «Brad Pitt» и «Брэд Питт» больше не считаются разными людьми.
 - Метод `Person.display_name(lang)` — выбор имени на основе настройки.
 - NFO-экспорт учитывает настройку языка имён.
 - Debug-логирование при fallback на русское имя (когда `nameEn` пустой).
@@ -173,7 +192,7 @@
 ### Тесты
 - 686 тестов (548 movie + 138 TV). +22 новых тестов для BL-60/BL-61.
 
-## v3.16.0 (09.06.2026) — metadata.ums + metadata.tvshows.ums
+## v3.16.0 (09.06.2026) — metadata.kinoscope.python + metadata.tvshows.kinoscope.python
 
 ### Wikidata fallback для IMDB ID (BL-56)
 
@@ -199,7 +218,7 @@
 - Исправлен критический баг: свойство Wikidata P7374 (educational stage) заменено на P2603 (Kinopoisk film ID)
 - Всего 542 теста в suite (536 + 6 live), 128 TV = 670 тестов
 
-## v3.15.3 (09.06.2026) — metadata.ums + metadata.tvshows.ums
+## v3.15.3 (09.06.2026) — metadata.kinoscope.python + metadata.tvshows.kinoscope.python
 
 ### YouTube-трейлеры (BL-09)
 
@@ -224,12 +243,12 @@
 - 28 новых тестов: trailer parsing (12), NFO trailer (6), scraper trailer (6), TV scraper trailer (4)
 - Всего 641 тестов (515 movie + 126 TV)
 
-## v3.14.2 (08.06.2026) — metadata.ums + metadata.tvshows.ums
+## v3.14.2 (08.06.2026) — metadata.kinoscope.python + metadata.tvshows.kinoscope.python
 
 - Новые контрастные fanart 1920x1080 для обоих аддонов (тёмно-синий movie, индиго TV)
 - Исправлено отображение иконок и fanart в Kodi: добавлена секция `<assets>` в addon.xml
 
-## v3.14.0 (08.06.2026) — metadata.ums + metadata.tvshows.ums
+## v3.14.0 (08.06.2026) — metadata.kinoscope.python + metadata.tvshows.kinoscope.python
 
 ### Graceful Degradation (BL-24)
 
@@ -269,7 +288,7 @@
 - 12 тестов DuplicateTracker
 - Всего 613 тестов (491 movie + 122 TV)
 
-## v3.13.0 (27.05.2026) — metadata.ums + metadata.tvshows.ums
+## v3.13.0 (27.05.2026) — metadata.kinoscope.python + metadata.tvshows.kinoscope.python
 - NFO-экспорт (BL-25): автоматическая запись .nfo-файлов рядом с видеофайлами после скрапинга
   - Movie: создаёт `<имя_файла>.nfo` рядом с видео (XML Kodi-формат)
   - TV: создаёт `tvshow.nfo` в корневой директории сериала
@@ -279,7 +298,7 @@
 - Исправлен парсер NFO: regex для `<uniqueid>` теперь поддерживает дополнительные атрибуты (kinopoisk + imdb)
 - 36 новых тестов (23 nfo_writer + 13 прочие), всего 570 тестов (454 movie + 116 TV)
 
-## v3.12.0 (24.05.2026) — metadata.ums + metadata.tvshows.ums
+## v3.12.0 (24.05.2026) — metadata.kinoscope.python + metadata.tvshows.kinoscope.python
 - Умный парсинг имён файлов (BL-15): поддержка S01E02, 1x02, кириллических С01Э03, «1 сезон 2 серия» — автоматическое удаление из названия при поиске
 - Детекция аниме-сериалов (BL-16): абсолютная нумерация с ведущим нулём (001, 042, 0842) распознаётся как номер эпизода
 - Обработка многосерийных фильмов (BL-17): «Часть/Part/Vol/Том» + арабские/римские/русские числительные → два поисковых кандидата (полное + базовое название)
@@ -287,51 +306,51 @@
 - Исправлена перезапись тегов: details.tags = award_tags → details.tags.extend(award_tags) в обоих scraper-ах
 - 25 новых тестов (21 utils + 4 tv_scraper), всего 534+ тестов
 
-## v3.11.4 (24.05.2026) — metadata.tvshows.ums
+## v3.11.4 (24.05.2026) — metadata.tvshows.kinoscope.python
 - Настройка "Очистить кэш" в разделе "Расширенные": очистка FileCache по запросу пользователя
 
-## v3.10.1 (24.05.2026) — metadata.ums
+## v3.10.1 (24.05.2026) — metadata.kinoscope.python
 - Настройка "Очистить кэш" в разделе "Расширенные": очистка FileCache по запросу пользователя
 
-## v3.11.3 (24.05.2026) — metadata.tvshows.ums
+## v3.11.3 (24.05.2026) — metadata.tvshows.kinoscope.python
 - Оптимизация: пустые сезоны не кэшируются в FileCache, стейл-кэш удаляется
 - Оптимизация: тип kp_id (FILM/TV_SERIES) кэшируется для fallback — без повторных API-запросов
 
-## v3.11.2 (24.05.2026) — metadata.tvshows.ums
+## v3.11.2 (24.05.2026) — metadata.tvshows.kinoscope.python
 - Fallback при 0 сезонов: переиск по title_original, IMDB lookup, проверка типа (FILM vs TV_SERIES)
 - Уведомление Kodi при legacy episodeguide с неверным kp_id (тип FILM вместо TV_SERIES)
 - Исправлен дубль вызова `_find_episode` в `_handle_getepisodedetails`
 
-## v3.11.1 (24.05.2026) — metadata.tvshows.ums
+## v3.11.1 (24.05.2026) — metadata.tvshows.kinoscope.python
 - Исправлен краш `_handle_getepisodelist`/`_handle_getepisodedetails` при legacy episodeguide: `json.loads("60574")` возвращал `int` вместо `dict`, вызывая `'int' object has no attribute 'get'`
 
-## v3.11.0 (24.05.2026) — metadata.tvshows.ums
+## v3.11.0 (24.05.2026) — metadata.tvshows.kinoscope.python
 - Теги наград (BL-10): парсинг OMDb Awards, теги Оскар/Глобус/Эмми/BAFTA/Канны, `setTags()` в Kodi
 - Нормализация жанров (BL-11): маппинг 31 жанра KP рус→англ, настройка "Язык жанров"
 - Персистентный кэш (BL-20): `FileCache` с TTL 7 дней, кэш details/staff/seasons/OMDb, 3-уровневый кэш для seasons (memory→file→API)
 - Рефакторинг KinopoiskClient: split fetch_raw/parse для кэширования сырого JSON
 - Рефакторинг OmdbClient: split fetch_ratings_raw/parse_ratings
 
-## v3.10.0 (24.05.2026) — metadata.ums
+## v3.10.0 (24.05.2026) — metadata.kinoscope.python
 - Теги наград (BL-10): парсинг OMDb Awards, теги Оскар/Глобус/Эмми/BAFTA/Канны, `setTags()` в Kodi
 - Нормализация жанров (BL-11): маппинг 31 жанра KP рус→англ, настройка "Язык жанров"
 - Персистентный кэш (BL-20): `FileCache` с TTL 7 дней, кэш details/staff/images/sequels/OMDb
 - Рефакторинг KinopoiskClient: split fetch_raw/parse для кэширования сырого JSON
 - Рефакторинг OmdbClient: split fetch_ratings_raw/parse_ratings
 
-## v3.10.1 (24.05.2026) — metadata.tvshows.ums
+## v3.10.1 (24.05.2026) — metadata.tvshows.kinoscope.python
 - Исправлен двойной вызов dual search: `_perform_dual_search()` вызывался дважды при найденных результатах (лишний API-запрос)
 
-## v3.9.1 (24.05.2026) — metadata.ums
+## v3.9.1 (24.05.2026) — metadata.kinoscope.python
 - Исправлен двойной вызов dual search: `_perform_dual_search()` вызывался дважды при найденных результатах (лишний API-запрос)
 
-## v3.10.0 (24.05.2026) — metadata.tvshows.ums
+## v3.10.0 (24.05.2026) — metadata.tvshows.kinoscope.python
 - Двойной поиск: дополнительный поиск по альтернативному названию для TV-сериалов
 - type_filter для TV (TV_SERIES, MINI_SERIES, TV_SHOW) сохраняется при втором поиске
 - Настройка "Двойной поиск (рус + ориг)" — включение/выключение (по умолчанию вкл.)
 - Unit-тесты: 11 интеграционных тестов _perform_dual_search() для TV scraper
 
-## v3.9.0 (24.05.2026) — metadata.ums
+## v3.9.0 (24.05.2026) — metadata.kinoscope.python
 - Fuzzy-matching: 3-уровневая сортировка результатов (совпадение года, fuzzy score, рейтинг)
 - Новые утилиты `normalize_for_matching()`, `fuzzy_score()`, `best_fuzzy_score()` в utils.py
 - Предупреждение в логе при низком качестве совпадений (все scores ниже порога 0.6)

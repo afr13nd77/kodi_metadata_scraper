@@ -280,7 +280,7 @@ def _handle_find(
     if not settings.kinopoisk_api_key:
         logger.error("_handle_find: Kinopoisk API key not configured")
         xbmc.executebuiltin(
-            'Notification("Ultimate Movie Scraper", '
+            'Notification("Kinoscope TV", '
             '"Укажите API-ключ Кинопоиска в настройках дополнения", 5000)'
         )
         return

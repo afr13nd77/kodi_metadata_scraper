@@ -5,17 +5,17 @@
 
 [Русская версия](README.md)
 
-# Ultimate Movie Scraper (UMS) for Kodi
+# Kinoscope for Kodi
 
 **Version:** 3.24.0 | **Platform:** Kodi v20 Nexus / v21 Omega | **Language:** Python 3.8 | **License:** MIT
 
-UMS is a metadata scraper for Kodi that fetches rich movie and TV show information from Kinopoisk, OMDb, and TVMaze. It is designed for users who prefer Russian-language metadata while also supporting English titles, international ratings, and full cast and crew data. The project ships as two fully independent addons — install either or both with no cross-dependencies.
+Kinoscope is a metadata scraper for Kodi that fetches rich movie and TV show information from Kinopoisk, OMDb, and TVMaze. It is designed for users who prefer Russian-language metadata while also supporting English titles, international ratings, and full cast and crew data. The project ships as two fully independent addons — install either or both with no cross-dependencies.
 
 ---
 
 ## Features
 
-### Movie Scraper (`metadata.ums`)
+### Movie Scraper (`metadata.kinoscope.python`)
 
 - Search movies by Russian and English title
 - Full metadata: title, year, plot, genres, countries, studios, duration, MPAA rating
@@ -41,7 +41,7 @@ UMS is a metadata scraper for Kodi that fetches rich movie and TV show informati
 - Configurable cast name language (Russian / English)
 - Auto-cleanup of collection prefixes from filenames (MCU150-, SW03-, DC021-)
 
-### TV Show Scraper (`metadata.tvshows.ums`)
+### TV Show Scraper (`metadata.tvshows.kinoscope.python`)
 
 - Search TV series (types: TV_SERIES, MINI_SERIES, TV_SHOW)
 - Full series metadata with episode guide
@@ -107,8 +107,8 @@ TMDb is **not** used.
 1. Download the ZIP archives from the [Releases](https://github.com/afr13nd77/kodi_metadata_scraper/releases) section.
 2. In Kodi, go to **Settings > Add-ons > Install from zip file**.
 3. Install the desired addon(s):
-   - `metadata.ums-3.24.0.zip` — movie scraper
-   - `metadata.tvshows.ums-3.24.0.zip` — TV show scraper
+   - `metadata.kinoscope.python-3.24.0.zip` — movie scraper
+   - `metadata.tvshows.kinoscope.python-3.24.0.zip` — TV show scraper
 4. Open addon settings and enter your Kinopoisk API key.
 
 ### API Keys
@@ -153,8 +153,8 @@ Each addon (movie and TV) has its own independent settings panel.
 
 ```
 shared/                  -- shared modules (copied into each addon at build time)
-metadata.ums/            -- movie scraper addon
-metadata.tvshows.ums/    -- TV show scraper addon
+metadata.kinoscope.python/            -- movie scraper addon
+metadata.tvshows.kinoscope.python/    -- TV show scraper addon
 build_zip.py             -- builds both ZIP packages
 docs/                    -- feature specifications (requirements, design, tasks)
 ```
@@ -179,10 +179,10 @@ pip install pytest
 
 ```bash
 # Movie scraper tests (659 tests)
-cd metadata.ums && python -m pytest tests/ -v
+cd metadata.kinoscope.python && python -m pytest tests/ -v
 
 # TV scraper tests (224 tests)
-cd metadata.tvshows.ums && python -m pytest tests/ -v
+cd metadata.tvshows.kinoscope.python && python -m pytest tests/ -v
 
 # Shared module tests (34 tests)
 cd shared && python -m pytest tests/ -v
@@ -200,7 +200,7 @@ ruff check .
 python build_zip.py
 ```
 
-Output: `metadata.ums-3.24.0.zip` and `metadata.tvshows.ums-3.24.0.zip` in the project root.
+Output: `metadata.kinoscope.python-3.24.0.zip` and `metadata.tvshows.kinoscope.python-3.24.0.zip` in the project root.
 
 ---
 

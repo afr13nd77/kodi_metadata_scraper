@@ -15,7 +15,7 @@ _IMDB_ID_RE = re.compile(r'^tt\d{7,8}$')
 
 class WikidataClient:
     SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
-    USER_AGENT = "UMS-Kodi/3.16 (metadata scraper)"
+    USER_AGENT = "Kinoscope-Kodi/3.25 (metadata scraper)"
     TIMEOUT = 10
 
     def __init__(self, logger: Logger) -> None:

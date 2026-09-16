@@ -8,8 +8,8 @@ PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 SHARED_DIR = os.path.join(PROJECT_DIR, "shared")
 
 ADDONS = [
-    {"addon_dir": "metadata.ums", "archive_root": "metadata.ums"},
-    {"addon_dir": "metadata.tvshows.ums", "archive_root": "metadata.tvshows.ums"},
+    {"addon_dir": "metadata.kinoscope.python", "archive_root": "metadata.kinoscope.python"},
+    {"addon_dir": "metadata.tvshows.kinoscope.python", "archive_root": "metadata.tvshows.kinoscope.python"},
 ]
 
 EXCLUDE_DIRS = {"tests", "__pycache__", ".pytest_cache", ".claude"}

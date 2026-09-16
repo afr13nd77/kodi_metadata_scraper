@@ -310,7 +310,7 @@ class TestHandleFind:
 
         xbmc.executebuiltin.assert_called_once()
         notification_call = xbmc.executebuiltin.call_args[0][0]
-        assert "Ultimate Movie Scraper" in notification_call
+        assert "Kinoscope TV" in notification_call
 
 
 # ---------------------------------------------------------------------------
