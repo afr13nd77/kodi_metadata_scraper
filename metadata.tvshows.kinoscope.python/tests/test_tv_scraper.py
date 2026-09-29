@@ -330,7 +330,7 @@ class TestAutoSelectExactMatch:
 
     @patch("tv_scraper.KinopoiskClient")
     def test_auto_select_exact_match_logs(self, MockClient):
-        """AC-06: TV scraper — 1 result + exact title + year + setting on → log auto-selected."""
+        """AC-06: TV scraper — 1 result + exact title + year + setting on → filters to 1, logs auto-selected."""
         mock_client = MockClient.return_value
         mock_client.search.return_value = [self._make_result()]
 
@@ -346,12 +346,54 @@ class TestAutoSelectExactMatch:
         xbmcplugin.addDirectoryItem.assert_called_once()
 
     @patch("tv_scraper.KinopoiskClient")
-    def test_auto_select_multiple_results_no_autoselect(self, MockClient):
-        """Multiple results → all added, no auto-select log."""
+    def test_auto_select_filters_to_single_exact(self, MockClient):
+        """BUGFIX: 3 results, 1 exact match by title+year → results filtered to that 1."""
         mock_client = MockClient.return_value
         mock_client.search.return_value = [
-            self._make_result("Чернобыль", 2019, 1),
-            self._make_result("Чернобыль. Зона отчуждения", 2014, 2),
+            self._make_result("Чернобыль", 2014, 2),
+            self._make_result("Чернобыль", 2019, 1127866),
+            self._make_result("Чернобыль. Зона отчуждения", 2019, 999),
+        ]
+
+        settings = _mock_settings(auto_select_exact_match=True)
+        logger = _mock_logger()
+        params = {"title": "Чернобыль", "year": "2019"}
+
+        _handle_find(params, 1, settings, logger)
+
+        logger.info.assert_any_call(
+            "_handle_find: auto-selected exact match: kp_id=1127866"
+        )
+        xbmcplugin.addDirectoryItem.assert_called_once()
+
+    @patch("tv_scraper.KinopoiskClient")
+    def test_auto_select_multiple_exact_shows_all(self, MockClient):
+        """BUGFIX: 3 results, 2 exact matches by title+year → cannot auto-select, all shown."""
+        mock_client = MockClient.return_value
+        mock_client.search.return_value = [
+            self._make_result("Чернобыль", 2019, 1127866),
+            self._make_result("Чернобыль", 2019, 55),
+            self._make_result("Чернобыль. Зона отчуждения", 2019, 999),
+        ]
+
+        settings = _mock_settings(auto_select_exact_match=True)
+        logger = _mock_logger()
+        params = {"title": "Чернобыль", "year": "2019"}
+
+        _handle_find(params, 1, settings, logger)
+
+        logger.info.assert_any_call(
+            "_handle_find: auto-select: 2 exact matches, showing all"
+        )
+        assert xbmcplugin.addDirectoryItem.call_count == 3
+
+    @patch("tv_scraper.KinopoiskClient")
+    def test_auto_select_multiple_results_no_autoselect(self, MockClient):
+        """Multiple results, none exact match → all added, no auto-select log."""
+        mock_client = MockClient.return_value
+        mock_client.search.return_value = [
+            self._make_result("Чернобыль", 2014, 1),  # title matches, year differs
+            self._make_result("Чернобыль. Зона отчуждения", 2019, 2),  # year matches, title differs
         ]
 
         settings = _mock_settings(auto_select_exact_match=True)

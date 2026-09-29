@@ -337,7 +337,7 @@ class TestAutoSelectExactMatch:
 
     @patch("scraper.KinopoiskClient")
     def test_auto_select_exact_match_logs(self, MockClient):
-        """AC-01: 1 result + exact title + year + setting on → log auto-selected."""
+        """AC-01: 1 result + exact title + year + setting on → filters to 1, logs auto-selected."""
         mock_client = MockClient.return_value
         mock_client.search.return_value = [self._make_result()]
 
@@ -351,6 +351,48 @@ class TestAutoSelectExactMatch:
             "_handle_find: auto-selected exact match: kp_id=301"
         )
         xbmcplugin.addDirectoryItem.assert_called_once()
+
+    @patch("scraper.KinopoiskClient")
+    def test_auto_select_filters_to_single_exact(self, MockClient):
+        """BUGFIX: 3 results, 1 exact match by title+year → results filtered to that 1."""
+        mock_client = MockClient.return_value
+        mock_client.search.return_value = [
+            self._make_result("Терминатор", 1991, 302),
+            self._make_result("Терминатор", 1984, 301),
+            self._make_result("Терминатор 2", 1984, 303),
+        ]
+
+        settings = _mock_settings(auto_select_exact_match=True)
+        logger = _mock_logger()
+        params = {"title": "Терминатор", "year": "1984"}
+
+        _handle_find(params, 1, settings, logger)
+
+        logger.info.assert_any_call(
+            "_handle_find: auto-selected exact match: kp_id=301"
+        )
+        xbmcplugin.addDirectoryItem.assert_called_once()
+
+    @patch("scraper.KinopoiskClient")
+    def test_auto_select_multiple_exact_shows_all(self, MockClient):
+        """BUGFIX: 3 results, 2 exact matches by title+year → cannot auto-select, all shown."""
+        mock_client = MockClient.return_value
+        mock_client.search.return_value = [
+            self._make_result("Терминатор", 1984, 301),
+            self._make_result("Терминатор", 1984, 304),
+            self._make_result("Терминатор 2", 1984, 303),
+        ]
+
+        settings = _mock_settings(auto_select_exact_match=True)
+        logger = _mock_logger()
+        params = {"title": "Терминатор", "year": "1984"}
+
+        _handle_find(params, 1, settings, logger)
+
+        logger.info.assert_any_call(
+            "_handle_find: auto-select: 2 exact matches, showing all"
+        )
+        assert xbmcplugin.addDirectoryItem.call_count == 3
 
     @patch("scraper.KinopoiskClient")
     def test_auto_select_multiple_results_no_autoselect(self, MockClient):
