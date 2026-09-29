@@ -1,14 +1,15 @@
 # Changelog — Kinoscope (metadata.kinoscope.python)
 
-## v3.25.3 — 29.09.2026
+## v3.25.4 — 29.09.2026
 
 ### Исправлено
+- **auto_select_exact_match** — настройка теперь реально фильтрует результаты поиска до одного элемента при точном совпадении title+year. Ранее только логировала без влияния на поведение. При >1 точных совпадений показываются все результаты. Исправлено в обоих скраперах (movie + TV).
 - **NFO ratings rescaling** — `_parse_ratings` теперь учитывает атрибут `max` у `<rating>` и нормализует значение к внутренней шкале. NFO-файлы от других scraper-ов с RT/MC на шкале 0-10 больше не дают двойную нормализацию (0.91 вместо 9.1).
 - **File cache → memory cache** — сезоны, загруженные из FileCache в `_handle_getepisodelist` и `_handle_getepisodedetails`, теперь помещаются в in-memory кэш. Устраняет повторное чтение и парсинг файла при последующих запросах.
 
 ### Тесты
-- 7 новых тестов: 5 для нормализации рейтингов NFO, 2 для memory cache population.
-- 954 тестов (674 movie + 233 TV + 53 shared). 0 new failures.
+- 11 новых тестов: 4 для auto-select (2 movie + 2 TV), 5 для нормализации рейтингов NFO, 2 для memory cache population.
+- 951 тест (670 movie + 235 TV + 53 shared). 0 new failures, 6 pre-existing (Wikidata network).
 
 ## v3.25.2 — 17.09.2026
 
