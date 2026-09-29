@@ -1,5 +1,13 @@
 # Changelog — Kinoscope (metadata.kinoscope.python)
 
+## v3.25.5 — 29.09.2026
+
+### Добавлено
+- **Система обратной связи** — GitHub Issue Templates (Bug Report, Feature Request), ссылка на Kodi Forum, настройка «Баги и запросы на фичи» в секции Advanced обоих аддонов.
+
+### Обновлено
+- README.md / readme_en.md — версия 3.25.5, секция «Обратная связь», актуальное количество тестов.
+
 ## v3.25.4 — 29.09.2026
 
 ### Исправлено

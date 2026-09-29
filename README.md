@@ -7,7 +7,7 @@
 
 # Kinoscope для Kodi
 
-**Версия:** 3.24.0  
+**Версия:** 3.25.5  
 **Платформа:** Kodi v20 Nexus / v21 Omega  
 **Язык:** Python 3.8  
 
@@ -101,8 +101,8 @@
 1. Скачайте ZIP-архивы из раздела релизов
 2. В Kodi: **Settings** -> **Add-ons** -> **Install from zip file**
 3. Установите нужные аддоны:
-   - `metadata.kinoscope.python-3.24.0.zip` -- scraper фильмов
-   - `metadata.tvshows.kinoscope.python-3.24.0.zip` -- scraper сериалов
+   - `metadata.kinoscope.python-3.25.5.zip` -- scraper фильмов
+   - `metadata.tvshows.kinoscope.python-3.25.5.zip` -- scraper сериалов
    - Можно установить оба или только один
 4. Откройте настройки установленного аддона и укажите API-ключ Кинопоиска
 
@@ -180,7 +180,7 @@ cd metadata.tvshows.kinoscope.python && python -m pytest tests/ -v
 cd shared && python -m pytest tests/ -v
 ```
 
-Всего: **917 тестов** (659 movie + 224 TV + 34 shared).
+Всего: **951 тест** (670 movie + 235 TV + 53 shared).
 
 ### Линтинг
 
@@ -194,7 +194,7 @@ ruff check .
 python build_zip.py
 ```
 
-Результат: `metadata.kinoscope.python-3.24.0.zip` и `metadata.tvshows.kinoscope.python-3.24.0.zip` в корне проекта.
+Результат: `metadata.kinoscope.python-3.25.5.zip` и `metadata.tvshows.kinoscope.python-3.25.5.zip` в корне проекта.
 
 ---
 
@@ -209,6 +209,15 @@ python build_zip.py
 | FanArt.tv (`fanart.tv`) | Дополнительный артворк: clearlogo, clearart, banner, landscape, discart | Дополнительный, опциональный |
 
 TMDb **не используется**.
+
+---
+
+## Обратная связь
+
+- **Баги и запросы на фичи:** [GitHub Issues](https://github.com/afr13nd77/kodi_metadata_scraper/issues)
+- **Обсуждение:** [Kodi Forum](https://forum.kodi.tv/showthread.php?tid=388459)
+
+Ссылка на Issues также доступна в настройках аддона: Расширенные → Баги и запросы на фичи.
 
 ---
 

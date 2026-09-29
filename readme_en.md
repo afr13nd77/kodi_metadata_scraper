@@ -7,7 +7,7 @@
 
 # Kinoscope for Kodi
 
-**Version:** 3.24.0 | **Platform:** Kodi v20 Nexus / v21 Omega | **Language:** Python 3.8 | **License:** MIT
+**Version:** 3.25.5 | **Platform:** Kodi v20 Nexus / v21 Omega | **Language:** Python 3.8 | **License:** MIT
 
 Kinoscope is a metadata scraper for Kodi that fetches rich movie and TV show information from Kinopoisk, OMDb, and TVMaze. It is designed for users who prefer Russian-language metadata while also supporting English titles, international ratings, and full cast and crew data. The project ships as two fully independent addons — install either or both with no cross-dependencies.
 
@@ -107,8 +107,8 @@ TMDb is **not** used.
 1. Download the ZIP archives from the [Releases](https://github.com/afr13nd77/kodi_metadata_scraper/releases) section.
 2. In Kodi, go to **Settings > Add-ons > Install from zip file**.
 3. Install the desired addon(s):
-   - `metadata.kinoscope.python-3.24.0.zip` — movie scraper
-   - `metadata.tvshows.kinoscope.python-3.24.0.zip` — TV show scraper
+   - `metadata.kinoscope.python-3.25.5.zip` — movie scraper
+   - `metadata.tvshows.kinoscope.python-3.25.5.zip` — TV show scraper
 4. Open addon settings and enter your Kinopoisk API key.
 
 ### API Keys
@@ -175,7 +175,7 @@ pip install pytest
 
 ### Running Tests
 
-917 tests total (659 movie + 224 TV + 34 shared).
+951 tests total (670 movie + 235 TV + 53 shared).
 
 ```bash
 # Movie scraper tests (659 tests)
@@ -200,7 +200,16 @@ ruff check .
 python build_zip.py
 ```
 
-Output: `metadata.kinoscope.python-3.24.0.zip` and `metadata.tvshows.kinoscope.python-3.24.0.zip` in the project root.
+Output: `metadata.kinoscope.python-3.25.5.zip` and `metadata.tvshows.kinoscope.python-3.25.5.zip` in the project root.
+
+---
+
+## Feedback
+
+- **Bugs & feature requests:** [GitHub Issues](https://github.com/afr13nd77/kodi_metadata_scraper/issues)
+- **Discussion:** [Kodi Forum](https://forum.kodi.tv/showthread.php?tid=388459)
+
+A link to Issues is also available in addon settings: Advanced → Bug reports & feature requests.
 
 ---
 
