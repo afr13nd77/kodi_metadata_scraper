@@ -244,3 +244,11 @@ msgstr ""
 msgctxt "#32023"
 msgid "Максимум запросов в секунду к Кинопоиску. Уменьшите, если несколько устройств используют один IP"
 msgstr ""
+
+msgctxt "#32290"
+msgid "Баги и запросы на фичи"
+msgstr ""
+
+msgctxt "#32291"
+msgid "Сообщить о баге или предложить фичу: github.com/afr13nd77/kodi_metadata_scraper/issues"
+msgstr ""

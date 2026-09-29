@@ -252,3 +252,11 @@ msgstr ""
 msgctxt "#32023"
 msgid "Max requests per second to Kinopoisk API. Decrease if multiple devices share one IP"
 msgstr ""
+
+msgctxt "#32290"
+msgid "Bug reports & feature requests"
+msgstr ""
+
+msgctxt "#32291"
+msgid "Report bugs or suggest features at github.com/afr13nd77/kodi_metadata_scraper/issues"
+msgstr ""

@@ -243,6 +243,18 @@
           <control type="toggle"/>
         </setting>
       </group>
+      <group id="4c">
+        <setting id="feedback_info" type="string" label="32290" help="32291">
+          <level>0</level>
+          <default>github.com/afr13nd77/kodi_metadata_scraper/issues</default>
+          <constraints>
+            <allowempty>false</allowempty>
+          </constraints>
+          <control type="edit" format="string">
+            <heading>32290</heading>
+          </control>
+        </setting>
+      </group>
     </category>
   </section>
 </settings>

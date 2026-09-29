@@ -1,0 +1,68 @@
+name: "🐛 Bug Report"
+description: "Report a bug in Kinoscope scraper"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug! Please fill in the details below.
+        Спасибо за сообщение о баге! Пожалуйста, заполните детали ниже.
+  - type: dropdown
+    id: addon
+    attributes:
+      label: Addon
+      description: Which addon is affected?
+      options:
+        - "metadata.kinoscope.python (Movie Scraper)"
+        - "metadata.tvshows.kinoscope.python (TV Show Scraper)"
+        - "Both"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Addon version
+      description: "Check in Kodi: Settings → Add-ons → My add-ons → Information providers"
+      placeholder: "e.g. 3.25.4"
+    validations:
+      required: true
+  - type: input
+    id: kodi-version
+    attributes:
+      label: Kodi version
+      placeholder: "e.g. 21.2 Omega"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: "e.g. Windows 11, Android 14, LibreELEC 12"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug description
+      description: What happened? What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce the issue?
+      placeholder: |
+        1. Search for movie "..."
+        2. Select result
+        3. See error / wrong metadata
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Debug log (optional)
+      description: |
+        Enable debug logging in addon settings, reproduce the bug, then paste relevant log lines.
+        Включите "Подробное логирование" в настройках, воспроизведите баг, вставьте лог.
+      render: text
