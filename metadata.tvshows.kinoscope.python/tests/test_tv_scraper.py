@@ -3662,3 +3662,56 @@ class TestEpisodeThumbnail:
 
         assert result is True
         logger.warning.assert_any_call("_handle_getepisodedetails: TVMaze image error: Connection timeout")
+
+
+class TestFileCachePopulatesMemoryCache:
+    """File cache hits should populate in-memory season cache."""
+
+    def setup_method(self):
+        tv_scraper_module._season_cache.clear()
+
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_getepisodelist_file_cache_populates_memory(self, MockKp, MockCache):
+        """Seasons loaded from FileCache should also go into memory cache."""
+        seasons = _make_seasons()
+        kp_id = 999888
+
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = {"items": []}
+        mock_kp = MockKp.return_value
+        mock_kp.parse_seasons.return_value = seasons
+
+        settings = _mock_settings()
+        logger = _mock_logger()
+        guide = json.dumps({"kinopoisk_id": kp_id, "imdb_id": "", "title_original": ""})
+        params = {"url": guide}
+
+        _handle_getepisodelist(params, 1, settings, logger)
+
+        cached = _cache_get(kp_id, _mock_logger())
+        assert cached is not None
+        assert len(cached) == len(seasons)
+
+    @patch("tv_scraper.FileCache")
+    @patch("tv_scraper.KinopoiskClient")
+    def test_getepisodedetails_file_cache_populates_memory(self, MockKp, MockCache):
+        """Seasons loaded from FileCache in episodedetails should go into memory cache."""
+        seasons = _make_seasons()
+        kp_id = 999777
+
+        mock_cache = MockCache.return_value
+        mock_cache.get.return_value = {"items": []}
+        mock_kp = MockKp.return_value
+        mock_kp.parse_seasons.return_value = seasons
+
+        settings = _mock_settings(omdb_key="")
+        logger = _mock_logger()
+        guide = json.dumps({"kinopoisk_id": kp_id, "imdb_id": "", "season": 1, "episode": 1})
+        params = {"url": guide}
+
+        _handle_getepisodedetails(params, 1, settings, logger)
+
+        cached = _cache_get(kp_id, _mock_logger())
+        assert cached is not None
+        assert len(cached) == len(seasons)

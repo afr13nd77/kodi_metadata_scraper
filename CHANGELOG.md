@@ -1,5 +1,15 @@
 # Changelog — Kinoscope (metadata.kinoscope.python)
 
+## v3.25.3 — 29.09.2026
+
+### Исправлено
+- **NFO ratings rescaling** — `_parse_ratings` теперь учитывает атрибут `max` у `<rating>` и нормализует значение к внутренней шкале. NFO-файлы от других scraper-ов с RT/MC на шкале 0-10 больше не дают двойную нормализацию (0.91 вместо 9.1).
+- **File cache → memory cache** — сезоны, загруженные из FileCache в `_handle_getepisodelist` и `_handle_getepisodedetails`, теперь помещаются в in-memory кэш. Устраняет повторное чтение и парсинг файла при последующих запросах.
+
+### Тесты
+- 7 новых тестов: 5 для нормализации рейтингов NFO, 2 для memory cache population.
+- 954 тестов (674 movie + 233 TV + 53 shared). 0 new failures.
+
 ## v3.25.2 — 17.09.2026
 
 ### Переименование

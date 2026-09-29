@@ -1,3 +1,4 @@
+import pytest
 from unittest.mock import MagicMock
 from nfo_parser import NfoParser
 from logger import Logger
@@ -686,3 +687,96 @@ class TestTrailerNfo:
 
         assert parsed is not None
         assert parsed.trailer_url == original.trailer_url
+
+
+class TestNfoRatingNormalization:
+    """Tests for _parse_ratings max-attribute normalization."""
+
+    def test_parse_ratings_rt_max_10(self):
+        """RT rating with max=10 should be normalized to 0-100 scale."""
+        nfo = """<movie>
+            <title>Test</title>
+            <ratings>
+                <rating name="rottentomatoes" max="10">
+                    <value>9.1</value>
+                    <votes>200</votes>
+                </rating>
+            </ratings>
+        </movie>"""
+        parser = _make_parser()
+        details = parser.parse_full_movie(nfo)
+        assert details is not None
+        assert len(details.ratings) == 1
+        rt = details.ratings[0]
+        assert rt.source == DataSource.ROTTEN_TOMATOES
+        assert rt.value == pytest.approx(91.0)
+
+    def test_parse_ratings_rt_max_100(self):
+        """RT rating with max=100 stays unchanged (already on target scale)."""
+        nfo = """<movie>
+            <title>Test</title>
+            <ratings>
+                <rating name="rottentomatoes" max="100">
+                    <value>91.0</value>
+                    <votes>200</votes>
+                </rating>
+            </ratings>
+        </movie>"""
+        parser = _make_parser()
+        details = parser.parse_full_movie(nfo)
+        assert details is not None
+        rt = details.ratings[0]
+        assert rt.value == pytest.approx(91.0)
+
+    def test_parse_ratings_rt_no_max(self):
+        """RT rating without max attribute stays unchanged."""
+        nfo = """<movie>
+            <title>Test</title>
+            <ratings>
+                <rating name="rottentomatoes">
+                    <value>91.0</value>
+                    <votes>200</votes>
+                </rating>
+            </ratings>
+        </movie>"""
+        parser = _make_parser()
+        details = parser.parse_full_movie(nfo)
+        assert details is not None
+        rt = details.ratings[0]
+        assert rt.value == pytest.approx(91.0)
+
+    def test_parse_ratings_kp_max_100(self):
+        """KP rating with max=100 should be normalized to 0-10 scale."""
+        nfo = """<movie>
+            <title>Test</title>
+            <ratings>
+                <rating name="kinopoisk" max="100">
+                    <value>73</value>
+                    <votes>5000</votes>
+                </rating>
+            </ratings>
+        </movie>"""
+        parser = _make_parser()
+        details = parser.parse_full_movie(nfo)
+        assert details is not None
+        kp = details.ratings[0]
+        assert kp.source == DataSource.KINOPOISK
+        assert kp.value == pytest.approx(7.3)
+
+    def test_parse_ratings_mc_max_10(self):
+        """MC rating with max=10 should be normalized to 0-100 scale."""
+        nfo = """<movie>
+            <title>Test</title>
+            <ratings>
+                <rating name="metacritic" max="10">
+                    <value>8.2</value>
+                    <votes>100</votes>
+                </rating>
+            </ratings>
+        </movie>"""
+        parser = _make_parser()
+        details = parser.parse_full_movie(nfo)
+        assert details is not None
+        mc = details.ratings[0]
+        assert mc.source == DataSource.METACRITIC
+        assert mc.value == pytest.approx(82.0)
