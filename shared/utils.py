@@ -5,12 +5,18 @@ import json
 import re
 from difflib import SequenceMatcher
 import urllib.parse
+from typing import NamedTuple
 import xbmc
 
 from logger import Logger, _resolve_addon_id
-from models import MovieSearchResult
+from models import MovieSearchResult, MovieDetails, DataSource
 from settings_manager import SettingsManager
 from kinopoisk_api import KinopoiskClient
+
+
+class ManualIdInput(NamedTuple):
+    id_type: str
+    id_value: str
 
 
 def get_params() -> dict:
@@ -190,6 +196,26 @@ _RELEASE_GROUP_PATTERN = re.compile(
 
 # BL-71: Collection prefix pattern (e.g., "MCU150-", "SW03-", "DC021-")
 _COLLECTION_PREFIX_PATTERN = re.compile(r'^[A-Z]{2,5}\d{1,3}-')
+
+_KP_URL_PATTERN = re.compile(
+    r"(?:https?://)?(?:www\.)?kinopoisk\.ru/(?:film|series)/(\d+)",
+    re.IGNORECASE,
+)
+
+_IMDB_URL_PATTERN = re.compile(
+    r"(?:https?://)?(?:www\.)?imdb\.com/title/(tt\d{7,8})",
+    re.IGNORECASE,
+)
+
+_KP_PREFIX_PATTERN = re.compile(
+    r"^kp:?(\d+)$",
+    re.IGNORECASE,
+)
+
+_IMDB_PREFIX_PATTERN = re.compile(
+    r"^(tt\d{7,8})$",
+    re.IGNORECASE,
+)
 
 
 def _strip_season_episode(cleaned: str, extracted_year: str, logger: Logger) -> tuple[str, str]:
@@ -492,6 +518,38 @@ def extract_imdb_id(params: dict, logger: Logger) -> str:
     return imdb_id
 
 
+def parse_manual_id_input(title: str, logger: Logger) -> ManualIdInput | None:
+    cleaned = title.strip()
+    if not cleaned:
+        return None
+
+    match = _KP_URL_PATTERN.search(cleaned)
+    if match:
+        kp_id = match.group(1)
+        logger.info(f"parse_manual_id_input: detected KP URL, id={kp_id}")
+        return ManualIdInput(id_type="kp", id_value=kp_id)
+
+    match = _IMDB_URL_PATTERN.search(cleaned)
+    if match:
+        imdb_id = match.group(1).lower()
+        logger.info(f"parse_manual_id_input: detected IMDB URL, id={imdb_id}")
+        return ManualIdInput(id_type="imdb", id_value=imdb_id)
+
+    match = _KP_PREFIX_PATTERN.match(cleaned)
+    if match:
+        kp_id = match.group(1)
+        logger.info(f"parse_manual_id_input: detected KP prefix, id={kp_id}")
+        return ManualIdInput(id_type="kp", id_value=kp_id)
+
+    match = _IMDB_PREFIX_PATTERN.match(cleaned)
+    if match:
+        imdb_id = match.group(1).lower()
+        logger.info(f"parse_manual_id_input: detected IMDB prefix, id={imdb_id}")
+        return ManualIdInput(id_type="imdb", id_value=imdb_id)
+
+    return None
+
+
 def _longest_common_prefix(strings: list[str]) -> str:
     if not strings:
         return ""
@@ -542,3 +600,76 @@ def search_kp_by_imdb(imdb_id: str, settings: SettingsManager, logger: Logger) -
 
     logger.warning(f"search_kp_by_imdb: no results for imdb_id={imdb_id} (KP API + Wikidata both failed)")
     return 0
+
+
+def details_to_search_result(details: MovieDetails) -> MovieSearchResult:
+    # Конвертация MovieDetails в MovieSearchResult (рейтинг KP, превью постера)
+    kp_rating = 0.0
+    for r in details.ratings:
+        if r.source == DataSource.KINOPOISK:
+            kp_rating = r.value
+            break
+
+    poster_url = ""
+    if details.artwork:
+        poster_url = details.artwork[0].preview_url or details.artwork[0].url
+
+    return MovieSearchResult(
+        title_ru=details.title_ru,
+        title_original=details.title_original,
+        year=details.year,
+        kinopoisk_id=details.kinopoisk_id,
+        imdb_id=details.imdb_id,
+        poster_url=poster_url,
+        rating=kp_rating,
+        source=DataSource.KINOPOISK,
+    )
+
+
+def resolve_manual_id(
+    manual_id: ManualIdInput,
+    kp_client: KinopoiskClient,
+    settings: SettingsManager,
+    logger: Logger,
+    allowed_types: list[str],
+) -> list[MovieSearchResult]:
+    # Резолв ручного ID (kp/imdb) в список из одного MovieSearchResult
+    kp_id: int = 0
+
+    if manual_id.id_type == "kp":
+        kp_id = int(manual_id.id_value)
+    elif manual_id.id_type == "imdb":
+        kp_id = search_kp_by_imdb(manual_id.id_value, settings, logger)
+        if not kp_id:
+            logger.warning(
+                f"resolve_manual_id: IMDB ID '{manual_id.id_value}' "
+                f"could not be resolved to KP ID"
+            )
+            return []
+
+    raw_data = kp_client.fetch_details_raw(kp_id)
+    if raw_data is None:
+        logger.warning(
+            f"resolve_manual_id: fetch_details_raw returned None for kp_id={kp_id}"
+        )
+        return []
+
+    content_type = raw_data.get("type", "UNKNOWN")
+    if content_type not in allowed_types:
+        logger.warning(
+            f"resolve_manual_id: type mismatch for kp_id={kp_id}: "
+            f"got '{content_type}', expected one of {allowed_types}"
+        )
+        return []
+
+    details = kp_client.parse_details(raw_data)
+    if details is None:
+        logger.warning(f"resolve_manual_id: parse_details returned None for kp_id={kp_id}")
+        return []
+
+    search_result = details_to_search_result(details)
+    logger.info(
+        f"resolve_manual_id: resolved kp_id={kp_id}, "
+        f"title='{search_result.title_ru}' ({search_result.year})"
+    )
+    return [search_result]

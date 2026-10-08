@@ -33,6 +33,7 @@ from utils import (
     get_params, clean_title, extract_kinopoisk_id,
     extract_imdb_id, search_kp_by_imdb, transliterate_to_cyrillic,
     extract_alt_title, deduplicate_results, _has_cyrillic,
+    parse_manual_id_input, resolve_manual_id,
 )
 from nfo_writer import write_tvshow_nfo
 
@@ -293,93 +294,104 @@ def _handle_find(
 
     kp_client = KinopoiskClient(get_current_api_key(), logger)
 
-    search_year = year if year and year != "0" else None
-    candidates, extracted_year = clean_title(title, logger)
-    if not search_year and extracted_year:
-        search_year = extracted_year
-
-    tv_type_filter = ["TV_SERIES", "MINI_SERIES", "TV_SHOW"]
-
-    results = []
-    successful_candidate = None
-    for candidate in candidates:
-        results = kp_client.search(candidate, search_year, type_filter=tv_type_filter)
-        if results:
-            successful_candidate = candidate
-            logger.info(f"_handle_find: found {len(results)} results for candidate '{candidate}'")
-            break
-
-    dual_search_done = False
-    if results and settings.enable_dual_search:
-        results = _perform_dual_search(
-            results, successful_candidate, search_year,
-            kp_client, tv_type_filter, settings, logger
+    manual_id = parse_manual_id_input(title, logger)
+    if manual_id is not None:
+        logger.info(
+            f"_handle_find: detected manual ID input: "
+            f"type={manual_id.id_type}, id={manual_id.id_value}"
         )
-        dual_search_done = True
-    elif results:
-        logger.info("_handle_find: dual search: disabled by settings")
+        results = resolve_manual_id(
+            manual_id, kp_client, settings, logger,
+            ["TV_SERIES", "MINI_SERIES", "TV_SHOW"]
+        )
+    else:
+        search_year = year if year and year != "0" else None
+        candidates, extracted_year = clean_title(title, logger)
+        if not search_year and extracted_year:
+            search_year = extracted_year
 
-    if not results and search_year:
+        tv_type_filter = ["TV_SERIES", "MINI_SERIES", "TV_SHOW"]
+
+        results = []
+        successful_candidate = None
         for candidate in candidates:
-            results = kp_client.search(candidate, None, type_filter=tv_type_filter)
+            results = kp_client.search(candidate, search_year, type_filter=tv_type_filter)
             if results:
                 successful_candidate = candidate
-                logger.info(f"_handle_find: found {len(results)} results for '{candidate}' without year")
+                logger.info(f"_handle_find: found {len(results)} results for candidate '{candidate}'")
                 break
 
-    if results and settings.enable_dual_search and not dual_search_done:
-        results = _perform_dual_search(
-            results, successful_candidate, search_year,
-            kp_client, tv_type_filter, settings, logger
-        )
-    elif results and not dual_search_done:
-        logger.info("_handle_find: dual search: disabled by settings")
+        dual_search_done = False
+        if results and settings.enable_dual_search:
+            results = _perform_dual_search(
+                results, successful_candidate, search_year,
+                kp_client, tv_type_filter, settings, logger
+            )
+            dual_search_done = True
+        elif results:
+            logger.info("_handle_find: dual search: disabled by settings")
 
-    if not results:
-        trans_pairs = [
-            (c, transliterate_to_cyrillic(c)) for c in candidates if transliterate_to_cyrillic(c) != c
-        ]
-        if trans_pairs:
-            for original, trans in trans_pairs:
-                logger.info(f"_handle_find: transliteration fallback: '{original}' -> '{trans}'")
-            for _, trans in trans_pairs:
-                results = kp_client.search(trans, search_year, type_filter=tv_type_filter)
+        if not results and search_year:
+            for candidate in candidates:
+                results = kp_client.search(candidate, None, type_filter=tv_type_filter)
                 if results:
-                    successful_candidate = trans
-                    logger.info(f"_handle_find: found {len(results)} results after transliteration: '{trans}'")
+                    successful_candidate = candidate
+                    logger.info(f"_handle_find: found {len(results)} results for '{candidate}' without year")
                     break
-            if not results and search_year:
+
+        if results and settings.enable_dual_search and not dual_search_done:
+            results = _perform_dual_search(
+                results, successful_candidate, search_year,
+                kp_client, tv_type_filter, settings, logger
+            )
+        elif results and not dual_search_done:
+            logger.info("_handle_find: dual search: disabled by settings")
+
+        if not results:
+            trans_pairs = [
+                (c, transliterate_to_cyrillic(c)) for c in candidates if transliterate_to_cyrillic(c) != c
+            ]
+            if trans_pairs:
+                for original, trans in trans_pairs:
+                    logger.info(f"_handle_find: transliteration fallback: '{original}' -> '{trans}'")
                 for _, trans in trans_pairs:
-                    results = kp_client.search(trans, None, type_filter=tv_type_filter)
+                    results = kp_client.search(trans, search_year, type_filter=tv_type_filter)
                     if results:
                         successful_candidate = trans
-                        logger.info(
-                            f"_handle_find: found {len(results)} results after transliteration (no year): '{trans}'"
-                        )
+                        logger.info(f"_handle_find: found {len(results)} results after transliteration: '{trans}'")
                         break
+                if not results and search_year:
+                    for _, trans in trans_pairs:
+                        results = kp_client.search(trans, None, type_filter=tv_type_filter)
+                        if results:
+                            successful_candidate = trans
+                            logger.info(
+                                f"_handle_find: found {len(results)} results after transliteration (no year): '{trans}'"
+                            )
+                            break
 
-    if settings.auto_select_exact_match and search_year is not None and successful_candidate is not None:
-        exact = [
-            r for r in results
-            if r.title_ru
-            and r.title_ru.lower() == successful_candidate.lower()
-            and r.year is not None
-            and str(r.year) == str(search_year)
-        ]
-        if len(exact) == 1:
-            results = exact
-            logger.info(f"_handle_find: auto-selected exact match: kp_id={results[0].kinopoisk_id}")
-        elif len(exact) > 1:
-            logger.info(f"_handle_find: auto-select: {len(exact)} exact matches, showing all")
+        if settings.auto_select_exact_match and search_year is not None and successful_candidate is not None:
+            exact = [
+                r for r in results
+                if r.title_ru
+                and r.title_ru.lower() == successful_candidate.lower()
+                and r.year is not None
+                and str(r.year) == str(search_year)
+            ]
+            if len(exact) == 1:
+                results = exact
+                logger.info(f"_handle_find: auto-selected exact match: kp_id={results[0].kinopoisk_id}")
+            elif len(exact) > 1:
+                logger.info(f"_handle_find: auto-select: {len(exact)} exact matches, showing all")
 
-    if not results and _kp_unavailable:
-        logger.error(
-            f"_handle_find: API unavailable during find for title='{title}'"
-        )
-        xbmc.executebuiltin(
-            'Notification("TV Scraper", '
-            '"Кинопоиск недоступен, поиск невозможен", 5000)'
-        )
+        if not results and _kp_unavailable:
+            logger.error(
+                f"_handle_find: API unavailable during find for title='{title}'"
+            )
+            xbmc.executebuiltin(
+                'Notification("TV Scraper", '
+                '"Кинопоиск недоступен, поиск невозможен", 5000)'
+            )
 
     for result in results:
         label = f"{result.title_ru} ({result.year})" if result.year else result.title_ru

@@ -1,5 +1,15 @@
 # Changelog — Kinoscope (metadata.kinoscope.python)
 
+## v3.26.0 — 08.10.2026
+
+### Добавлено
+- **BL-37: Ручной ввод IMDB / KP ID в диалоге поиска Kodi** — пользователь вводит `kp12345` (Kinopoisk ID), `tt1234567` (IMDB ID) или URL Кинопоиска/IMDB в стандартном диалоге ручного поиска. Скрапер детектирует ID-паттерн до `clean_title()` и выполняет прямой lookup по API, минуя поисковую логику. Type filter отсекает несовместимый контент (FILM в TV scraper и наоборот). Работает в обоих аддонах (movie + TV).
+- 3 новые функции в `shared/utils.py`: `parse_manual_id_input()`, `details_to_search_result()`, `resolve_manual_id()`.
+
+### Тесты
+- 33 новых теста (28 movie + 5 TV).
+- 991 тест (698 movie + 240 TV + 53 shared). 0 new failures.
+
 ## v3.25.5 — 29.09.2026
 
 ### Добавлено

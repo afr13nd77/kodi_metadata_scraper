@@ -11,10 +11,10 @@
 
 | # | Название | Файл / модуль | Описание |
 |---|:---|:---|:---|
-| BL-37 | Ручной ввод KP ID | `scraper.py`, `tv_scraper.py`, `nfo_parser.py` | Пользователь указывает KP ID вручную через NFO (`<uniqueid type="kinopoisk">`) или настройку. Критично для редкого контента, где fuzzy-matching ошибается. |
 | BL-44 | Поиск по году ± 1 | `kinopoisk_api.py` | Фестивальные фильмы выходят в одном году, в прокат — в следующем. Fallback с tolerance ±1 при 0 результатах с точным годом. |
 | BL-45 | Стоп-слова для очистки названия | `utils.py`, `settings_manager.py` | ~~Базовая часть решена в BUG-009 (v3.18.1)~~, release group names решены в BUG-010 (v3.23.1) — `clean_title()` теперь автоматически удаляет технические теги (рипы, кодеки, разрешения, HDR, IMAX и др.). Остаётся: пользовательский список стоп-слов через настройки для edge cases. |
 | BL-46 | Поиск по IMDB ID из имени файла | `utils.py`, `kinopoisk_api.py`, `scraper.py`, `tv_scraper.py` | Если в имени файла есть паттерн `tt\d+`, сразу резолвить через KP API `/v2.2/films?imdbId=tt...`, минуя fuzzy-search полностью. |
+| BL-77 | Fallback на имя файла при невалидном title | `scraper.py`, `tv_scraper.py`, `utils.py` | Kodi передаёт `title` из имени папки, а не файла. Если папка — релиз-группа (CMRG, =stimco=), title бессмысленный и поиск возвращает 0. Детекция невалидного title (нет пробелов + все UPPER, обёрнут в спецсимволы, короткая аббревиатура без года) → fallback: парсить `ListItem.FileNameAndPath` через `clean_title()`. Также помогает после переименования папок — Kodi кэширует старое имя до очистки библиотеки. |
 
 ### 1.2 Реализовано
 
@@ -27,6 +27,7 @@
 | BL-06 | Автовыбор совпадения | `scraper.py:117-127`, `tv_scraper.py:147-157` | Если 1 результат с точным совпадением по названию + году — автовыбор. Настройка `auto_select_exact_match`. |
 | BL-03 | ✅ Двойной поиск (рус + ориг) | `shared/utils.py`, `scraper.py`, `tv_scraper.py` | `extract_alt_title()` + `deduplicate_results()` + `_perform_dual_search()`. Спецификация: `docs/dual-title-search/`. |
 | BL-71 | ✅ Strip коллекционного prefix-а | `utils.py` | `_COLLECTION_PREFIX_PATTERN` + Step 3.0d в `clean_title()`. Strip `[A-Z]{2,5}\d{1,3}-` в начале строки при наличии года в скобках (guard от false positive). 17 тестов. Спецификация: `docs/BL-71_collection-prefix/`. |
+| BL-37 | ✅ Ручной ввод IMDB / KP ID | `shared/utils.py`, `scraper.py`, `tv_scraper.py` | Ввод `tt1234567` (IMDB) или `kp12345` (KP) в диалоге ручного поиска Kodi. Также URL Кинопоиска/IMDB. `parse_manual_id_input()` детектирует паттерн до `clean_title()`, `resolve_manual_id()` делает прямой lookup с type filter. 33 теста. Спецификация: `docs/BL-37_manual-id-input/`. |
 
 ---
 
@@ -201,7 +202,7 @@
 
 | Статус | Кол-во | Пункты |
 |:---|:---|:---|
-| ✅ Реализовано | 45 | BL-01..BL-11, BL-13..BL-20, BL-22..BL-26, BL-35, BL-36, BL-38..BL-41, BL-56, BL-57, BL-60, BL-61, BL-64, BL-66..BL-71, BL-73..BL-76 |
-| 💡 Идея | 24 | BL-27..BL-34, BL-37, BL-42, BL-44..BL-55, BL-58, BL-65, BL-72 |
+| ✅ Реализовано | 46 | BL-01..BL-11, BL-13..BL-20, BL-22..BL-26, BL-35..BL-41, BL-56, BL-57, BL-60, BL-61, BL-64, BL-66..BL-71, BL-73..BL-76 |
+| 💡 Идея | 24 | BL-27..BL-34, BL-42, BL-44..BL-55, BL-58, BL-65, BL-72, BL-77 |
 | ❌ Закрыто | 6 | BL-12, BL-21, BL-43, BL-59, BL-62, BL-63 |
-| **Итого** | **75** | |
+| **Итого** | **76** | |
