@@ -995,6 +995,8 @@ def _handle_getepisodedetails(
                 kp_id, guide, kp_client, settings, logger, cache
             )
 
+    seasons = _merge_tvmaze_episodes(seasons, imdb_id, title_original, settings, logger)
+
     episode = _find_episode(seasons, season_num, episode_num)
     if episode is None:
         logger.warning(
