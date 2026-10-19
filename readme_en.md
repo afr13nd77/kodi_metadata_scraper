@@ -7,7 +7,7 @@
 
 # Kinoscope for Kodi
 
-**Version:** 3.27.0 | **Platform:** Kodi v20 Nexus / v21 Omega | **Language:** Python 3.8 | **License:** MIT
+**Version:** 3.27.2 | **Platform:** Kodi v20 Nexus / v21 Omega | **Language:** Python 3.8 | **License:** MIT
 
 Kinoscope is a metadata scraper for Kodi that fetches rich movie and TV show information from Kinopoisk, OMDb, and TVMaze. It is designed for users who prefer Russian-language metadata while also supporting English titles, international ratings, and full cast and crew data. The project ships as two fully independent addons — install either or both with no cross-dependencies.
 
@@ -109,7 +109,7 @@ TMDb is **not** used.
 2. In Kodi, go to **Settings > Add-ons > Install from zip file**.
 3. Install the desired addon(s):
    - `metadata.kinoscope.python-3.26.0.zip` — movie scraper
-   - `metadata.tvshows.kinoscope.python-3.27.0.zip` — TV show scraper
+   - `metadata.tvshows.kinoscope.python-3.27.2.zip` — TV show scraper
 4. Open addon settings and enter your Kinopoisk API key.
 
 ### API Keys
@@ -201,7 +201,7 @@ ruff check .
 python build_zip.py
 ```
 
-Output: `metadata.kinoscope.python-3.26.0.zip` and `metadata.tvshows.kinoscope.python-3.27.0.zip` in the project root.
+Output: `metadata.kinoscope.python-3.26.0.zip` and `metadata.tvshows.kinoscope.python-3.27.2.zip` in the project root.
 
 ---
 
