@@ -7,7 +7,7 @@
 
 # Kinoscope for Kodi
 
-**Version:** 3.25.5 | **Platform:** Kodi v20 Nexus / v21 Omega | **Language:** Python 3.8 | **License:** MIT
+**Version:** 3.27.0 | **Platform:** Kodi v20 Nexus / v21 Omega | **Language:** Python 3.8 | **License:** MIT
 
 Kinoscope is a metadata scraper for Kodi that fetches rich movie and TV show information from Kinopoisk, OMDb, and TVMaze. It is designed for users who prefer Russian-language metadata while also supporting English titles, international ratings, and full cast and crew data. The project ships as two fully independent addons — install either or both with no cross-dependencies.
 
@@ -53,6 +53,7 @@ Kinoscope is a metadata scraper for Kodi that fetches rich movie and TV show inf
 - Per-episode ratings from Kinopoisk + IMDB votes from OMDb
 - Episode thumbnails from TVMaze
 - Episode directors and writers from TVMaze (optional, when use_tvmaze=true)
+- Episode list merge KP + TVMaze: automatic episode list supplementation from TVMaze when KP data is incomplete (when use_tvmaze=true)
 - Series ratings from Kinopoisk, IMDB, Rotten Tomatoes, and Metacritic
 - Artwork: posters, stills
 - NFO file support (read and write/export)
@@ -107,8 +108,8 @@ TMDb is **not** used.
 1. Download the ZIP archives from the [Releases](https://github.com/afr13nd77/kodi_metadata_scraper/releases) section.
 2. In Kodi, go to **Settings > Add-ons > Install from zip file**.
 3. Install the desired addon(s):
-   - `metadata.kinoscope.python-3.25.5.zip` — movie scraper
-   - `metadata.tvshows.kinoscope.python-3.25.5.zip` — TV show scraper
+   - `metadata.kinoscope.python-3.26.0.zip` — movie scraper
+   - `metadata.tvshows.kinoscope.python-3.27.0.zip` — TV show scraper
 4. Open addon settings and enter your Kinopoisk API key.
 
 ### API Keys
@@ -175,16 +176,16 @@ pip install pytest
 
 ### Running Tests
 
-951 tests total (670 movie + 235 TV + 53 shared).
+1022 tests total (704 movie + 265 TV + 53 shared).
 
 ```bash
-# Movie scraper tests (659 tests)
+# Movie scraper tests (704 tests)
 cd metadata.kinoscope.python && python -m pytest tests/ -v
 
-# TV scraper tests (224 tests)
+# TV scraper tests (265 tests)
 cd metadata.tvshows.kinoscope.python && python -m pytest tests/ -v
 
-# Shared module tests (34 tests)
+# Shared module tests (53 tests)
 cd shared && python -m pytest tests/ -v
 ```
 
@@ -200,7 +201,7 @@ ruff check .
 python build_zip.py
 ```
 
-Output: `metadata.kinoscope.python-3.25.5.zip` and `metadata.tvshows.kinoscope.python-3.25.5.zip` in the project root.
+Output: `metadata.kinoscope.python-3.26.0.zip` and `metadata.tvshows.kinoscope.python-3.27.0.zip` in the project root.
 
 ---
 

@@ -1,7 +1,7 @@
 # Бэклог — Kinoscope
 
-**Версия проекта:** 3.25.5 / 3.25.5 (movie / TV)
-**Обновлён:** 29.09.2026
+**Версия проекта:** 3.26.0 / 3.27.0 (movie / TV)
+**Обновлён:** 19.10.2026
 
 ---
 
@@ -80,7 +80,6 @@
 |---|:---|:---|:---|
 | BL-52 | Сортировка по absolute order (аниме) | `tv_scraper.py`, `settings_manager.py` | Для аниме нумерация KP и TVMaze часто расходится. Настройка `episode_order: absolute / aired` по аналогии с TheTVDB. |
 | BL-53 | Специальные эпизоды (Season 0) | `tv_scraper.py`, `kinopoisk_api.py`, `tvmaze_client.py` | KP и TVMaze отдают specials отдельно. Сейчас они теряются. Kodi поддерживает Season 0 для спешлов. |
-| BL-78 | Fallback episode list из TVMaze | `tv_scraper.py`, `tvmaze_client.py`, `kinopoisk_api.py` | KP API часто отдаёт неполный список эпизодов для свежих/текущих сезонов (пример: Tulsa King S03 — 1 placeholder вместо 10, S04 отсутствует полностью, тогда как TVMaze имеет все 40 эпизодов). При `use_tvmaze=true`: если KP вернул сезон с 0–1 эпизодами и placeholder-названием (`Episode #N.M`), дополнить episode list из TVMaze API (`/shows/{id}/episodes`). Приоритет данных: KP (названия, даты) → TVMaze fallback (для отсутствующих эпизодов). Не заменять существующие данные KP, только добирать недостающее. |
 
 
 ### 3.2 Реализовано
@@ -96,6 +95,7 @@
 | BL-40 | ✅ Сезонные постеры и названия сезонов | `tv_scraper.py`, `tvmaze_client.py`, `models.py`, `settings_manager.py` | TVMaze `GET /shows/{id}/seasons` → `addSeason(number, name)` + `addAvailableArtwork(url, "poster", season=N)`. Новый `SeasonArtInfo` dataclass, in-memory кэш. Настройка `use_season_art` (при `use_tvmaze=true`). Спецификация: `docs/BL-40_season-posters/`. |
 | BL-41 | ✅ Превью эпизодов из TVMaze (addAvailableArtwork) | `tvmaze_client.py`, `tv_scraper.py` | TVMaze episodes API → `addAvailableArtwork(url, "thumb", preview)`. Zero extra HTTP requests (переиспользование _episodes_cache). Спецификация: `docs/BL-41_episode-thumbnails/`. |
 | BL-67 | ✅ Рейтинг эпизода (KP + IMDB) | `kinopoisk_api.py`, `tv_scraper.py`, `omdb_client.py`, `models.py` | `Episode.rating` из KP API + `imdbVotes` из OMDb. `setRatings()` с двойным рейтингом (kinopoisk + imdb), preferred source из настроек. Спецификация: `docs/BL-67_episode-rating/`. |
+| BL-78 | ✅ Merge episode list KP + TVMaze | `tv_scraper.py` | При `use_tvmaze=true` скрапер дополняет episode list данными из TVMaze: добавляет отсутствующие эпизоды и сезоны, обогащает пустые поля (title_en, release_date). KP — primary, TVMaze только добирает. Graceful degradation. 25 тестов. Спецификация: `docs/BL-78_tvmaze-episode-fallback/`. |
 
 ---
 
@@ -203,7 +203,7 @@
 
 | Статус | Кол-во | Пункты |
 |:---|:---|:---|
-| ✅ Реализовано | 46 | BL-01..BL-11, BL-13..BL-20, BL-22..BL-26, BL-35..BL-41, BL-56, BL-57, BL-60, BL-61, BL-64, BL-66..BL-71, BL-73..BL-76 |
-| 💡 Идея | 25 | BL-27..BL-34, BL-42, BL-44..BL-55, BL-58, BL-65, BL-72, BL-77, BL-78 |
+| ✅ Реализовано | 47 | BL-01..BL-11, BL-13..BL-20, BL-22..BL-26, BL-35..BL-41, BL-56, BL-57, BL-60, BL-61, BL-64, BL-66..BL-71, BL-73..BL-76, BL-78 |
+| 💡 Идея | 24 | BL-27..BL-34, BL-42, BL-44..BL-55, BL-58, BL-65, BL-72, BL-77 |
 | ❌ Закрыто | 6 | BL-12, BL-21, BL-43, BL-59, BL-62, BL-63 |
 | **Итого** | **77** | |

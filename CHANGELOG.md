@@ -1,5 +1,15 @@
 # Changelog — Kinoscope (metadata.kinoscope.python)
 
+## v3.27.0 — 19.10.2026
+
+### Добавлено
+- **BL-78: Merge episode list KP + TVMaze** — при `use_tvmaze=true` скрапер теперь всегда дополняет episode list данными из TVMaze: добавляет отсутствующие эпизоды и целые сезоны, обогащает пустые поля (title_en, release_date). KP остаётся primary-источником — данные KP не перезаписываются. Graceful degradation: ошибки TVMaze не ломают основной поток.
+- 3 новые функции в `tv_scraper.py`: `_merge_tvmaze_episodes()`, `_tvmaze_raw_to_episode()`, `_enrich_episode()`.
+
+### Тесты
+- 25 новых тестов для merge-логики.
+- 192 теста TV scraper. 0 new failures.
+
 ## v3.26.0 — 08.10.2026
 
 ### Добавлено
