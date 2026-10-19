@@ -3851,6 +3851,19 @@ class TestEnrichEpisode:
         tv_scraper_module._enrich_episode(ep, _make_tvmaze_raw(name="Pilot"), MagicMock())
         assert ep.title_ru == "Пилот"
 
+    def test_enrich_replaces_placeholder_title_ru(self):
+        ep = Episode(season_number=3, episode_number=1, title_ru="Episode #3.1", title_en="")
+        count = tv_scraper_module._enrich_episode(ep, _make_tvmaze_raw(name="Caprice"), MagicMock())
+        assert ep.title_ru == "Caprice"
+        assert ep.title_en == "Caprice"
+        assert count >= 2
+
+    def test_enrich_replaces_cyrillic_placeholder_title_ru(self):
+        ep = Episode(season_number=1, episode_number=5, title_ru="Эпизод #1.5", title_en="")
+        count = tv_scraper_module._enrich_episode(ep, _make_tvmaze_raw(name="The Heist"), MagicMock())
+        assert ep.title_ru == "The Heist"
+        assert count >= 1
+
     def test_enrich_does_not_overwrite_release_date(self):
         ep = Episode(season_number=1, episode_number=1, title_en="Pilot", release_date="2022-01-01")
         count = tv_scraper_module._enrich_episode(ep, _make_tvmaze_raw(airdate="2022-11-13"), MagicMock())

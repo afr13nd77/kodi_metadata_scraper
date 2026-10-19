@@ -1323,13 +1323,20 @@ def _merge_tvmaze_episodes(
     return seasons
 
 
+def _is_placeholder_title(title: str) -> bool:
+    return title.startswith("Episode #") or title.startswith("Эпизод #")
+
+
 def _enrich_episode(kp_ep: Episode, tvmaze_raw: dict, tvmaze: TvmazeClient) -> int:
     count = 0
+    name = tvmaze_raw.get("name") or ""
     if not kp_ep.title_en:
-        name = tvmaze_raw.get("name") or ""
         if name:
             kp_ep.title_en = name
             count += 1
+    if name and _is_placeholder_title(kp_ep.title_ru):
+        kp_ep.title_ru = name
+        count += 1
     if not kp_ep.release_date:
         airdate = tvmaze_raw.get("airdate") or ""
         if airdate:
