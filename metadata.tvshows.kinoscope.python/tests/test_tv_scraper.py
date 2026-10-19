@@ -3757,3 +3757,260 @@ class TestFileCachePopulatesMemoryCache:
         cached = _cache_get(kp_id, _mock_logger())
         assert cached is not None
         assert len(cached) == len(seasons)
+
+
+# ---------------------------------------------------------------------------
+# BL-78: TVMaze merge
+# ---------------------------------------------------------------------------
+
+def _make_tvmaze_raw(season=1, number=1, name="Pilot", airdate="2022-11-13", summary="<p>Summary</p>"):
+    return {
+        "id": 1000 + (number or 0),
+        "name": name,
+        "season": season,
+        "number": number,
+        "airdate": airdate,
+        "summary": summary,
+    }
+
+
+def _strip_html_stub(s):
+    for tag in ("<p>", "</p>", "<b>", "</b>"):
+        s = s.replace(tag, "")
+    return s
+
+
+def _make_tvmaze_client_mock(client_cls, raws, show_id=12345):
+    client = client_cls.return_value
+    client.lookup_show.return_value = show_id
+    client.search_show.return_value = show_id
+    client.get_episodes.return_value = raws
+    client._strip_html.side_effect = _strip_html_stub
+    return client
+
+
+def _make_kp_season(number, count=1, title_ru="Эпизод", release_date="2022-11-13"):
+    return Season(number=number, episodes=[
+        Episode(season_number=number, episode_number=i, title_ru=f"{title_ru} {i}",
+                title_en="", release_date=release_date)
+        for i in range(1, count + 1)
+    ])
+
+
+class TestTvmazeRawToEpisode:
+    def test_tvmaze_raw_to_episode_mapping(self):
+        tvmaze = MagicMock()
+        tvmaze._strip_html.side_effect = _strip_html_stub
+        raw = _make_tvmaze_raw(season=3, number=2, name="Lamb to the Slaughter",
+                               airdate="2026-10-05", summary="<p>Sorry fights back</p>")
+        ep = tv_scraper_module._tvmaze_raw_to_episode(raw, tvmaze)
+        assert ep.season_number == 3
+        assert ep.episode_number == 2
+        assert ep.title_en == "Lamb to the Slaughter"
+        assert ep.title_ru == "Lamb to the Slaughter"
+        assert ep.release_date == "2026-10-05"
+        assert ep.synopsis == "Sorry fights back"
+        assert ep.rating == 0.0
+        assert ep.directors == []
+        assert ep.writers == []
+
+    def test_tvmaze_raw_to_episode_html_strip(self):
+        tvmaze = MagicMock()
+        tvmaze._strip_html.side_effect = _strip_html_stub
+        raw = _make_tvmaze_raw(summary="<p><b>HTML</b></p>")
+        ep = tv_scraper_module._tvmaze_raw_to_episode(raw, tvmaze)
+        assert ep.synopsis == "HTML"
+        assert "<" not in ep.synopsis
+
+    def test_tvmaze_raw_to_episode_null_fields(self):
+        tvmaze = MagicMock()
+        tvmaze._strip_html.side_effect = _strip_html_stub
+        raw = _make_tvmaze_raw(name=None, airdate=None, summary=None)
+        ep = tv_scraper_module._tvmaze_raw_to_episode(raw, tvmaze)
+        assert ep.title_en == ""
+        assert ep.title_ru == ""
+        assert ep.release_date == ""
+        assert ep.synopsis == ""
+
+
+class TestEnrichEpisode:
+    def test_enrich_empty_title_en(self):
+        ep = Episode(season_number=1, episode_number=1, title_ru="Пилот", title_en="")
+        count = tv_scraper_module._enrich_episode(ep, _make_tvmaze_raw(name="Pilot"), MagicMock())
+        assert ep.title_en == "Pilot"
+        assert count >= 1
+
+    def test_enrich_empty_release_date(self):
+        ep = Episode(season_number=1, episode_number=1, title_en="Pilot", release_date="")
+        count = tv_scraper_module._enrich_episode(ep, _make_tvmaze_raw(airdate="2022-11-13"), MagicMock())
+        assert ep.release_date == "2022-11-13"
+        assert count == 1
+
+    def test_enrich_does_not_overwrite_title_ru(self):
+        ep = Episode(season_number=1, episode_number=1, title_ru="Пилот", title_en="")
+        tv_scraper_module._enrich_episode(ep, _make_tvmaze_raw(name="Pilot"), MagicMock())
+        assert ep.title_ru == "Пилот"
+
+    def test_enrich_does_not_overwrite_release_date(self):
+        ep = Episode(season_number=1, episode_number=1, title_en="Pilot", release_date="2022-01-01")
+        count = tv_scraper_module._enrich_episode(ep, _make_tvmaze_raw(airdate="2022-11-13"), MagicMock())
+        assert ep.release_date == "2022-01-01"
+        assert count == 0
+
+    def test_enrich_does_not_overwrite_synopsis(self):
+        ep = Episode(season_number=1, episode_number=1, title_en="Pilot",
+                     release_date="2022-11-13", synopsis="Описание от КП")
+        tv_scraper_module._enrich_episode(ep, _make_tvmaze_raw(summary="<p>Other</p>"), MagicMock())
+        assert ep.synopsis == "Описание от КП"
+
+
+class TestMergeTvmazeEpisodes:
+    @patch("tv_scraper.TvmazeClient")
+    def test_merge_adds_missing_episodes(self, MockTvmazeClient):
+        _make_tvmaze_client_mock(MockTvmazeClient, [_make_tvmaze_raw(1, n, f"Ep {n}") for n in range(1, 11)])
+        seasons = [_make_kp_season(1, 1)]
+        result = tv_scraper_module._merge_tvmaze_episodes(
+            seasons, "tt18017626", "Tulsa King", _mock_settings(use_tvmaze=True), _mock_logger())
+        assert len(result) == 1
+        assert len(result[0].episodes) == 10
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_merge_adds_missing_season(self, MockTvmazeClient):
+        raws = [_make_tvmaze_raw(s, 1) for s in range(1, 5)]
+        _make_tvmaze_client_mock(MockTvmazeClient, raws)
+        seasons = [_make_kp_season(1), _make_kp_season(2)]
+        result = tv_scraper_module._merge_tvmaze_episodes(
+            seasons, "tt18017626", "Tulsa King", _mock_settings(use_tvmaze=True), _mock_logger())
+        assert [s.number for s in result] == [1, 2, 3, 4]
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_merge_kp_priority(self, MockTvmazeClient):
+        _make_tvmaze_client_mock(MockTvmazeClient, [
+            _make_tvmaze_raw(1, 1, name="Other name", airdate="2030-01-01")])
+        ep = Episode(season_number=1, episode_number=1, title_ru="Пилот",
+                     title_en="Pilot", release_date="2022-11-13")
+        seasons = [Season(number=1, episodes=[ep])]
+        result = tv_scraper_module._merge_tvmaze_episodes(
+            seasons, "tt18017626", "Tulsa King", _mock_settings(use_tvmaze=True), _mock_logger())
+        out = result[0].episodes[0]
+        assert out.title_ru == "Пилот"
+        assert out.title_en == "Pilot"
+        assert out.release_date == "2022-11-13"
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_merge_disabled(self, MockTvmazeClient):
+        seasons = [_make_kp_season(1)]
+        result = tv_scraper_module._merge_tvmaze_episodes(
+            seasons, "tt18017626", "Tulsa King", _mock_settings(use_tvmaze=False), _mock_logger())
+        assert result is seasons
+        assert len(result) == 1 and len(result[0].episodes) == 1
+        MockTvmazeClient.assert_not_called()
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_merge_no_identifiers(self, MockTvmazeClient):
+        seasons = [_make_kp_season(1)]
+        result = tv_scraper_module._merge_tvmaze_episodes(
+            seasons, "", "", _mock_settings(use_tvmaze=True), _mock_logger())
+        assert len(result) == 1 and len(result[0].episodes) == 1
+        MockTvmazeClient.assert_not_called()
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_merge_graceful_degradation(self, MockTvmazeClient):
+        MockTvmazeClient.return_value.lookup_show.side_effect = Exception("network down")
+        seasons = [_make_kp_season(1)]
+        result = tv_scraper_module._merge_tvmaze_episodes(
+            seasons, "tt18017626", "Tulsa King", _mock_settings(use_tvmaze=True), _mock_logger())
+        assert len(result) == 1 and len(result[0].episodes) == 1
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_merge_show_not_found(self, MockTvmazeClient):
+        client = MockTvmazeClient.return_value
+        client.lookup_show.return_value = None
+        client.search_show.return_value = None
+        seasons = [_make_kp_season(1)]
+        result = tv_scraper_module._merge_tvmaze_episodes(
+            seasons, "tt0000000", "Unknown Show", _mock_settings(use_tvmaze=True), _mock_logger())
+        assert len(result) == 1 and len(result[0].episodes) == 1
+        client.get_episodes.assert_not_called()
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_merge_episodes_none(self, MockTvmazeClient):
+        _make_tvmaze_client_mock(MockTvmazeClient, None)
+        seasons = [_make_kp_season(1)]
+        result = tv_scraper_module._merge_tvmaze_episodes(
+            seasons, "tt18017626", "Tulsa King", _mock_settings(use_tvmaze=True), _mock_logger())
+        assert len(result) == 1 and len(result[0].episodes) == 1
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_merge_logging(self, MockTvmazeClient):
+        _make_tvmaze_client_mock(MockTvmazeClient, [_make_tvmaze_raw(3, 1), _make_tvmaze_raw(3, 2)])
+        logger = _mock_logger()
+        tv_scraper_module._merge_tvmaze_episodes(
+            [_make_kp_season(1)], "tt18017626", "Tulsa King", _mock_settings(use_tvmaze=True), logger)
+        assert any("BL-78 TVMaze merge" in c.args[0] for c in logger.info.call_args_list)
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_merge_search_fallback(self, MockTvmazeClient):
+        client = _make_tvmaze_client_mock(MockTvmazeClient, [_make_tvmaze_raw(1, 2)])
+        result = tv_scraper_module._merge_tvmaze_episodes(
+            [_make_kp_season(1)], "", "Tulsa King", _mock_settings(use_tvmaze=True), _mock_logger())
+        client.lookup_show.assert_not_called()
+        client.search_show.assert_called_once_with("Tulsa King")
+        assert len(result[0].episodes) == 2
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_merge_skips_specials(self, MockTvmazeClient):
+        _make_tvmaze_client_mock(MockTvmazeClient, [_make_tvmaze_raw(season=None, number=1)])
+        result = tv_scraper_module._merge_tvmaze_episodes(
+            [_make_kp_season(1)], "tt18017626", "Tulsa King", _mock_settings(use_tvmaze=True), _mock_logger())
+        assert len(result) == 1 and len(result[0].episodes) == 1
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_merge_skips_null_episode_number(self, MockTvmazeClient):
+        _make_tvmaze_client_mock(MockTvmazeClient, [_make_tvmaze_raw(season=1, number=None)])
+        result = tv_scraper_module._merge_tvmaze_episodes(
+            [_make_kp_season(1)], "tt18017626", "Tulsa King", _mock_settings(use_tvmaze=True), _mock_logger())
+        assert len(result[0].episodes) == 1
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_merge_skips_zero_episode_number(self, MockTvmazeClient):
+        _make_tvmaze_client_mock(MockTvmazeClient, [_make_tvmaze_raw(season=1, number=0)])
+        result = tv_scraper_module._merge_tvmaze_episodes(
+            [_make_kp_season(1)], "tt18017626", "Tulsa King", _mock_settings(use_tvmaze=True), _mock_logger())
+        assert len(result[0].episodes) == 1
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_merge_sorts_seasons(self, MockTvmazeClient):
+        _make_tvmaze_client_mock(MockTvmazeClient, [
+            _make_tvmaze_raw(4, 1), _make_tvmaze_raw(3, 1)])
+        seasons = [_make_kp_season(2), _make_kp_season(1)]
+        result = tv_scraper_module._merge_tvmaze_episodes(
+            seasons, "tt18017626", "Tulsa King", _mock_settings(use_tvmaze=True), _mock_logger())
+        assert [s.number for s in result] == [1, 2, 3, 4]
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_merge_sorts_episodes(self, MockTvmazeClient):
+        _make_tvmaze_client_mock(MockTvmazeClient, [
+            _make_tvmaze_raw(1, 5), _make_tvmaze_raw(1, 2), _make_tvmaze_raw(1, 4)])
+        seasons = [Season(number=1, episodes=[
+            Episode(season_number=1, episode_number=3, title_ru="Три"),
+            Episode(season_number=1, episode_number=1, title_ru="Один"),
+        ])]
+        result = tv_scraper_module._merge_tvmaze_episodes(
+            seasons, "tt18017626", "Tulsa King", _mock_settings(use_tvmaze=True), _mock_logger())
+        assert [e.episode_number for e in result[0].episodes] == [1, 2, 3, 4, 5]
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_merge_empty_kp_seasons(self, MockTvmazeClient):
+        _make_tvmaze_client_mock(MockTvmazeClient, [_make_tvmaze_raw(s, 1) for s in (1, 2, 3)])
+        result = tv_scraper_module._merge_tvmaze_episodes(
+            [], "tt18017626", "Tulsa King", _mock_settings(use_tvmaze=True), _mock_logger())
+        assert [s.number for s in result] == [1, 2, 3]
+
+    @patch("tv_scraper.TvmazeClient")
+    def test_merge_empty_tvmaze_episodes(self, MockTvmazeClient):
+        _make_tvmaze_client_mock(MockTvmazeClient, [])
+        seasons = [_make_kp_season(1, 2)]
+        result = tv_scraper_module._merge_tvmaze_episodes(
+            seasons, "tt18017626", "Tulsa King", _mock_settings(use_tvmaze=True), _mock_logger())
+        assert len(result) == 1 and len(result[0].episodes) == 2

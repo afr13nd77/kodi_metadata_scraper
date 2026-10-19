@@ -860,6 +860,9 @@ def _handle_getepisodelist(
 
     imdb_id = guide.get("imdb_id") or guide.get("imdb") or ""
     title_original = guide.get("title_original", "")
+
+    seasons = _merge_tvmaze_episodes(seasons, imdb_id, title_original, settings, logger)
+
     total_episodes = 0
     for season in seasons:
         for ep in season.episodes:
@@ -1231,6 +1234,123 @@ def _cache_put(kp_id: int, seasons: list[Season], logger: Logger) -> None:
             logger.debug(f"season_cache: evicted kp_id={oldest_key} (cache size exceeded {_CACHE_MAX_SIZE})")
     total_eps = sum(len(s.episodes) for s in seasons)
     logger.info(f"season_cache: stored kp_id={kp_id}, {len(seasons)} seasons, {total_eps} episodes")
+
+
+def _merge_tvmaze_episodes(
+    seasons: list[Season],
+    imdb_id: str,
+    title_original: str,
+    settings: SettingsManager,
+    logger: Logger,
+) -> list[Season]:
+    """BL-78: дополняет сезоны KP эпизодами и полями из TVMaze. Ошибки не ломают основной поток."""
+    if not settings.use_tvmaze:
+        return seasons
+
+    if not imdb_id and not title_original:
+        logger.warning("BL-78: нет imdb_id/title_original для TVMaze merge")
+        return seasons
+
+    try:
+        tvmaze = TvmazeClient(logger)
+
+        # Определяем show_id
+        show_id = None
+        if imdb_id:
+            show_id = tvmaze.lookup_show(imdb_id)
+        if show_id is None and title_original:
+            show_id = tvmaze.search_show(title_original)
+        if show_id is None:
+            logger.warning(f"BL-78: шоу не найдено на TVMaze (imdb={imdb_id}, title={title_original})")
+            return seasons
+
+        tvmaze_episodes = tvmaze.get_episodes(show_id)
+        if not tvmaze_episodes:
+            return seasons
+
+        # Индекс эпизодов KP
+        kp_index = {}
+        season_map = {}
+        for season in seasons:
+            season_map[season.number] = season
+            for ep in season.episodes:
+                kp_index[(season.number, ep.episode_number)] = ep
+
+        added_episodes = 0
+        added_seasons = set()
+        enriched_fields = 0
+
+        for raw in tvmaze_episodes:
+            s = raw.get("season")
+            e = raw.get("number")
+            if s is None or e is None:
+                continue
+            s = int(s)
+            e = int(e)
+            if s <= 0 or e <= 0:
+                continue
+
+            key = (s, e)
+
+            if key not in kp_index:
+                new_ep = _tvmaze_raw_to_episode(raw, tvmaze)
+                if s not in season_map:
+                    new_season = Season(number=s, episodes=[])
+                    season_map[s] = new_season
+                    seasons.append(new_season)
+                    added_seasons.add(s)
+                season_map[s].episodes.append(new_ep)
+                kp_index[key] = new_ep
+                added_episodes += 1
+            else:
+                enriched_fields += _enrich_episode(kp_index[key], raw, tvmaze)
+
+        seasons.sort(key=lambda sn: sn.number)
+        for season in seasons:
+            season.episodes.sort(key=lambda ep: ep.episode_number)
+
+        total = sum(len(sn.episodes) for sn in seasons)
+        logger.info(
+            f"BL-78 TVMaze merge: добавлено {added_episodes} эпизодов, "
+            f"{len(added_seasons)} новых сезонов, "
+            f"обогащено {enriched_fields} полей, "
+            f"итого {total} эпизодов"
+        )
+
+    except Exception as exc:
+        logger.warning(f"BL-78: ошибка TVMaze merge: {exc}")
+
+    return seasons
+
+
+def _enrich_episode(kp_ep: Episode, tvmaze_raw: dict, tvmaze: TvmazeClient) -> int:
+    count = 0
+    if not kp_ep.title_en:
+        name = tvmaze_raw.get("name") or ""
+        if name:
+            kp_ep.title_en = name
+            count += 1
+    if not kp_ep.release_date:
+        airdate = tvmaze_raw.get("airdate") or ""
+        if airdate:
+            kp_ep.release_date = airdate
+            count += 1
+    return count
+
+
+def _tvmaze_raw_to_episode(raw: dict, tvmaze: TvmazeClient) -> Episode:
+    name = raw.get("name") or ""
+    return Episode(
+        season_number=int(raw.get("season", 0)),
+        episode_number=int(raw.get("number", 0)),
+        title_en=name,
+        title_ru=name,
+        release_date=raw.get("airdate") or "",
+        synopsis=tvmaze._strip_html(raw.get("summary") or ""),
+        rating=0.0,
+        directors=[],
+        writers=[],
+    )
 
 
 # ---------------------------------------------------------------------------

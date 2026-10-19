@@ -80,6 +80,7 @@
 |---|:---|:---|:---|
 | BL-52 | Сортировка по absolute order (аниме) | `tv_scraper.py`, `settings_manager.py` | Для аниме нумерация KP и TVMaze часто расходится. Настройка `episode_order: absolute / aired` по аналогии с TheTVDB. |
 | BL-53 | Специальные эпизоды (Season 0) | `tv_scraper.py`, `kinopoisk_api.py`, `tvmaze_client.py` | KP и TVMaze отдают specials отдельно. Сейчас они теряются. Kodi поддерживает Season 0 для спешлов. |
+| BL-78 | Fallback episode list из TVMaze | `tv_scraper.py`, `tvmaze_client.py`, `kinopoisk_api.py` | KP API часто отдаёт неполный список эпизодов для свежих/текущих сезонов (пример: Tulsa King S03 — 1 placeholder вместо 10, S04 отсутствует полностью, тогда как TVMaze имеет все 40 эпизодов). При `use_tvmaze=true`: если KP вернул сезон с 0–1 эпизодами и placeholder-названием (`Episode #N.M`), дополнить episode list из TVMaze API (`/shows/{id}/episodes`). Приоритет данных: KP (названия, даты) → TVMaze fallback (для отсутствующих эпизодов). Не заменять существующие данные KP, только добирать недостающее. |
 
 
 ### 3.2 Реализовано
@@ -203,6 +204,6 @@
 | Статус | Кол-во | Пункты |
 |:---|:---|:---|
 | ✅ Реализовано | 46 | BL-01..BL-11, BL-13..BL-20, BL-22..BL-26, BL-35..BL-41, BL-56, BL-57, BL-60, BL-61, BL-64, BL-66..BL-71, BL-73..BL-76 |
-| 💡 Идея | 24 | BL-27..BL-34, BL-42, BL-44..BL-55, BL-58, BL-65, BL-72, BL-77 |
+| 💡 Идея | 25 | BL-27..BL-34, BL-42, BL-44..BL-55, BL-58, BL-65, BL-72, BL-77, BL-78 |
 | ❌ Закрыто | 6 | BL-12, BL-21, BL-43, BL-59, BL-62, BL-63 |
-| **Итого** | **76** | |
+| **Итого** | **77** | |
