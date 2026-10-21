@@ -7,7 +7,7 @@
 
 # Kinoscope для Kodi
 
-**Версия:** 3.27.2  
+**Версия:** 3.28.0  
 **Платформа:** Kodi v20 Nexus / v21 Omega  
 **Язык:** Python 3.8  
 
@@ -102,8 +102,8 @@
 1. Скачайте ZIP-архивы из раздела релизов
 2. В Kodi: **Settings** -> **Add-ons** -> **Install from zip file**
 3. Установите нужные аддоны:
-   - `metadata.kinoscope.python-3.26.0.zip` -- scraper фильмов
-   - `metadata.tvshows.kinoscope.python-3.27.2.zip` -- scraper сериалов
+   - `metadata.kinoscope.python-3.28.0.zip` -- scraper фильмов
+   - `metadata.tvshows.kinoscope.python-3.28.0.zip` -- scraper сериалов
    - Можно установить оба или только один
 4. Откройте настройки установленного аддона и укажите API-ключ Кинопоиска
 
@@ -195,7 +195,7 @@ ruff check .
 python build_zip.py
 ```
 
-Результат: `metadata.kinoscope.python-3.26.0.zip` и `metadata.tvshows.kinoscope.python-3.27.2.zip` в корне проекта.
+Результат: `metadata.kinoscope.python-3.28.0.zip` и `metadata.tvshows.kinoscope.python-3.28.0.zip` в корне проекта.
 
 ---
 
