@@ -21,6 +21,7 @@ from utils import (
     extract_imdb_id, search_kp_by_imdb, transliterate_to_cyrillic,
     extract_franchise_name, extract_alt_title, deduplicate_results,
     _has_cyrillic, parse_manual_id_input, resolve_manual_id,
+    is_title_suspicious, extract_title_from_path,
 )
 from nfo_writer import write_movie_nfo
 
@@ -330,6 +331,61 @@ def _handle_find(
                                 f"_handle_find: found {len(results)} results after transliteration (no year): '{trans}'"
                             )
                             break
+
+        # [BL-77] Fallback на путь файла при невалидном title
+        if not results and is_title_suspicious(title, logger):
+            file_path = xbmc.getInfoLabel("ListItem.FileNameAndPath") or ""
+            if file_path:
+                logger.info(
+                    f"_handle_find: BL-77 fallback: suspicious title, "
+                    f"trying file path"
+                )
+                path_sources = extract_title_from_path(file_path, logger)
+                for source, raw_name in path_sources:
+                    fb_candidates, fb_year = clean_title(raw_name, logger)
+                    fb_search_year = fb_year if fb_year else search_year
+                    for fb_candidate in fb_candidates:
+                        results = kp_client.search(
+                            fb_candidate, fb_search_year,
+                            type_filter=["FILM"]
+                        )
+                        if results:
+                            successful_candidate = fb_candidate
+                            logger.info(
+                                f"_handle_find: BL-77 fallback success: "
+                                f"source={source}, "
+                                f"candidate='{fb_candidate}', "
+                                f"year={fb_search_year}, "
+                                f"results={len(results)}"
+                            )
+                            break
+                    if results:
+                        break
+                    for fb_candidate in fb_candidates:
+                        results = kp_client.search(
+                            fb_candidate, None, type_filter=["FILM"]
+                        )
+                        if results:
+                            successful_candidate = fb_candidate
+                            logger.info(
+                                f"_handle_find: BL-77 fallback success "
+                                f"(no year): source={source}, "
+                                f"candidate='{fb_candidate}', "
+                                f"results={len(results)}"
+                            )
+                            break
+                    if results:
+                        break
+                if not results:
+                    logger.info(
+                        f"_handle_find: BL-77 fallback exhausted, "
+                        f"no results from file path"
+                    )
+            else:
+                logger.info(
+                    f"_handle_find: BL-77 fallback: "
+                    f"FileNameAndPath not available"
+                )
 
         if settings.auto_select_exact_match and search_year is not None and successful_candidate is not None:
             exact = [

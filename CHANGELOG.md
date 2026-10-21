@@ -1,5 +1,16 @@
 # Changelog — Kinoscope (metadata.kinoscope.python)
 
+## v3.28.0 — 21.10.2026
+
+### Добавлено
+- **BL-77: Fallback на путь файла при невалидном title** — если Kodi передаёт мусорный title (email релизера, `Release:`, домен трекера, обёртка в спецсимволы, короткая аббревиатура) и поиск по нему возвращает 0 результатов, скрапер автоматически извлекает название из имени файла и родительской папки через `ListItem.FileNameAndPath`. Работает в обоих аддонах (movie + TV). TV scraper дополнительно пробует `ListItem.Path`.
+- 2 новые функции в `shared/utils.py`: `is_title_suspicious()` (5 паттернов детекции), `extract_title_from_path()` (парсинг Windows/Linux/SMB/NFS путей).
+- Fallback-блок в `_handle_find()` обоих скраперов: после транслитерации, перед auto_select. Dual search не применяется к fallback-результатам.
+
+### Тесты
+- 33 новых теста (12 suspicious + 11 path + 6 movie fallback + 4 TV fallback).
+- 998 тестов (716 movie + 282 TV). 0 new failures.
+
 ## v3.27.2 — 19.10.2026
 
 ### Добавлено

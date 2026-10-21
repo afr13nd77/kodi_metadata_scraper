@@ -1,6 +1,6 @@
 from unittest.mock import patch, MagicMock
 
-from utils import clean_title, extract_kinopoisk_id, extract_imdb_id, search_kp_by_imdb, transliterate_to_cyrillic, _has_cyrillic, extract_alt_title, deduplicate_results
+from utils import clean_title, extract_kinopoisk_id, extract_imdb_id, search_kp_by_imdb, transliterate_to_cyrillic, _has_cyrillic, extract_alt_title, deduplicate_results, is_title_suspicious
 from omdb_client import parse_award_tags
 from kinopoisk_api import normalize_genres, _GENRE_RU_TO_EN
 from logger import Logger
@@ -1062,3 +1062,41 @@ class TestCleanTitleCollectionPrefix:
     def test_four_digits_not_stripped(self):
         candidates, year = clean_title("MCU1234-Title (2020)", self._logger())
         assert candidates[0].startswith("MCU1234")
+
+
+class TestIsTitleSuspicious:
+    def test_email_pattern(self):
+        assert is_title_suspicious("idealistka4ever@rutracker.org", _mock_logger()) is True
+
+    def test_release_prefix(self):
+        assert is_title_suspicious("Release: user@tracker", _mock_logger()) is True
+
+    def test_release_prefix_case_insensitive(self):
+        assert is_title_suspicious("release: someone", _mock_logger()) is True
+
+    def test_domain_org(self):
+        assert is_title_suspicious("rutracker.org", _mock_logger()) is True
+
+    def test_domain_com(self):
+        assert is_title_suspicious("somesite.com", _mock_logger()) is True
+
+    def test_wrapped_equals(self):
+        assert is_title_suspicious("=stimco=", _mock_logger()) is True
+
+    def test_wrapped_brackets(self):
+        assert is_title_suspicious("[BONE]", _mock_logger()) is True
+
+    def test_short_upper(self):
+        assert is_title_suspicious("CMRG", _mock_logger()) is True
+
+    def test_valid_title_english(self):
+        assert is_title_suspicious("Practical Magic 2", _mock_logger()) is False
+
+    def test_valid_title_cyrillic(self):
+        assert is_title_suspicious("Практическая магия", _mock_logger()) is False
+
+    def test_empty_title(self):
+        assert is_title_suspicious("", _mock_logger()) is False
+
+    def test_wrapped_tilde(self):
+        assert is_title_suspicious("~BONE~", _mock_logger()) is True

@@ -443,6 +443,73 @@ def clean_title(raw_title: str, logger: Logger) -> tuple[list[str], str]:
     return candidates, extracted_year
 
 
+_SUSPICIOUS_EMAIL_RE = re.compile(r'[\w.+-]+@[\w-]+\.[\w.]+')
+_SUSPICIOUS_RELEASE_RE = re.compile(r'^Release\s*:', re.IGNORECASE)
+_SUSPICIOUS_DOMAIN_RE = re.compile(r'\b[\w-]+\.(org|ru|com|net|info|me|to)\b', re.IGNORECASE)
+_SUSPICIOUS_WRAPPED_RE = re.compile(r'^[=~\[\]]+\S+[=~\[\]]+$')
+
+
+def is_title_suspicious(title: str, logger: Logger) -> bool:
+    # Возвращает True, если title похож на мусор релизера
+    if not title:
+        logger.info("is_title_suspicious: empty title -> False")
+        return False
+
+    checks = (
+        ("email", bool(_SUSPICIOUS_EMAIL_RE.search(title))),
+        ("release_prefix", bool(_SUSPICIOUS_RELEASE_RE.search(title))),
+        ("domain", bool(_SUSPICIOUS_DOMAIN_RE.search(title))),
+        ("wrapped_special", bool(_SUSPICIOUS_WRAPPED_RE.match(title))),
+        ("short_upper", len(title) <= 6 and title.isupper() and ' ' not in title),
+    )
+    for pattern_name, matched in checks:
+        if matched:
+            logger.info(f"is_title_suspicious: title='{title}' matched pattern: {pattern_name}")
+            return True
+
+    logger.info(f"is_title_suspicious: title='{title}' not suspicious")
+    return False
+
+
+_VIDEO_EXTENSIONS = {
+    ".mkv", ".avi", ".mp4", ".m4v", ".mov", ".wmv", ".flv",
+    ".ts", ".m2ts", ".vob", ".iso", ".img", ".strm",
+    ".divx", ".ogm", ".webm", ".3gp",
+}
+
+
+def extract_title_from_path(file_path: str, logger: Logger) -> list[tuple[str, str]]:
+    # Не используем os.path: путь может быть Windows, SMB или POSIX независимо от ОС Kodi
+    if not file_path:
+        logger.info("extract_title_from_path: empty path -> []")
+        return []
+
+    try:
+        normalized = file_path.replace("\\", "/").rstrip("/")
+        parts = normalized.split("/")
+        result: list[tuple[str, str]] = []
+
+        filename = parts[-1]
+        dot = filename.rfind(".")
+        if dot != -1:
+            ext = filename[dot:]
+            if ext.lower() in _VIDEO_EXTENSIONS:
+                filename = filename[:dot]
+            elif len(ext) <= 5 and dot >= 2:
+                filename = filename[:dot]
+        if filename:
+            result.append(("filename", filename))
+
+        if len(parts) >= 2 and parts[-2]:
+            result.append(("dirname", parts[-2]))
+
+        logger.info(f"extract_title_from_path: '{file_path}' -> {result}")
+        return result
+    except Exception as e:
+        logger.error(f"extract_title_from_path: failed for '{file_path}': {e}")
+        return []
+
+
 def extract_kinopoisk_id(params: dict, logger: Logger) -> int:
     # Try uniqueIDs from Kodi (camelCase)
     uniqueids = params.get("uniqueIDs", {})

@@ -28,6 +28,7 @@ import tv_scraper as tv_scraper_module
 def reset_kodi_mocks():
     """Reset all Kodi module-level MagicMocks between tests."""
     xbmc.reset_mock()
+    xbmc.getInfoLabel.return_value = ""
     xbmcgui.reset_mock()
     xbmcplugin.reset_mock()
     # Reset module-level globals in tv_scraper
@@ -4027,3 +4028,126 @@ class TestMergeTvmazeEpisodes:
         result = tv_scraper_module._merge_tvmaze_episodes(
             seasons, "tt18017626", "Tulsa King", _mock_settings(use_tvmaze=True), _mock_logger())
         assert len(result) == 1 and len(result[0].episodes) == 2
+
+
+class TestBL77TVFallback:
+    """Integration tests for BL-77: TV scraper fallback on file path."""
+
+    def test_happy_path_filename_success(self):
+        """Suspicious title, valid file path, filename search succeeds."""
+        logger = MagicMock(spec=Logger)
+        settings = _mock_settings()
+        mock_result = MovieSearchResult(
+            kinopoisk_id=12345, title_ru="Сериал",
+            title_original="TV Show", year=2026,
+            poster_url="", rating=7.0, imdb_id=""
+        )
+
+        def mock_search(query, year, type_filter=None):
+            if "@" in query or "Release" in query:
+                return []
+            return [mock_result]
+
+        with patch("tv_scraper.KinopoiskClient") as MockKP, \
+             patch("tv_scraper.init_key_pool"), \
+             patch("tv_scraper.get_current_api_key", return_value="test-key"), \
+             patch("tv_scraper.is_all_keys_exhausted", return_value=False):
+            mock_kp = MockKP.return_value
+            mock_kp.search = mock_search
+
+            xbmc.getInfoLabel.return_value = r"E:\TVShows\TV Show (2026)\tv.show.s01e01.mkv"
+
+            _handle_find(
+                {"title": "Release: user@tracker.org", "year": "0"},
+                1, settings, logger
+            )
+
+            assert xbmcplugin.addDirectoryItem.called
+
+    def test_filenamepath_empty_listitem_path_works(self):
+        """FileNameAndPath empty, but ListItem.Path provides path."""
+        logger = MagicMock(spec=Logger)
+        settings = _mock_settings()
+        mock_result = MovieSearchResult(
+            kinopoisk_id=12345, title_ru="Сериал",
+            title_original="TV Show", year=2026,
+            poster_url="", rating=7.0, imdb_id=""
+        )
+
+        def mock_search(query, year, type_filter=None):
+            if "@" in query or "Release" in query:
+                return []
+            return [mock_result]
+
+        def mock_getinfolabel(label):
+            if label == "ListItem.FileNameAndPath":
+                return ""
+            if label == "ListItem.Path":
+                return r"E:\TVShows\TV Show (2026)" + chr(92)
+            return ""
+
+        with patch("tv_scraper.KinopoiskClient") as MockKP, \
+             patch("tv_scraper.init_key_pool"), \
+             patch("tv_scraper.get_current_api_key", return_value="test-key"), \
+             patch("tv_scraper.is_all_keys_exhausted", return_value=False):
+            mock_kp = MockKP.return_value
+            mock_kp.search = mock_search
+
+            xbmc.getInfoLabel.side_effect = mock_getinfolabel
+
+            try:
+                _handle_find(
+                    {"title": "Release: user@tracker.org", "year": "0"},
+                    1, settings, logger
+                )
+
+                assert xbmcplugin.addDirectoryItem.called
+            finally:
+                # Cleanup side_effect
+                xbmc.getInfoLabel.side_effect = None
+                xbmc.getInfoLabel.return_value = ""
+
+    def test_valid_title_no_fallback(self):
+        """Valid title with results — no fallback triggered."""
+        logger = MagicMock(spec=Logger)
+        settings = _mock_settings()
+        mock_result = MovieSearchResult(
+            kinopoisk_id=12345, title_ru="Сериал",
+            title_original="TV Show", year=2026,
+            poster_url="", rating=7.0, imdb_id=""
+        )
+
+        with patch("tv_scraper.KinopoiskClient") as MockKP, \
+             patch("tv_scraper.init_key_pool"), \
+             patch("tv_scraper.get_current_api_key", return_value="test-key"), \
+             patch("tv_scraper.is_all_keys_exhausted", return_value=False):
+            mock_kp = MockKP.return_value
+            mock_kp.search.return_value = [mock_result]
+
+            _handle_find(
+                {"title": "TV Show", "year": "2026"},
+                1, settings, logger
+            )
+
+            assert xbmcplugin.addDirectoryItem.called
+
+    def test_both_infolabels_empty(self):
+        """Both FileNameAndPath and Path return empty — no fallback."""
+        logger = MagicMock(spec=Logger)
+        settings = _mock_settings()
+
+        with patch("tv_scraper.KinopoiskClient") as MockKP, \
+             patch("tv_scraper.init_key_pool"), \
+             patch("tv_scraper.get_current_api_key", return_value="test-key"), \
+             patch("tv_scraper.is_all_keys_exhausted", return_value=False):
+            mock_kp = MockKP.return_value
+            mock_kp.search.return_value = []
+
+            xbmc.getInfoLabel.return_value = ""
+
+            _handle_find(
+                {"title": "Release: user@tracker.org", "year": "0"},
+                1, settings, logger
+            )
+
+            assert not xbmcplugin.addDirectoryItem.called

@@ -28,6 +28,7 @@ import scraper as scraper_module
 def reset_kodi_mocks():
     """Reset all Kodi module-level MagicMocks between tests."""
     xbmc.reset_mock()
+    xbmc.getInfoLabel.return_value = ""
     xbmcgui.reset_mock()
     xbmcplugin.reset_mock()
     # Reset module-level globals in scraper
@@ -2171,3 +2172,140 @@ class TestFanartTvIntegration:
         # Verify the warning was logged
         log_calls = [str(c) for c in logger.warning.call_args_list]
         assert any("FanArt.tv error" in c for c in log_calls)
+
+
+class TestBL77Fallback:
+    """Integration tests for BL-77: fallback on file path when title is suspicious."""
+
+    def _result(self, **kw):
+        base = dict(
+            kinopoisk_id=12345, title_ru="Практическая магия 2",
+            title_original="Practical Magic 2", year=2026,
+            poster_url="", rating=7.0, imdb_id=""
+        )
+        base.update(kw)
+        return MovieSearchResult(**base)
+
+    def test_happy_path_filename_success(self):
+        """Suspicious title, valid file path, filename search succeeds."""
+        logger = MagicMock(spec=Logger)
+        settings = _mock_settings()
+        mock_result = self._result()
+
+        def mock_search(query, year, type_filter=None):
+            if "@" in query or "Release" in query:
+                return []
+            return [mock_result]
+
+        with patch("scraper.KinopoiskClient") as MockKP, \
+             patch("scraper.init_key_pool"), \
+             patch("scraper.get_current_api_key", return_value="test-key"), \
+             patch("scraper.is_all_keys_exhausted", return_value=False):
+            MockKP.return_value.search = mock_search
+            xbmc.getInfoLabel.return_value = r"E:\Movies\Practical Magic 2 (2026)\Practical.Magic.2.2026.1080p.AMZN.WEB-DL.[Rus.Ukr.Eng].Rutracker.mkv"
+            _handle_find(
+                {"title": "Release: idealistka4ever@rutracker.org", "year": "0"},
+                1, settings, logger
+            )
+            assert xbmcplugin.addDirectoryItem.called
+
+    def test_filename_fails_dirname_succeeds(self):
+        """Filename gives no results, dirname does."""
+        logger = MagicMock(spec=Logger)
+        settings = _mock_settings()
+        mock_result = self._result()
+
+        def mock_search(query, year, type_filter=None):
+            if "1080p" in query or "@" in query or "Release" in query:
+                return []
+            if "Practical Magic 2" in query:
+                return [mock_result]
+            return []
+
+        with patch("scraper.KinopoiskClient") as MockKP, \
+             patch("scraper.init_key_pool"), \
+             patch("scraper.get_current_api_key", return_value="test-key"), \
+             patch("scraper.is_all_keys_exhausted", return_value=False):
+            MockKP.return_value.search = mock_search
+            xbmc.getInfoLabel.return_value = r"E:\Movies\Practical Magic 2 (2026)\Practical.Magic.2.2026.1080p.AMZN.WEB-DL.[Rus.Ukr.Eng].Rutracker.mkv"
+            _handle_find(
+                {"title": "Release: idealistka4ever@rutracker.org", "year": "0"},
+                1, settings, logger
+            )
+            assert xbmcplugin.addDirectoryItem.called
+
+    def test_file_path_empty_no_fallback(self):
+        """FileNameAndPath returns empty string, fallback does not trigger."""
+        logger = MagicMock(spec=Logger)
+        settings = _mock_settings()
+
+        with patch("scraper.KinopoiskClient") as MockKP, \
+             patch("scraper.init_key_pool"), \
+             patch("scraper.get_current_api_key", return_value="test-key"), \
+             patch("scraper.is_all_keys_exhausted", return_value=False):
+            MockKP.return_value.search.return_value = []
+            xbmc.getInfoLabel.return_value = ""
+            _handle_find(
+                {"title": "Release: idealistka4ever@rutracker.org", "year": "0"},
+                1, settings, logger
+            )
+            assert not xbmcplugin.addDirectoryItem.called
+
+    def test_valid_title_no_fallback(self):
+        """Valid title with results: fallback is NOT triggered."""
+        logger = MagicMock(spec=Logger)
+        settings = _mock_settings()
+
+        with patch("scraper.KinopoiskClient") as MockKP, \
+             patch("scraper.init_key_pool"), \
+             patch("scraper.get_current_api_key", return_value="test-key"), \
+             patch("scraper.is_all_keys_exhausted", return_value=False):
+            MockKP.return_value.search.return_value = [self._result()]
+            _handle_find(
+                {"title": "Practical Magic 2", "year": "2026"},
+                1, settings, logger
+            )
+            assert xbmcplugin.addDirectoryItem.called
+
+    def test_suspicious_but_found_no_fallback(self):
+        """Title looks suspicious but search returns results: no fallback."""
+        logger = MagicMock(spec=Logger)
+        settings = _mock_settings()
+        mock_result = self._result(
+            kinopoisk_id=99, title_ru="Release", title_original="Release",
+            year=2020, rating=5.0
+        )
+
+        with patch("scraper.KinopoiskClient") as MockKP, \
+             patch("scraper.init_key_pool"), \
+             patch("scraper.get_current_api_key", return_value="test-key"), \
+             patch("scraper.is_all_keys_exhausted", return_value=False):
+            MockKP.return_value.search.return_value = [mock_result]
+            _handle_find(
+                {"title": "release.info", "year": "0"},
+                1, settings, logger
+            )
+            assert xbmcplugin.addDirectoryItem.called
+
+    def test_year_extraction_from_path(self):
+        """Title has no year, but path dirname contains year in parens."""
+        logger = MagicMock(spec=Logger)
+        settings = _mock_settings()
+        mock_result = self._result(title_ru="Фильм", title_original="Film")
+
+        def mock_search(query, year, type_filter=None):
+            if query == "Film" and year == "2026":
+                return [mock_result]
+            return []
+
+        with patch("scraper.KinopoiskClient") as MockKP, \
+             patch("scraper.init_key_pool"), \
+             patch("scraper.get_current_api_key", return_value="test-key"), \
+             patch("scraper.is_all_keys_exhausted", return_value=False):
+            MockKP.return_value.search = mock_search
+            xbmc.getInfoLabel.return_value = r"E:\Movies\Film (2026)\film.1080p.mkv"
+            _handle_find(
+                {"title": "Release: someone@tracker.org", "year": "0"},
+                1, settings, logger
+            )
+            assert xbmcplugin.addDirectoryItem.called
