@@ -117,6 +117,20 @@ TMDb is **not** used.
 - **Kinopoisk Unofficial API** (required): Register at [kinopoiskapiunofficial.tech](https://kinopoiskapiunofficial.tech) for a free key.
 - **OMDb API** (optional): Register at [omdbapi.com](https://www.omdbapi.com) for IMDB, Rotten Tomatoes, and Metacritic ratings.
 
+### Android: entering API key via file
+
+On Android devices, Kodi may fail to save the API key through the standard settings dialog. As a workaround, you can enter the key manually via file:
+
+1. Open addon settings in Kodi and enter any value in the API key field — this will create the `settings.xml` file
+2. Find the settings file on your device:
+   - Movie scraper: `Android/data/org.xbmc.kodi/files/.kodi/userdata/addon_data/metadata.kinoscope.python/settings.xml`
+   - TV scraper: `Android/data/org.xbmc.kodi/files/.kodi/userdata/addon_data/metadata.tvshows.kinoscope.python/settings.xml`
+3. Open the file in a text editor and replace the key value:
+   ```xml
+   <setting id="kinopoisk_api_key">your-key</setting>
+   ```
+4. Restart Kodi
+
 ---
 
 ## Settings

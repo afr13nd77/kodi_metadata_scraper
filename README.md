@@ -112,6 +112,20 @@
 - **kinopoiskapiunofficial API** (обязательно): зарегистрируйтесь на `kinopoiskapiunofficial.tech` и получите бесплатный ключ
 - **OMDb API** (опционально): зарегистрируйтесь на `omdbapi.com` для получения рейтингов IMDB/RT/Metacritic
 
+### Android: ввод API-ключа через файл
+
+На Android-устройствах Kodi может не сохранять API-ключ через стандартный диалог настроек. В этом случае ключ можно ввести вручную через файл:
+
+1. Откройте настройки аддона в Kodi и введите любое значение в поле API-ключа — это создаст файл `settings.xml`
+2. Найдите файл настроек на устройстве:
+   - Movie scraper: `Android/data/org.xbmc.kodi/files/.kodi/userdata/addon_data/metadata.kinoscope.python/settings.xml`
+   - TV scraper: `Android/data/org.xbmc.kodi/files/.kodi/userdata/addon_data/metadata.tvshows.kinoscope.python/settings.xml`
+3. Откройте файл текстовым редактором и замените значение ключа:
+   ```xml
+   <setting id="kinopoisk_api_key">ваш-ключ</setting>
+   ```
+4. Перезапустите Kodi
+
 ---
 
 ## Настройки
