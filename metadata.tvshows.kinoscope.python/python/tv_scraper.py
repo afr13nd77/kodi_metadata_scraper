@@ -380,8 +380,8 @@ def _handle_find(
             )
             if file_path:
                 logger.info(
-                    f"_handle_find: BL-77 fallback: suspicious title, "
-                    f"trying file path"
+                    "_handle_find: BL-77 fallback: suspicious title, "
+                    "trying file path"
                 )
                 path_sources = extract_title_from_path(file_path, logger)
                 for source, raw_name in path_sources:
@@ -422,13 +422,13 @@ def _handle_find(
                         break
                 if not results:
                     logger.info(
-                        f"_handle_find: BL-77 fallback exhausted, "
-                        f"no results from file path"
+                        "_handle_find: BL-77 fallback exhausted, "
+                        "no results from file path"
                     )
             else:
                 logger.info(
-                    f"_handle_find: BL-77 fallback: "
-                    f"FileNameAndPath not available"
+                    "_handle_find: BL-77 fallback: "
+                    "FileNameAndPath not available"
                 )
 
         if settings.auto_select_exact_match and search_year is not None and successful_candidate is not None:
